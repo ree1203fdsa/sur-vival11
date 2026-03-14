@@ -1001,8 +1001,9 @@ window.addEventListener('storage', (e) => {
 });
 
 document.getElementById('btn-admin').addEventListener('click', () => {
-    if (STATE.currentUser.role === 'admin') {
-        const isMaster = STATE.currentUser.username === 'ree1203fdsa';
+    const role = STATE.currentUser.role;
+    if (role === 'admin' || role === 'creator') {
+        const isMaster = CREATOR_ACCOUNTS.includes(STATE.currentUser.username);
         const msBtn = document.getElementById('btn-master-signup');
         if (msBtn) {
             if (isMaster) msBtn.classList.remove('hidden');
@@ -1138,7 +1139,7 @@ const app = {
         if (role !== 'admin' && role !== 'creator') return;
 
         const userToDel = STATE.users[index];
-        const isMaster = STATE.currentUser.username === 'ree1203fdsa';
+        const isMaster = CREATOR_ACCOUNTS.includes(STATE.currentUser.username);
 
         // Cannot delete self
         if (userToDel.username === STATE.currentUser.username) {
@@ -1169,7 +1170,7 @@ const app = {
         if (role !== 'admin' && role !== 'creator') return;
 
         const targetUser = STATE.users[index];
-        const isMaster = STATE.currentUser.username === 'ree1203fdsa';
+        const isMaster = CREATOR_ACCOUNTS.includes(STATE.currentUser.username);
 
         // Only creator (master) can assign admin/creator or demote them
         if ((newRole === 'admin' || newRole === 'creator' || targetUser.role === 'admin' || targetUser.role === 'creator') && !isMaster && targetUser.username !== STATE.currentUser.username) {
@@ -1228,7 +1229,7 @@ const app = {
     // --- PASSWORD CHANGE LOGIC ---
     openPwModal: (index) => {
         const user = STATE.users[index];
-        const isMaster = STATE.currentUser.username === 'ree1203fdsa';
+        const isMaster = CREATOR_ACCOUNTS.includes(STATE.currentUser.username);
 
         // Only master can change other admins' password
         if (user.role === 'admin' && !isMaster && user.username !== STATE.currentUser.username) {
