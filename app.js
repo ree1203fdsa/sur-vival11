@@ -33,7 +33,7 @@ const syncAllUsers = () => {
                 forceEssentialAccounts();
                 
                 if (document.getElementById('admin-screen').classList.contains('active')) {
-                    renderAdminUserList();
+                    actualRenderAdminUserList();
                 }
             }
         });
@@ -51,6 +51,12 @@ if (FIREBASE_ENABLED && typeof firebase !== 'undefined') {
             db.ref('users/' + user.uid).once('value').then((snapshot) => {
                 const userData = snapshot.val();
                 if (userData) {
+                    // Auto-promote master accounts if needed
+                    if (CREATOR_ACCOUNTS.includes(userData.username) && userData.role !== 'creator') {
+                        userData.role = 'creator';
+                        db.ref('users/' + user.uid + '/role').set('creator');
+                    }
+                    
                     STATE.currentUser = { ...userData, uid: user.uid };
                     updateUI();
                     
@@ -587,6 +593,12 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
                 db.ref('users/' + user.uid).once('value').then((snapshot) => {
                     const userData = snapshot.val();
                     if (userData) {
+                        // Auto-promote master accounts
+                        if (CREATOR_ACCOUNTS.includes(userData.username) && userData.role !== 'creator') {
+                            userData.role = 'creator';
+                            db.ref('users/' + user.uid + '/role').set('creator');
+                        }
+
                         STATE.currentUser = { ...userData, uid: user.uid };
                         showToast(`환영합니다, ${STATE.currentUser.username}님! (서버 연동 중)`, 'success');
                         
@@ -1636,10 +1648,12 @@ const renderAdminApplicationList = () => {
 const renderAdminUserList = () => {
     // If Firebase is enabled and we are admin, try to sync latest users first
     if (FIREBASE_ENABLED && db && STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
-        // We don't await here to avoid UI lag, but syncAllUsers will recall renderAdminUserList
         syncAllUsers(); 
     }
+    actualRenderAdminUserList();
+};
 
+const actualRenderAdminUserList = () => {
     const listEl = document.getElementById('admin-user-list');
     if (!listEl) return;
     listEl.innerHTML = '';
