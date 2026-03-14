@@ -47,34 +47,15 @@
                         <input type="text" id="username" placeholder="아이디를 입력하세요" required>
                     </div>
                     <div class="input-group" id="pw-section">
-                        <label for="password">비밀번호</label>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <label for="password" style="margin-bottom: 0;">비밀번호</label>
+                            <button type="button" id="btn-forgot-password"
+                                style="background:none; border:none; color: var(--secondary-color); font-size:0.75rem; font-weight:700; cursor:pointer; text-decoration:underline;">비밀번호 찾기</button>
+                        </div>
                         <div class="password-wrapper">
                             <input type="password" id="password" placeholder="비밀번호를 입력하세요">
                             <button type="button" id="toggle-password" class="btn-icon toggle-pwd-btn">👁️</button>
                         </div>
-                    </div>
-
-                    <div id="pattern-section" class="hidden">
-                        <label
-                            style="color: var(--secondary-color); font-weight: 700; font-size: 0.9rem; letter-spacing: 1px; text-align: center; display: block; margin-bottom: 10px;">🔐
-                            패턴 입력</label>
-                        <div id="pattern-lock" class="pattern-lock">
-                            <svg id="pattern-svg" class="pattern-svg"></svg>
-                            <div class="pattern-dots">
-                                <div class="pattern-dot" data-index="0"></div>
-                                <div class="pattern-dot" data-index="1"></div>
-                                <div class="pattern-dot" data-index="2"></div>
-                                <div class="pattern-dot" data-index="3"></div>
-                                <div class="pattern-dot" data-index="4"></div>
-                                <div class="pattern-dot" data-index="5"></div>
-                                <div class="pattern-dot" data-index="6"></div>
-                                <div class="pattern-dot" data-index="7"></div>
-                                <div class="pattern-dot" data-index="8"></div>
-                            </div>
-                        </div>
-                        <p id="pattern-hint"
-                            style="text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">점을
-                            이어 패턴을 그리세요...</p>
                     </div>
 
                     <div class="btn-group">

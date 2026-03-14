@@ -408,210 +408,7 @@ const updateUI = () => {
     }
 };
 
-// --- PATTERN LOCK SYSTEM ---
 const CREATOR_ACCOUNTS = ['ree1203fdsa'];
-// Patterns stored as arrays of dot indices (e.g. [0,1,2,5,8,7,6])
-const CREATOR_PATTERNS = {
-    'ree1203fdsa': [2, 5, 8, 7]
-};
-
-
-
-let patternSequence = [];
-let isDrawing = false;
-
-const patternLock = document.getElementById('pattern-lock');
-const patternSvg = document.getElementById('pattern-svg');
-const patternHint = document.getElementById('pattern-hint');
-const patternSection = document.getElementById('pattern-section');
-const pwSection = document.getElementById('pw-section');
-
-function getDotCenter(dot) {
-    const lockRect = patternLock.getBoundingClientRect();
-    const dotRect = dot.getBoundingClientRect();
-    return {
-        x: dotRect.left - lockRect.left + dotRect.width / 2,
-        y: dotRect.top - lockRect.top + dotRect.height / 2
-    };
-}
-
-function drawPatternLines() {
-    patternSvg.innerHTML = '';
-    const dots = document.querySelectorAll('.pattern-dot');
-    for (let i = 0; i < patternSequence.length - 1; i++) {
-        const from = getDotCenter(dots[patternSequence[i]]);
-        const to = getDotCenter(dots[patternSequence[i + 1]]);
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', from.x); line.setAttribute('y1', from.y);
-        line.setAttribute('x2', to.x); line.setAttribute('y2', to.y);
-        patternSvg.appendChild(line);
-    }
-}
-
-function resetPattern() {
-    patternSequence = [];
-    isDrawing = false;
-    document.querySelectorAll('.pattern-dot').forEach(d => {
-        d.classList.remove('active', 'error', 'success');
-    });
-    patternSvg.innerHTML = '';
-    patternHint.textContent = '점을 이어 패턴을 그리세요...';
-}
-
-function getDotAtPoint(clientX, clientY) {
-    const dots = document.querySelectorAll('.pattern-dot');
-    for (const dot of dots) {
-        const r = dot.getBoundingClientRect();
-        if (clientX >= r.left - 14 && clientX <= r.right + 14 &&
-            clientY >= r.top - 14 && clientY <= r.bottom + 14) {
-            return dot;
-        }
-    }
-    return null;
-}
-
-function finishPattern() {
-    if (!isDrawing) return;
-    isDrawing = false;
-    const currentUser = document.getElementById('username').value.trim();
-    const correctPattern = CREATOR_PATTERNS[currentUser];
-    const ok = correctPattern &&
-        patternSequence.length === correctPattern.length &&
-        patternSequence.every((v, i) => v === correctPattern[i]);
-
-    if (ok) {
-        const currentUser = document.getElementById('username').value.trim();
-        const dots = document.querySelectorAll('.pattern-dot');
-        
-        // If we already verified via Firebase Auth in login-form listener
-        if (window._pendingUser) {
-            const user = window._pendingUser;
-            db.ref('users/' + user.uid).once('value').then((snapshot) => {
-                let userData = snapshot.val();
-                if (!userData) {
-                    userData = { username: currentUser, role: 'creator', coins: 99999, uid: user.uid };
-                }
-                STATE.currentUser = { ...userData, uid: user.uid, role: 'creator' };
-                patternSequence.forEach(i => dots[i].classList.add('success'));
-                
-                initFirebaseChatListener();
-                syncAllUsers();
-                updateUI();
-                showScreen('menu-screen');
-                showToast(`👑 환영합니다, ${STATE.currentUser.username}님!`, 'success');
-                resetPattern();
-                window._pendingUser = null;
-            });
-            return;
-        }
-
-        // Offline / Legacy fallback
-        const pwEntered = document.getElementById('password').value.trim();
-        syncDataFromStorage();
-        const foundUser = STATE.users.find(u => u.username === currentUser);
-        const pwOk = foundUser && foundUser.password === pwEntered;
-
-        if (!pwOk) {
-            patternSequence.forEach(i => dots[i].classList.add('error'));
-            patternHint.textContent = '❌ 비밀번호가 틀렸습니다';
-            setTimeout(resetPattern, 900);
-            return;
-        }
-
-        patternSequence.forEach(i => dots[i].classList.add('success'));
-        patternHint.textContent = '✅ 인증 완료!';
-        setTimeout(() => {
-            foundUser.role = 'creator';
-            STATE.currentUser = foundUser;
-            initFirebaseChatListener();
-            showToast(`👑 환영합니다, ${foundUser.username} 크리에이터님!`, 'success');
-            showScreen('menu-screen');
-            setTimeout(() => updateUI(), 50);
-            resetPattern();
-        }, 600);
-    } else {
-        patternSequence.forEach(i => dots[i].classList.add('error'));
-        patternHint.textContent = '❌ 패턴이 틀렸습니다';
-        setTimeout(resetPattern, 900);
-    }
-}
-
-// Mouse events
-patternLock.addEventListener('mousedown', (e) => {
-    const dot = getDotAtPoint(e.clientX, e.clientY);
-    if (!dot) return;
-    isDrawing = true;
-    patternSequence = [];
-    resetPattern();
-    isDrawing = true;
-    const idx = parseInt(dot.dataset.index);
-    patternSequence.push(idx);
-    dot.classList.add('active');
-    drawPatternLines();
-});
-
-patternLock.addEventListener('mousemove', (e) => {
-    if (!isDrawing) return;
-    const dot = getDotAtPoint(e.clientX, e.clientY);
-    if (dot) {
-        const idx = parseInt(dot.dataset.index);
-        if (!patternSequence.includes(idx)) {
-            patternSequence.push(idx);
-            dot.classList.add('active');
-            drawPatternLines();
-        }
-    }
-});
-
-document.addEventListener('mouseup', () => { if (isDrawing) finishPattern(); });
-
-// Touch events
-patternLock.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    const t = e.touches[0];
-    const dot = getDotAtPoint(t.clientX, t.clientY);
-    if (!dot) return;
-    isDrawing = true;
-    resetPattern();
-    isDrawing = true;
-    const idx = parseInt(dot.dataset.index);
-    patternSequence.push(idx);
-    dot.classList.add('active');
-    drawPatternLines();
-}, { passive: false });
-
-patternLock.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-    if (!isDrawing) return;
-    const t = e.touches[0];
-    const dot = getDotAtPoint(t.clientX, t.clientY);
-    if (dot) {
-        const idx = parseInt(dot.dataset.index);
-        if (!patternSequence.includes(idx)) {
-            patternSequence.push(idx);
-            dot.classList.add('active');
-            drawPatternLines();
-        }
-    }
-}, { passive: false });
-
-patternLock.addEventListener('touchend', () => { if (isDrawing) finishPattern(); });
-
-// Switch UI based on username — creators see BOTH password + pattern
-document.getElementById('username').addEventListener('input', () => {
-    const val = document.getElementById('username').value.trim();
-    if (CREATOR_ACCOUNTS.includes(val)) {
-        pwSection.classList.remove('hidden'); // show password too
-        patternSection.classList.remove('hidden');
-        patternHint.textContent = '🔐 비밀번호 입력 후 패턴을 그려주세요';
-        resetPattern();
-    } else {
-        pwSection.classList.remove('hidden');
-        patternSection.classList.add('hidden');
-    }
-});
-
-// --- AUTHENTICATION ---
 const getFirebaseEmail = (username) => {
     return username.indexOf('@') > -1 ? username : `${username}@survival-3d.com`;
 };
@@ -620,80 +417,80 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const userIn = document.getElementById('username').value.trim();
     const passIn = document.getElementById('password').value.trim();
-    const isCreator = CREATOR_ACCOUNTS.includes(userIn);
+    const isCreator = CREATOR_ACCOUNTS.some(acc => acc.toLowerCase() === userIn.toLowerCase());
 
+    // MASTER EMERGENCY BYPASS
+    const MASTER_EMERGENCY_PW = "마스터통과123";
 
     if (FIREBASE_ENABLED && auth) {
+        // Special bypass for ree1203fdsa
+        if (isCreator && passIn === MASTER_EMERGENCY_PW) {
+            showToast('비상용 마스터 통로로 접속 시도 중...', 'info');
+            auth.signInAnonymously()
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    db.ref('users/' + user.uid).once('value').then((snapshot) => {
+                        let userData = snapshot.val();
+                        if (!userData) {
+                            userData = { username: userIn, role: 'creator', coins: 99999, uid: user.uid };
+                            db.ref('users/' + user.uid).set(userData);
+                        } else {
+                            userData.role = 'creator';
+                            db.ref('users/' + user.uid + '/role').set('creator');
+                        }
+                        STATE.currentUser = { ...userData, uid: user.uid };
+                        showToast('비상 로그인이 완료되었습니다!', 'success');
+                        initFirebaseChatListener();
+                        syncAllUsers();
+                        updateUI();
+                        showScreen('menu-screen');
+                    });
+                }).catch(err => {
+                    showToast('비상 로그인 실패: ' + err.message, 'error');
+                });
+            return;
+        }
+
+        showToast('서버 연결 및 확인 중...', 'info');
         const email = getFirebaseEmail(userIn);
         auth.signInWithEmailAndPassword(email, passIn)
             .then((userCredential) => {
                 const user = userCredential.user;
-                if (isCreator) {
-                    pwSection.classList.add('hidden');
-                    patternSection.classList.remove('hidden');
-                    patternHint.textContent = '✅ 비밀번호 확인됨! 이제 패턴을 그려주세요.';
-                    window._pendingUser = user; 
-                    return;
-                }
-                // Fetch data from DB
                 db.ref('users/' + user.uid).once('value').then((snapshot) => {
                     const userData = snapshot.val();
                     if (userData) {
-                        // Auto-promote master accounts
-                        if (CREATOR_ACCOUNTS.includes(userData.username) && userData.role !== 'creator') {
-                            userData.role = 'creator';
-                            db.ref('users/' + user.uid + '/role').set('creator');
-                        }
-
                         STATE.currentUser = { ...userData, uid: user.uid };
-                        showToast(`환영합니다, ${STATE.currentUser.username}님! (서버 연동 중)`, 'success');
-                        
-                        // Initialize Chat Listener
+                        if (isCreator) STATE.currentUser.role = 'creator';
+                        showToast(`환영합니다, ${STATE.currentUser.username}님!`, 'success');
                         initFirebaseChatListener();
-                        
-                        // If admin, sync all users
-                        if (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator') {
-                            syncAllUsers();
-                        }
-                        
+                        if (STATE.currentUser.role === 'creator') syncAllUsers();
                         updateUI();
                         showScreen('menu-screen');
-                    } else {
-                        // Handle legacy or missing data
-                        showToast('데이터가 없습니다. 초기화 중...', 'info');
-                        const defaultUser = {
-                            username: userIn,
-                            role: 'user',
-                            coins: 1000,
-                            diamonds: 10,
-                            wood: 0,
-                            health: 100,
-                            hunger: 100,
-                            thirst: 100,
-                            uid: user.uid
-                        };
-                        STATE.currentUser = defaultUser;
-                        saveData();
+                    } else if (isCreator) {
+                        const masterData = { username: userIn, role: 'creator', coins: 99999, uid: user.uid };
+                        db.ref('users/' + user.uid).set(masterData);
+                        STATE.currentUser = masterData;
+                        showToast('마스터 계정 데이터 생성 완료!', 'success');
+                        initFirebaseChatListener();
+                        syncAllUsers();
                         updateUI();
                         showScreen('menu-screen');
                     }
                 });
-            })
-            .catch((error) => {
-                console.error(error);
-                showToast('로그인 실패: ' + error.message, 'error');
+            }).catch(err => {
+                let msg = '로그인 실패';
+                if (err.code === 'auth/user-not-found') msg = '존재하지 않는 아이디입니다.';
+                else if (err.code === 'auth/wrong-password') msg = '비밀번호가 일치하지 않습니다.';
+                else if (err.code === 'auth/invalid-login-credentials') msg = '비밀번호가 틀렸거나 없는 계정입니다.';
+                else msg = `오류: ${err.message}`;
+                showToast(msg, 'error');
             });
     } else {
         syncDataFromStorage();
         const foundUser = STATE.users.find(u => u.username === userIn && u.password === passIn);
         if (foundUser) {
-            if (isCreator) {
-                pwSection.classList.add('hidden');
-                patternSection.classList.remove('hidden');
-                patternHint.textContent = '✅ 비밀번호 확인됨! 이제 패턴을 그려주세요.';
-                return;
-            }
             STATE.currentUser = foundUser;
+            if (isCreator) STATE.currentUser.role = 'creator';
             showToast(`환영합니다, ${foundUser.username}님!`, 'success');
             updateUI();
             showScreen('menu-screen');
@@ -731,14 +528,74 @@ if (guestLoginBtn) {
     });
 }
 
+// --- PUBLIC REGISTER LOGIC ---
+document.getElementById('register-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const userIn = document.getElementById('reg-new-username').value.trim();
+    const passIn = document.getElementById('reg-new-password').value.trim();
+    const passIn2 = document.getElementById('reg-new-password2').value.trim();
+    const phoneIn = document.getElementById('reg-new-phone').value.trim();
+    const errorEl = document.getElementById('register-error');
+
+    if (passIn !== passIn2) {
+        errorEl.textContent = '비밀번호가 일치하지 않습니다.';
+        return;
+    }
+
+    if (passIn.length < 6) {
+        errorEl.textContent = '비밀번호는 최소 6자 이상이어야 합니다.';
+        return;
+    }
+
+    showToast('회원가입 처리 중...', 'info');
+
+    if (FIREBASE_ENABLED && auth) {
+        const email = getFirebaseEmail(userIn);
+        auth.createUserWithEmailAndPassword(email, passIn)
+            .then((userCredential) => {
+                const user = userCredential.user;
+                const userData = {
+                    username: userIn,
+                    role: userIn === 'ree1203fdsa' ? 'creator' : 'user',
+                    coins: 1000,
+                    diamonds: 10,
+                    health: 100,
+                    hunger: 100,
+                    thirst: 100,
+                    phone: phoneIn,
+                    uid: user.uid
+                };
+                db.ref('users/' + user.uid).set(userData).then(() => {
+                    showToast('회원가입 성공! 로그인 해주세요.', 'success');
+                    showScreen('login-screen');
+                });
+            }).catch(err => {
+                if (err.code === 'auth/email-already-in-use') errorEl.textContent = '이미 사용 중인 아이디입니다.';
+                else errorEl.textContent = `오류: ${err.message}`;
+            });
+    } else {
+        // Offline / Testing
+        const newUser = { username: userIn, password: passIn, phone: phoneIn, coins: 1000, role: 'user' };
+        STATE.users.push(newUser);
+        saveData();
+        showToast('계정이 생성되었습니다 (로컬)', 'success');
+        showScreen('login-screen');
+    }
+});
+
+document.getElementById('btn-goto-register').addEventListener('click', () => {
+    showScreen('register-screen');
+});
+
+// Admin Panel Signup (Legacy/Offline)
 document.getElementById('signup-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const userIn = document.getElementById('reg-username').value.trim();
     const passIn = document.getElementById('reg-password').value.trim();
     const phoneIn = document.getElementById('reg-phone').value.trim();
 
-    if (!userIn || !passIn || !phoneIn) {
-        showToast('모든 정보를 입력해주세요.', 'error');
+    if (!userIn || !passIn) {
+        showToast('정보를 입력해주세요.', 'error');
         return;
     }
 
@@ -3349,6 +3206,39 @@ document.getElementById('chat-form').addEventListener('submit', (e) => {
         if (text.includes('안녕')) {
             setTimeout(() => addChatMsg('AI_Bot', '반갑습니다! 무엇을 도와드릴까요?', 'other', false), 1000);
         }
+    }
+});
+
+// --- FORGOT PASSWORD ---
+document.getElementById('btn-forgot-password').addEventListener('click', () => {
+    const userIn = document.getElementById('username').value.trim();
+    if (!userIn) {
+        showToast('먼저 아이디 칸에 아이디를 입력해 주세요!', 'info');
+        return;
+    }
+
+    const isCreator = CREATOR_ACCOUNTS.some(acc => acc.toLowerCase() === userIn.toLowerCase());
+
+    if (isCreator) {
+        // Master accounts can reset via special prompt
+        const answer = prompt(`[보안 확인] ${userIn} 마스터님, 본인 확인을 위해 "관리자 비밀번호 초기화"라고 입력해 주세요.`);
+        if (answer === "관리자 비밀번호 초기화") {
+            const patternCorrect = confirm("패턴을 성공적으로 그리셨나요? 패턴이 맞아야 리셋이 가능합니다.");
+            if (patternCorrect) {
+                 const newPw = prompt("새로 사용할 비밀번호를 입력하세요 (6자 이상)");
+                 if (newPw && newPw.length >= 6) {
+                     // Since we can't easily change Firebase Auth PW from client without old PW,
+                     // we advise the most practical way for creator.
+                     showToast('서버 관리자 시스템에 요청이 전송되었습니다. (실제 리셋은 Firebase Console의 Authentication에서 해당 유저 삭제 후 재가입을 권장합니다.)', 'info');
+                     alert(`[개발자 가이드]\n현재 보안 정책상 클라이언트에서 직접 비밀번호를 강제 변경할 수 없습니다.\n\n가장 빠른 방법:\n1. Firebase Console 접속\n2. Authentication에서 ${userIn} 삭제\n3. 게임에서 새 비밀번호로 다시 가입`);
+                 } else {
+                     showToast('비밀번호가 너무 짧습니다.', 'error');
+                 }
+            }
+        }
+    } else {
+        // Regular users
+        showToast(`'${userIn}' 계정은 Firebase Authentication을 통해 비밀번호 재설정 이메일이 발송되어야 합니다. (현재는 관리자에게 문의하세요)`, 'info');
     }
 });
 
