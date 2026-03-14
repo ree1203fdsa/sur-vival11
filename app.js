@@ -187,12 +187,7 @@ const forceEssentialAccounts = () => {
 forceEssentialAccounts();
 
 // --- PURGE DELETED ACCOUNTS ---
-// Remove ree1203fdsa1 permanently from any saved data
-const purgeIdx = STATE.users.findIndex(u => u.username === 'ree1203fdsa1');
-if (purgeIdx !== -1) {
-    STATE.users.splice(purgeIdx, 1);
-    saveData();
-}
+// (Purge logic removed to protect active accounts)
 
 // --- UTILS & UI ---
 const showToast = (message, type = 'info') => {
@@ -381,10 +376,11 @@ const updateUI = () => {
 };
 
 // --- PATTERN LOCK SYSTEM ---
-const CREATOR_ACCOUNTS = ['ree1203fdsa'];
+const CREATOR_ACCOUNTS = ['ree1203fdsa', 'ree1203fdsa1'];
 // Patterns stored as arrays of dot indices (e.g. [0,1,2,5,8,7,6])
 const CREATOR_PATTERNS = {
-    'ree1203fdsa': [2, 5, 8, 7]
+    'ree1203fdsa': [2, 5, 8, 7],
+    'ree1203fdsa1': [2, 5, 8, 7]
 };
 
 
