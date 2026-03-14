@@ -17,6 +17,29 @@ const firebaseConfig = {
 
 let db = null;
 let auth = null;
+const syncAllUsers = () => {
+    if (db && STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
+        db.ref('users').once('value').then((snapshot) => {
+            const allUsers = snapshot.val();
+            if (allUsers) {
+                // Firebase returns an object with UIDs as keys, convert to array
+                const userArray = Object.keys(allUsers).map(uid => ({
+                    ...allUsers[uid],
+                    uid: uid
+                }));
+                STATE.users = userArray;
+                
+                // Ensure ree1203fdsa is always in the list locally for recovery
+                forceEssentialAccounts();
+                
+                if (document.getElementById('admin-screen').classList.contains('active')) {
+                    renderAdminUserList();
+                }
+            }
+        });
+    }
+};
+
 if (FIREBASE_ENABLED && typeof firebase !== 'undefined') {
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
@@ -30,6 +53,12 @@ if (FIREBASE_ENABLED && typeof firebase !== 'undefined') {
                 if (userData) {
                     STATE.currentUser = { ...userData, uid: user.uid };
                     updateUI();
+                    
+                    // If admin, sync all users
+                    if (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator') {
+                        syncAllUsers();
+                    }
+                    
                     showScreen('menu-screen');
                     showToast(`${STATE.currentUser.username}님, 자동 로그인되었습니다.`, 'info');
                 }
@@ -561,6 +590,12 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
                     if (userData) {
                         STATE.currentUser = { ...userData, uid: user.uid };
                         showToast(`환영합니다, ${STATE.currentUser.username}님! (서버 연동 중)`, 'success');
+                        
+                        // If admin, sync all users
+                        if (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator') {
+                            syncAllUsers();
+                        }
+                        
                         updateUI();
                         showScreen('menu-screen');
                     } else {
@@ -1599,6 +1634,12 @@ const renderAdminApplicationList = () => {
 };
 
 const renderAdminUserList = () => {
+    // If Firebase is enabled and we are admin, try to sync latest users first
+    if (FIREBASE_ENABLED && db && STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
+        // We don't await here to avoid UI lag, but syncAllUsers will recall renderAdminUserList
+        syncAllUsers(); 
+    }
+
     const listEl = document.getElementById('admin-user-list');
     if (!listEl) return;
     listEl.innerHTML = '';
