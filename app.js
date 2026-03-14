@@ -17,25 +17,31 @@ const firebaseConfig = {
 
 let db = null;
 let auth = null;
+let isSyncingUsers = false;
 const syncAllUsers = () => {
+    if (isSyncingUsers) return; // Prevent multiple listeners
+    
     if (db && STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
-        db.ref('users').once('value').then((snapshot) => {
+        isSyncingUsers = true;
+        // '.on' instead of '.once' makes it REAL-TIME!
+        db.ref('users').on('value', (snapshot) => {
             const allUsers = snapshot.val();
             if (allUsers) {
-                // Firebase returns an object with UIDs as keys, convert to array
                 const userArray = Object.keys(allUsers).map(uid => ({
                     ...allUsers[uid],
                     uid: uid
                 }));
                 STATE.users = userArray;
                 
-                // Ensure ree1203fdsa is always in the list locally for recovery
                 forceEssentialAccounts();
                 
                 if (document.getElementById('admin-screen').classList.contains('active')) {
                     actualRenderAdminUserList();
                 }
             }
+        }, (error) => {
+            console.error("Sync Error:", error);
+            isSyncingUsers = false;
         });
     }
 };
