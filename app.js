@@ -765,7 +765,7 @@ document.getElementById('register-form').addEventListener('submit', (e) => {
 
     // Validation
     if (id.length < 4) { errEl.textContent = '❌ 아이디는 4자 이상이어야 합니다.'; return; }
-    if (pw.length < 4) { errEl.textContent = '❌ 비밀번호는 4자 이상이어야 합니다.'; return; }
+    if (pw.length < 6) { errEl.textContent = '❌ 비밀번호는 6자 이상이어야 합니다.'; return; }
     if (pw !== pw2) { errEl.textContent = '❌ 비밀번호가 일치하지 않습니다.'; return; }
     if (CREATOR_ACCOUNTS.includes(id)) { errEl.textContent = '❌ 사용할 수 없는 아이디입니다.'; return; }
 
