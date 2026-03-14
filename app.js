@@ -23,8 +23,8 @@ const syncAllUsers = (force = false) => {
     
     if (db && STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
         isSyncingUsers = true;
-        console.log("Starting Real-time Sync...");
         
+        // try primary path
         db.ref('users').on('value', (snapshot) => {
             const allUsers = snapshot.val();
             if (allUsers) {
@@ -35,11 +35,22 @@ const syncAllUsers = (force = false) => {
                 STATE.users = userArray;
                 forceEssentialAccounts();
                 actualRenderAdminUserList();
+            } else {
+                console.warn("No data at /users. Check DB structure.");
+                // If /users is empty, maybe they are under a different root? 
+                // We'll keep looking or update locally.
+                forceEssentialAccounts();
+                actualRenderAdminUserList();
             }
         }, (error) => {
             console.error("Sync Error:", error);
             isSyncingUsers = false;
-            showToast("서버 연결 실패: " + error.message, 'error');
+            // Provide more actionable feedback
+            if (error.code === 'PERMISSION_DENIED') {
+                showToast("권한 부족: Firebase 규칙을 확인하세요.", 'error');
+            } else {
+                showToast("연결 실패: " + error.message, 'error');
+            }
         });
     }
 };
@@ -68,6 +79,9 @@ if (FIREBASE_ENABLED && typeof firebase !== 'undefined') {
                     if (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator') {
                         syncAllUsers();
                     }
+                    
+                    // Initialize Chat Listener if Firebase is enabled
+                    initFirebaseChatListener();
                     
                     showScreen('menu-screen');
                     showToast(`${STATE.currentUser.username}님, 자동 로그인되었습니다.`, 'info');
@@ -3149,33 +3163,44 @@ function init3DGame() {
 const CHAT_STORAGE_KEY = 'survival_game_chat';
 let isFirebaseChatAttached = false;
 
+const initFirebaseChatListener = () => {
+    if (db && !isFirebaseChatAttached) {
+        isFirebaseChatAttached = true;
+        const chatMsgs = document.getElementById('chat-messages');
+        
+        // Listen to additions (Real-time)
+        db.ref('chats').orderByChild('time').limitToLast(50).on('child_added', snapshot => {
+            const msg = snapshot.val();
+            // Prevent duplicates
+            if (!document.querySelector(`.chat-msg[data-id="${msg.id}"]`)) {
+                const type = (STATE.currentUser && msg.sender === STATE.currentUser.username) ? 'me' : 'other';
+                addChatMsgUI(msg.sender, msg.text, type, msg.id);
+            }
+        });
+        
+        // Listen to deletions
+        db.ref('chats').on('child_removed', snapshot => {
+            const key = snapshot.key;
+            const el = document.querySelector(`.chat-msg[data-id="${key}"]`);
+            if (el) el.remove();
+        });
+    }
+};
+
 const renderChat = () => {
     const chatMsgs = document.getElementById('chat-messages');
     if (!chatMsgs) return;
 
-    chatMsgs.innerHTML = '<div class="chat-msg system">채팅방에 입장했습니다.</div>';
-
     if (db) {
         // Firebase Logic
         if (!isFirebaseChatAttached) {
-            isFirebaseChatAttached = true;
-            // Listen to additions
-            db.ref('chats').orderByChild('time').limitToLast(50).on('child_added', snapshot => {
-                const msg = snapshot.val();
-                if (!document.querySelector(`.chat-msg[data-id="${msg.id}"]`)) {
-                    const type = (STATE.currentUser && msg.sender === STATE.currentUser.username) ? 'me' : 'other';
-                    addChatMsgUI(msg.sender, msg.text, type, msg.id);
-                }
-            });
-            // Listen to deletions
-            db.ref('chats').on('child_removed', snapshot => {
-                const key = snapshot.key;
-                const el = document.querySelector(`.chat-msg[data-id="${key}"]`);
-                if (el) el.remove();
-            });
+            initFirebaseChatListener();
         }
+        // Just scroll to bottom if already populated
+        chatMsgs.scrollTop = chatMsgs.scrollHeight;
     } else {
-        // LocalStorage Logic
+        // LocalStorage Logic (Offline fallback)
+        chatMsgs.innerHTML = '<div class="chat-msg system">채팅방에 입장했습니다. (오프라인 모드)</div>';
         const savedChats = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || '[]');
         savedChats.forEach(msg => {
             const type = (STATE.currentUser && msg.sender === STATE.currentUser.username) ? 'me' : 'other';
