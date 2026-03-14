@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survival 3D</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@500;700;900&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Notification Toast -->
+        <div id="toast" class="toast hidden"></div>
+
+        <!-- Orientation Warning (Mobile) -->
+        <div id="orientation-warning" class="orientation-warning hidden">
+            <div class="warning-content">
+                <div class="rotate-icon">📱🔄</div>
+                <h2>가로 모드로 전환해 주세요</h2>
+                <p>더 원활한 게임 플레이를 위해 기기를 가로로 돌려주세요.</p>
+            </div>
+        </div>
+
+        <!-- Background Video / Animation wrapper -->
+        <div class="bg-wrapper">
+            <div class="glow-orb orb-1"></div>
+            <div class="glow-orb orb-2"></div>
+            <div class="glow-orb orb-3"></div>
+        </div>
+
+        <!-- 1. LOGIN SCREEN (Portrait) -->
+        <section id="login-screen" class="screen portrait active">
+            <div class="glass-panel login-panel">
+                <h1 class="logo">SURVIVAL <span class="highlight">3D</span></h1>
+                <p class="subtitle">생존의 법칙을 증명하세요</p>
+
+                <form id="login-form">
+                    <div class="input-group">
+                        <label for="username">아이디</label>
+                        <input type="text" id="username" placeholder="아이디를 입력하세요" required>
+                    </div>
+                    <div class="input-group" id="pw-section">
+                        <label for="password">비밀번호</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="password" placeholder="비밀번호를 입력하세요">
+                            <button type="button" id="toggle-password" class="btn-icon toggle-pwd-btn">👁️</button>
+                        </div>
+                    </div>
+
+                    <div id="pattern-section" class="hidden">
+                        <label
+                            style="color: var(--secondary-color); font-weight: 700; font-size: 0.9rem; letter-spacing: 1px; text-align: center; display: block; margin-bottom: 10px;">🔐
+                            패턴 입력</label>
+                        <div id="pattern-lock" class="pattern-lock">
+                            <svg id="pattern-svg" class="pattern-svg"></svg>
+                            <div class="pattern-dots">
+                                <div class="pattern-dot" data-index="0"></div>
+                                <div class="pattern-dot" data-index="1"></div>
+                                <div class="pattern-dot" data-index="2"></div>
+                                <div class="pattern-dot" data-index="3"></div>
+                                <div class="pattern-dot" data-index="4"></div>
+                                <div class="pattern-dot" data-index="5"></div>
+                                <div class="pattern-dot" data-index="6"></div>
+                                <div class="pattern-dot" data-index="7"></div>
+                                <div class="pattern-dot" data-index="8"></div>
+                            </div>
+                        </div>
+                        <p id="pattern-hint"
+                            style="text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">점을
+                            이어 패턴을 그리세요...</p>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn primary">로그인</button>
+                        <button type="button" class="btn secondary" id="btn-guest-login">게스트 로그인</button>
+                    </div>
+                    <div style="text-align:center; margin-top: 1rem;">
+                        <span style="color: var(--text-muted); font-size: 0.85rem;">계정이 없으세요? </span>
+                        <button type="button" id="btn-goto-register"
+                            style="background:none; border:none; color: var(--secondary-color); font-size:0.85rem; font-weight:700; cursor:pointer; text-decoration:underline;">회원가입</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- 1.3 PUBLIC REGISTER SCREEN -->
+        <section id="register-screen" class="screen portrait hidden">
+            <div class="glass-panel login-panel">
+                <h1 class="logo" style="font-size: 2rem;">회원가입</h1>
+                <p class="subtitle">새로운 모험을 시작하세요</p>
+
+                <form id="register-form">
+                    <div class="input-group">
+                        <label for="reg-new-username">아이디</label>
+                        <input type="text" id="reg-new-username" placeholder="사용할 아이디 (4자 이상)" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="reg-new-password">비밀번호</label>
+                        <input type="password" id="reg-new-password" placeholder="비밀번호 (4자 이상)" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="reg-new-password2">비밀번호 확인</label>
+                        <input type="password" id="reg-new-password2" placeholder="비밀번호 다시 입력" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="reg-new-phone">전화번호 <span
+                                style="color:var(--text-muted); font-weight:400;">(선택)</span></label>
+                        <input type="tel" id="reg-new-phone" placeholder="010-0000-0000">
+                    </div>
+                    <div id="register-error"
+                        style="color: var(--accent-red); font-size: 0.85rem; text-align: center; min-height: 1.2em;">
+                    </div>
+                    <div class="btn-group">
+                        <button type="submit" class="btn primary">가입하기</button>
+                        <button type="button" class="btn secondary"
+                            onclick="app.showScreen('login-screen')">로그인으로</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- 1.5 SIGNUP SCREEN (Portrait) -->
+        <section id="signup-screen" class="screen portrait hidden">
+            <div class="glass-panel login-panel">
+                <h1 class="logo" style="font-size: 2.2rem;">신규 유저 생성</h1>
+                <p class="subtitle">마스터 관리자 전용 권한</p>
+
+                <form id="signup-form">
+                    <div class="input-group">
+                        <label for="reg-username">아이디</label>
+                        <input type="text" id="reg-username" placeholder="사용할 아이디" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="reg-password">비밀번호</label>
+                        <input type="password" id="reg-password" placeholder="사용할 비밀번호" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="reg-phone">전화번호</label>
+                        <input type="tel" id="reg-phone" placeholder="전화번호를 입력하세요 (예: 010-0000-0000)" required>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn primary">가입하기</button>
+                        <button type="button" class="btn secondary" onclick="app.showScreen('login-screen')">취소</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- 2. MAIN MENU SCREEN (Landscape) -->
+        <section id="menu-screen" class="screen landscape hidden">
+            <!-- Top Bar -->
+            <header class="top-bar glass-bar">
+                <div class="user-info">
+                    <div class="avatar"></div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span id="current-username" class="username">User</span>
+                            <span id="user-level" class="level-badge">Lv.1</span>
+                        </div>
+                        <div class="xp-bar-container" style="width: 100px; height: 6px; margin-top: 4px;">
+                            <div id="user-xp-bar" class="xp-bar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="resources">
+                    <div class="resource">
+                        <span class="icon">🪙</span>
+                        <span id="coin-amount">0</span>
+                    </div>
+                    <div class="resource">
+                        <span class="icon">💎</span>
+                        <span id="diamond-amount">0</span>
+                    </div>
+                    <div class="resource">
+                        <span class="icon">🪨</span>
+                        <span id="stone-amount">0</span>
+                    </div>
+                    <div class="resource">
+                        <span class="icon">⛓️</span>
+                        <span id="iron-amount">0</span>
+                    </div>
+                    <div class="resource">
+                        <span class="icon">📀</span>
+                        <span id="gold-amount">0</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 15px; align-items: center; z-index: 100;">
+                    <button id="btn-settings" class="btn primary" onclick="app.openSettings()"
+                        style="padding: 8px 15px; font-weight: bold; border-radius: 8px;">⚙️ 환경설정</button>
+                    <button id="btn-logout" class="btn secondary"
+                        style="padding: 8px 15px; border-radius: 8px;">로그아웃</button>
+                </div>
+            </header>
+
+            <div class="menu-container">
+                <h2 class="menu-title">메인 메뉴</h2>
+                <div class="menu-grid">
+                    <button class="menu-card" id="btn-start-game">
+                        <div class="card-icon">⚔️</div>
+                        <h3>게임 시작</h3>
+                        <p>3D 생존 모드에 진입합니다</p>
+                    </button>
+                    <button class="menu-card" id="btn-shop">
+                        <div class="card-icon">🏪</div>
+                        <h3>상점</h3>
+                        <p>아이템과 자원을 구매하세요</p>
+                    </button>
+                    <button class="menu-card" id="btn-quest">
+                        <div class="card-icon">📜</div>
+                        <h3>일일 퀘스트</h3>
+                        <p>퀘스트를 완료하고 보상을 받으세요</p>
+                    </button>
+                    <button class="menu-card" id="btn-support">
+                        <div class="card-icon">✉️</div>
+                        <h3>관리 지원</h3>
+                        <p>관리팀에 지원하세요</p>
+                    </button>
+                    <button class="menu-card" id="btn-tutorial">
+                        <div class="card-icon">📖</div>
+                        <h3>튜토리얼</h3>
+                        <p>조작법 및 게임 방법 안내</p>
+                    </button>
+                    <button class="menu-card" id="btn-mypage">
+                        <div class="card-icon">👤</div>
+                        <h3>내 정보</h3>
+                        <p>내 프로필 및 통계 확인</p>
+                    </button>
+                    <button class="menu-card admin-only hidden" id="btn-admin">
+                        <div class="card-icon">⚙️</div>
+                        <h3>관리자 모드</h3>
+                        <p>시스템 및 유저 관리</p>
+                    </button>
+                    <button class="menu-card" id="btn-chat">
+                        <div class="card-icon">💬</div>
+                        <h3>채팅방</h3>
+                        <p>유저들과 대화하세요</p>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2.5 LOADING SCREEN -->
+        <section id="loading-screen" class="screen landscape hidden">
+            <div class="loading-container"
+                style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
+                <h2
+                    style="color: var(--primary-color); font-size: 2.5rem; margin-bottom: 2rem; text-shadow: 0 0 15px var(--primary-glow);">
+                    월드 생성 중...</h2>
+                <div class="loading-bar-wrap"
+                    style="width: 80%; max-width: 500px; height: 15px; background: rgba(0,0,0,0.5); border-radius: 10px; overflow: hidden; border: 1px solid var(--glass-border);">
+                    <div id="loading-bar"
+                        style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--secondary-color), var(--primary-color)); transition: width 0.1s linear; box-shadow: 0 0 15px var(--primary-glow);">
+                    </div>
+                </div>
+                <p id="loading-text" style="color: var(--text-muted); margin-top: 1rem;">자원 로딩 중 (0%)</p>
+            </div>
+        </section>
+
+        <!-- 2.6 DEATH SCREEN -->
+        <section id="death-screen" class="screen landscape hidden"
+            style="background: rgba(100, 0, 0, 0.8) !important; backdrop-filter: blur(10px);">
+            <div
+                style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center;">
+                <h1
+                    style="color: #ff3366; font-size: 4rem; margin-bottom: 1rem; text-shadow: 0 0 20px #ff3366; letter-spacing: 5px;">
+                    당신은 죽었습니다</h1>
+                <p id="death-reason" style="color: white; font-size: 1.2rem; margin-bottom: 2rem;">자연에서 살아남지 못했습니다.</p>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn primary" onclick="app.showScreen('menu-screen')"
+                        style="font-size: 1.2rem; padding: 1rem 2rem;">메인 메뉴로 돌아가기</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2.7 MY PAGE SCREEN -->
+        <section id="mypage-screen" class="screen landscape hidden">
+            <header class="top-bar glass-bar">
+                <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
+                <h2 class="screen-title">내 정보</h2>
+            </header>
+
+            <div class="mypage-container">
+                <div class="profile-card glass-panel">
+                    <div class="profile-header">
+                        <div class="profile-avatar"></div>
+                        <div class="profile-main-info">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                <h2 id="my-username">User</h2>
+                                <span id="my-level-badge" class="level-badge" style="font-size: 0.9rem;">Lv.1</span>
+                            </div>
+                            <span id="my-role-badge" class="badge">USER</span>
+                            <div class="xp-bar-container" style="width: 100%; height: 8px; margin-top: 10px;">
+                                <div id="my-xp-bar" class="xp-bar" style="width: 0%;"></div>
+                            </div>
+                            <div id="my-xp-text"
+                                style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px; text-align: right;">
+                                0 / 100 XP</div>
+                        </div>
+                    </div>
+
+                    <div class="profile-details">
+                        <div class="detail-item">
+                            <span class="label">연락처</span>
+                            <span class="value" id="my-phone">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">가입 상태</span>
+                            <span class="value">활동 중</span>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <span class="stat-icon">❤️</span>
+                            <span class="stat-label">현재 체력</span>
+                            <span class="stat-value" id="my-health">100</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-icon">🪙</span>
+                            <span class="stat-label">보유 코인</span>
+                            <span class="stat-value" id="my-coins">0</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-icon">💎</span>
+                            <span class="stat-label">보유 다이아</span>
+                            <span class="stat-value" id="my-diamonds">0</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-icon">🪵</span>
+                            <span class="stat-label">수집한 나무</span>
+                            <span class="stat-value" id="my-wood">0</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-icon">🪨</span>
+                            <span class="stat-label">수집한 돌</span>
+                            <span class="stat-value" id="my-stone">0</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-icon">⛓️</span>
+                            <span class="stat-label">수집한 철</span>
+                            <span class="stat-value" id="my-iron">0</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-icon">📀</span>
+                            <span class="stat-label">수집한 금</span>
+                            <span class="stat-value" id="my-gold">0</span>
+                        </div>
+                        <div class="stat-box treasure-box">
+                            <span class="stat-icon">📦</span>
+                            <span class="stat-label">보물 상자</span>
+                            <span class="stat-value" id="my-treasures">0</span>
+                            <button class="btn primary open-btn hidden" id="btn-open-treasure"
+                                onclick="app.openTreasure()">열기</button>
+                        </div>
+                    </div>
+
+                    <div class="skin-selection">
+                        <h3>캐릭터 스킨 선택</h3>
+                        <div class="skin-grid">
+                            <button class="skin-btn active" data-skin="green" onclick="app.setSkin('green')"
+                                style="background: #00ff88;"></button>
+                            <button class="skin-btn" data-skin="blue" onclick="app.setSkin('blue')"
+                                style="background: #00e5ff;"></button>
+                            <button class="skin-btn" data-skin="red" onclick="app.setSkin('red')"
+                                style="background: #ff3366;"></button>
+                            <button class="skin-btn" data-skin="yellow" onclick="app.setSkin('yellow')"
+                                style="background: #ffd700;"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2.5 APPLY SCREEN -->
+        <section id="apply-screen" class="screen portrait hidden">
+            <div class="glass-panel login-panel">
+                <h1 class="logo" style="font-size: 2.2rem;">관리팀 지원</h1>
+                <p class="subtitle">커뮤니티를 위해 힘써주세요</p>
+
+                <form id="apply-form">
+                    <div class="input-group">
+                        <label for="apply-reason">지원 동기 및 각오</label>
+                        <textarea id="apply-reason" placeholder="내용을 입력하세요..." required
+                            style="width: 100%; height: 150px; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; color: white; padding: 10px; font-family: inherit; resize: none;"></textarea>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn primary">지원서 제출</button>
+                        <button type="button" class="btn secondary" onclick="app.showScreen('menu-screen')">취소</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- 6. QUEST SCREEN -->
+        <section id="quest-screen" class="screen landscape hidden">
+            <header class="top-bar glass-bar">
+                <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
+                <h2 class="screen-title">📜 일일 퀘스트</h2>
+                <div class="resources">
+                    <div class="resource"><span class="icon">🪙</span><span class="shop-coin-amount">0</span></div>
+                    <div class="resource"><span class="icon">💎</span><span class="shop-diamond-amount">0</span></div>
+                </div>
+            </header>
+
+            <div class="quest-container">
+                <div class="quest-list" id="quest-list">
+                    <!-- Quests injected by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. SHOP SCREEN -->
+        <section id="shop-screen" class="screen landscape hidden">
+            <header class="top-bar glass-bar">
+                <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
+                <h2 class="screen-title">상점</h2>
+                <div class="resources">
+                    <div class="resource"><span class="icon">🪙</span><span class="shop-coin-amount">0</span></div>
+                    <div class="resource"><span class="icon">💎</span><span class="shop-diamond-amount">0</span></div>
+                </div>
+            </header>
+
+            <div class="shop-container">
+                <div class="shop-grid">
+                    <!-- Item 1 -->
+                    <div class="shop-item">
+                        <div class="item-visual chest-visual">📦</div>
+                        <h4>보물 상자</h4>
+                        <p class="desc">특별한 아이템이 들어있습니다.</p>
+                        <button class="btn buy-btn" onclick="app.buyItem('treasure')">
+                            164 <span class="icon">🪙</span>
+                        </button>
+                    </div>
+                    <!-- Item 2 -->
+                    <div class="shop-item">
+                        <div class="item-visual exchange-visual">🔄</div>
+                        <h4>다이아몬드 교환</h4>
+                        <p class="desc">코인 1개를 다이아몬드 2개로 교환합니다.</p>
+                        <button class="btn buy-btn" onclick="app.exchangeCoins(1)">
+                            교환 (1 🪙 ➔ 2 💎)
+                        </button>
+                    </div>
+                    <!-- Item 3 -->
+                    <div class="shop-item">
+                        <div class="item-visual luck-visual">🍀</div>
+                        <h4>행운 돈상자 (소)</h4>
+                        <p class="desc">행운을 시험해보세요!</p>
+                        <button class="btn buy-btn" onclick="app.buyLuckyBox('small', 100)">
+                            100 <span class="icon">🪙</span>
+                        </button>
+                    </div>
+                    <!-- Item 4 -->
+                    <div class="shop-item">
+                        <div class="item-visual luck-visual gold">🍀</div>
+                        <h4>행운 돈상자 (중)</h4>
+                        <p class="desc">더 큰 행운을 시험해보세요!</p>
+                        <button class="btn buy-btn" onclick="app.buyLuckyBox('medium', 1000)">
+                            1,000 <span class="icon">🪙</span>
+                        </button>
+                    </div>
+                    <!-- Item 5 -->
+                    <div class="shop-item">
+                        <div class="item-visual luck-visual diamond">🍀</div>
+                        <h4>행운 돈상자 (대)</h4>
+                        <p class="desc">엄청난 행운이 기다립니다!</p>
+                        <button class="btn buy-btn" onclick="app.buyLuckyBox('large', 10000)">
+                            10,000 <span class="icon">🪙</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. ADMIN SCREEN -->
+        <section id="admin-screen" class="screen landscape hidden">
+            <header class="top-bar glass-bar">
+                <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
+                <h2 class="screen-title" style="color: var(--accent-red);">🛡️ 관리자 모드</h2>
+                <h2 class="screen-title" style="color: var(--accent-red);">🛡️ 관리자 모드</h2>
+                <div class="resources">
+                    <button id="btn-master-signup" class="btn primary hidden"
+                        style="margin-right: 15px; padding: 5px 15px; font-size: 0.8rem; background: var(--secondary-color); color: var(--bg-dark);">👤
+                        신규 유저 생성</button>
+                    <div class="resource"><span class="icon">🪙</span>무제한</div>
+                    <div class="resource"><span class="icon">💎</span>무제한</div>
+                </div>
+            </header>
+
+            <div class="admin-container">
+
+                <div class="admin-panel glass-panel application-management">
+                    <h3>관리 지원서 목록</h3>
+                    <div class="application-list-header">
+                        <span>아이디</span>
+                        <span>지원 내용</span>
+                        <span>상태</span>
+                        <span>액션</span>
+                    </div>
+                    <div id="admin-apply-list" class="user-list-body">
+                        <!-- Application rows injected by JS -->
+                    </div>
+                </div>
+
+                <div class="admin-panel glass-panel user-management">
+                    <h3>유저 계정 관리</h3>
+                    <div class="user-list-header">
+                        <span>아이디</span>
+                        <span>전화번호</span>
+                        <span>코인</span>
+                        <span>다이아몬드</span>
+                        <span>권한</span>
+                        <span>액션</span>
+                    </div>
+                    <div id="admin-user-list" class="user-list-body">
+                        <!-- User rows injected by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4.5 TUTORIAL SCREEN -->
+        <section id="tutorial-screen" class="screen landscape hidden">
+            <header class="top-bar glass-bar">
+                <button class="btn-back" onclick="app.closeTutorial()">◀ 뒤로</button>
+                <h2 class="screen-title">📖 튜토리얼</h2>
+            </header>
+
+            <div
+                style="overflow-y: auto; height: calc(100% - 56px); padding: 1.5rem; display: flex; flex-direction: column; gap: 1.2rem;">
+
+                <!-- PC 조작법 -->
+                <div class="glass-panel" style="padding: 1.2rem;">
+                    <h3 style="color: var(--primary-color); margin-bottom: 1rem; font-size: 1.1rem;">🖥️ PC 조작법</h3>
+                    <div
+                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.7rem;">
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="color: var(--secondary-color); font-weight: 700;">WASD / 방향키</span>
+                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">캐릭터 이동</p>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="color: var(--secondary-color); font-weight: 700;">마우스 이동</span>
+                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">시점 회전</p>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="color: var(--secondary-color); font-weight: 700;">마우스 클릭</span>
+                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">공격 / 자원 채집</p>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="color: var(--secondary-color); font-weight: 700;">F 키</span>
+                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">가까운 아이템 줍기</p>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="color: var(--secondary-color); font-weight: 700;">E 키</span>
+                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">인벤토리 열기/닫기</p>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="color: var(--secondary-color); font-weight: 700;">B 키</span>
+                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">건설 모드 활성화/해제</p>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="color: var(--secondary-color); font-weight: 700;">ESC</span>
+                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">마우스 잠금 해제</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 모바일 조작법 -->
+                <div class="glass-panel" style="padding: 1.2rem;">
+                    <h3 style="color: var(--secondary-color); margin-bottom: 1rem; font-size: 1.1rem;">📱 모바일 조작법</h3>
+                    <div
+                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.7rem;">
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="color: var(--primary-color); font-weight: 700;">왼쪽 조이스틱</span>
+                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">캐릭터 이동</p>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="color: var(--primary-color); font-weight: 700;">오른쪽 드래그</span>
+                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">시점 회전</p>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="color: var(--primary-color); font-weight: 700;">⚔️ 버튼</span>
+                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">공격 / 채집</p>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="color: var(--primary-color); font-weight: 700;">👜 버튼</span>
+                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">인벤토리 열기</p>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="color: var(--primary-color); font-weight: 700;">줍기 버튼</span>
+                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">근처 아이템 획득</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 생존 시스템 -->
+                <div class="glass-panel" style="padding: 1.2rem;">
+                    <h3 style="color: #ff9800; margin-bottom: 1rem; font-size: 1.1rem;">💀 생존 시스템</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                        <div
+                            style="display: flex; align-items: center; gap: 0.8rem; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="font-size: 1.4rem;">❤️</span>
+                            <div><strong>체력</strong> — 몬스터 공격, 굶주림, 목마름으로 감소. 0이 되면 게임 오버.</div>
+                        </div>
+                        <div
+                            style="display: flex; align-items: center; gap: 0.8rem; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="font-size: 1.4rem;">🍎</span>
+                            <div><strong>허기</strong> — 시간이 지나면 감소. 0이 되면 체력 소모. 사과를 먹어 회복.</div>
+                        </div>
+                        <div
+                            style="display: flex; align-items: center; gap: 0.8rem; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="font-size: 1.4rem;">💧</span>
+                            <div><strong>목마름</strong> — 허기보다 빠르게 감소. 물을 마셔 회복. 허기보다 위험!</div>
+                        </div>
+                        <div
+                            style="display: flex; align-items: center; gap: 0.8rem; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
+                            <span style="font-size: 1.4rem;">🌙</span>
+                            <div><strong>밤</strong> — 밤이 되면 몬스터가 더 많이 출현합니다. 조심하세요!</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 자원과 제작 -->
+                <div class="glass-panel" style="padding: 1.2rem;">
+                    <h3 style="color: #a5d6a7; margin-bottom: 1rem; font-size: 1.1rem;">⛏️ 자원 & 제작</h3>
+                    <div
+                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.6rem; font-size: 0.85rem;">
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">🌲
+                            <strong>나무</strong> — 나무를 공격해서 획득
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">🪨
+                            <strong>돌</strong> — 바위를 공격해서 획득
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">🪙
+                            <strong>코인</strong> — 바닥에서 습득
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">💎
+                            <strong>다이아</strong> — 바닥에서 습득 (희귀)
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">📦
+                            <strong>제작대</strong> — 나무 5개로 제작 후, <strong>B키</strong>로 배치하여 사용 (고급 아이템 제작 가능)
+                        </div>
+                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">🪓
+                            <strong>강철 도끼</strong> — 제작대 근처에서 제작 가능, 나무를 2배 빠르게 채집
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 팁 -->
+                <div class="glass-panel"
+                    style="padding: 1.2rem; border: 1px solid rgba(255, 215, 0, 0.2); background: rgba(255, 215, 0, 0.03);">
+                    <h3 style="color: var(--accent-yellow); margin-bottom: 0.8rem; font-size: 1.1rem;">💡 생존 팁</h3>
+                    <ul
+                        style="padding-left: 1.2rem; color: var(--text-muted); font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <li>물과 음식을 항상 충분히 확보해 두세요.</li>
+                        <li>밤에는 시야가 좁아지므로 낮에 자원을 최대한 모으세요.</li>
+                        <li>몬스터는 플레이어에게 30 이내 접근하면 쫓아옵니다.</li>
+                        <li>상점에서 코인으로 다이아몬드로 교환할 수 있습니다.</li>
+                        <li>보물 상자를 열면 랜덤 보상을 얻을 수 있습니다!</li>
+                    </ul>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 5. GAME SCREEN (3D Container) -->
+        <section id="game-screen" class="screen landscape hidden">
+            <!-- Three.js Canvas will be appended here -->
+            <div id="game-ui">
+                <div class="crosshair">+</div>
+
+                <div id="mouse-hint" class="mouse-hint-overlay">
+                    <p>마우스로 화면을 움직이려면 <span>화면을 클릭</span>하세요</p>
+                    <small>(ESC 키를 누르면 마우스가 해제됩니다)</small>
+                </div>
+                <div class="game-hud">
+                    <button class="btn-back glass-btn" onclick="app.exitGame()">◀ 메뉴로 돌아가기</button>
+                    <button class="glass-btn" onclick="app.openTutorial()" style="margin-right: 15px;">📖 튜토리얼</button>
+                    <button class="glass-btn" onclick="app.openCraftModal()" style="margin-right: 15px;">🔨
+                        제작하기</button>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <!-- Health -->
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="color: white; font-size: 0.75rem; font-weight: bold; width: 35px;">HP</span>
+                            <div class="health-bar-container" style="width: 200px; position: relative;">
+                                <div class="health-bar"></div>
+                                <span id="health-text"
+                                    style="position: absolute; width: 100%; text-align: center; color: white; font-size: 10px; font-weight: bold; line-height: 11px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); top: 0;">100%</span>
+                            </div>
+                        </div>
+                        <!-- Hunger -->
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="color: #ff9800; font-size: 0.75rem; font-weight: bold; width: 35px;">허기</span>
+                            <div class="health-bar-container"
+                                style="width: 200px; position: relative; background: rgba(255,152,0,0.1); border-color: rgba(255,152,0,0.2);">
+                                <div id="hunger-bar" class="health-bar"
+                                    style="background: linear-gradient(90deg, #ffb74d, #f57c00);"></div>
+                                <span id="hunger-text"
+                                    style="position: absolute; width: 100%; text-align: center; color: white; font-size: 10px; font-weight: bold; line-height: 11px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); top: 0;">100%</span>
+                            </div>
+                        </div>
+                        <!-- Thirst -->
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="color: #2196f3; font-size: 0.75rem; font-weight: bold; width: 35px;">목마름</span>
+                            <div class="health-bar-container"
+                                style="width: 200px; position: relative; background: rgba(33,150,243,0.1); border-color: rgba(33,150,243,0.2);">
+                                <div id="thirst-bar" class="health-bar"
+                                    style="background: linear-gradient(90deg, #64b5f6, #1976d2);"></div>
+                                <span id="thirst-text"
+                                    style="position: absolute; width: 100%; text-align: center; color: white; font-size: 10px; font-weight: bold; line-height: 11px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); top: 0;">100%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    style="position: absolute; top: 1rem; right: 1rem; display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
+                    <span id="game-time"
+                        style="color: #ffd700; font-weight: bold; font-size: 1.1rem; text-shadow: 0 0 10px rgba(255,215,0,0.5);">☀️
+                        12:00</span>
+                    <span id="game-temp"
+                        style="color: #ff5722; font-weight: bold; font-size: 1.1rem; text-shadow: 0 0 10px rgba(255,87,34,0.3);">🌡️
+                        20°C</span>
+                </div>
+            </div>
+
+            <div id="craft-modal" class="modal-overlay hidden">
+                <div class="modal-content glass-panel" style="max-width: 400px;">
+                    <span class="close-btn" onclick="app.closeCraftModal()">&times;</span>
+                    <h2 class="modal-title">🔨 제작 메뉴</h2>
+                    <div class="craft-list">
+                        <div class="craft-item glass-panel">
+                            <div style="font-size: 2rem;">📦</div>
+                            <div style="flex-grow: 1; margin: 0 15px;">
+                                <h4 style="margin: 0; color: var(--secondary-color);">제작대</h4>
+                                <p style="margin: 5px 0 0; font-size: 0.8rem; color: var(--text-muted);">복잡한 도구를
+                                    만듭니다</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="display: block; font-size: 0.75rem; margin-bottom: 5px;">🪵 5개
+                                    필요</span>
+                                <button class="btn primary" onclick="app.craftItem('workbench')"
+                                    style="padding: 5px 10px; font-size: 0.8rem;">제작</button>
+                            </div>
+                        </div>
+
+                        <div class="craft-item glass-panel" id="craft-steel_axe">
+                            <div style="font-size: 2rem;">🪓</div>
+                            <div style="flex-grow: 1; margin: 0 15px;">
+                                <h4 style="margin: 0; color: #aabac1;">강철 도끼</h4>
+                                <p style="margin: 5px 0 0; font-size: 0.8rem; color: #ffeb3b;">⚠️ 제작대 근처에서 가능</p>
+                                <p style="margin: 2px 0 0; font-size: 0.7rem; color: var(--text-muted);">나무를 2배 빨리
+                                    벱니다</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="display: block; font-size: 0.75rem; margin-bottom: 5px;">🪙 100 / 🪵
+                                    10</span>
+                                <button class="btn primary" onclick="app.craftItem('steel_axe')"
+                                    style="padding: 5px 10px; font-size: 0.8rem;">제작</button>
+                            </div>
+                        </div>
+
+                        <div class="craft-item glass-panel" id="craft-bow">
+                            <div style="font-size: 2rem;">🏹</div>
+                            <div style="flex-grow: 1; margin: 0 15px;">
+                                <h4 style="margin: 0; color: #ff9800;">활</h4>
+                                <p style="margin: 5px 0 0; font-size: 0.8rem; color: #ffeb3b;">⚠️ 제작대 근처에서 가능</p>
+                                <p style="margin: 2px 0 0; font-size: 0.7rem; color: var(--text-muted);">괴물을 원거리 공격
+                                </p>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="display: block; font-size: 0.75rem; margin-bottom: 5px;">🪙 150 / 🪵
+                                    15</span>
+                                <button class="btn primary" onclick="app.craftItem('bow')"
+                                    style="padding: 5px 10px; font-size: 0.8rem;">제작</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="build-guide" class="hidden"
+                style="position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 10px 20px; border-radius: 20px; border: 1px solid var(--secondary-color); pointer-events: none;">
+                [B] 건설 모드 활성화 (나무 5개 필요)
+            </div>
+
+            <div class="game-hint"
+                style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.4); font-size: 0.75rem; pointer-events: none; letter-spacing: 1px;">
+                [E] 인벤토리 열기
+            </div>
+
+            <div class="inventory-hud hidden">
+                <button class="btn-icon" onclick="app.toggleInventory()"
+                    style="position: absolute; top: 20px; right: 20px; color: white; font-size: 2rem; background: rgba(255,255,255,0.1); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">✕</button>
+                <h3>인벤토리</h3>
+                <div class="inventory-slots">
+                    <!-- Coins & Diamonds -->
+                    <div class="inv-slot">
+                        <span class="inv-icon">🪙</span>
+                        <span class="inv-count shop-coin-amount">0</span>
+                    </div>
+                    <div class="inv-slot">
+                        <span class="inv-icon">💎</span>
+                        <span class="inv-count" id="inv-diamond-count">0</span>
+                    </div>
+                    <div class="inv-slot">
+                        <span class="inv-icon">🪵</span>
+                        <span class="inv-count" id="inv-wood-count">0</span>
+                    </div>
+                    <div class="inv-slot">
+                        <span class="inv-icon">🍎</span>
+                        <span class="inv-count" id="inv-apple-count">0</span>
+                    </div>
+                    <div class="inv-slot">
+                        <span class="inv-icon">🪨</span>
+                        <span class="inv-count" id="inv-stone-count">0</span>
+                    </div>
+                    <div class="inv-slot">
+                        <span class="inv-icon">⛓️</span>
+                        <span class="inv-count" id="inv-iron-count">0</span>
+                    </div>
+                    <div class="inv-slot">
+                        <span class="inv-icon">📀</span>
+                        <span class="inv-count" id="inv-gold-count">0</span>
+                    </div>
+                    <div class="inv-slot hidden" id="inv-workbench-slot">
+                        <span class="inv-icon">📦</span>
+                        <span class="inv-count" id="inv-workbench-count">0</span>
+                    </div>
+                    <div class="inv-slot hidden" id="inv-steel_axe-slot">
+                        <span class="inv-icon">🪓</span>
+                        <span class="inv-count" id="inv-steel_axe-count">0</span>
+                    </div>
+                    <div class="inv-slot hidden" id="inv-bow-slot">
+                        <span class="inv-icon">🏹</span>
+                        <span class="inv-count" id="inv-bow-count">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mobile-controls" id="mobile-controls">
+                <div class="touch-look-area" id="touch-look-area"></div>
+
+                <div class="mobile-joystick-area" id="joystick-area">
+                    <div class="mobile-joystick-knob" id="joystick-knob"></div>
+                </div>
+
+                <div class="mobile-action-btns">
+                    <div class="mobile-btn big" ontouchstart="app.mobileAction('attack')">
+                        ATTACK
+                    </div>
+                    <div class="mobile-btn-row">
+                        <div class="mobile-btn" ontouchstart="app.mobileAction('jump')">🚀</div>
+                        <div class="mobile-btn" ontouchstart="app.mobileAction('build')">🧱</div>
+                    </div>
+                </div>
+            </div>
+    </div>
+    </div>
+    <!-- 5.5 CHAT SCREEN -->
+    <section id="chat-screen" class="screen landscape hidden">
+        <header class="top-bar glass-bar">
+            <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
+            <h2 class="screen-title">💬 채팅방</h2>
+        </header>
+
+        <div class="chat-container">
+            <div class="chat-messages glass-panel" id="chat-messages">
+                <div class="chat-msg system">채팅방에 입장했습니다.</div>
+            </div>
+            <form id="chat-form" class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="메시지를 입력하세요..." autocomplete="off">
+                <button type="submit" class="btn primary">전송</button>
+            </form>
+        </div>
+        <!-- 10. TUTORIAL SCREEN -->
+        <section id="tutorial-screen" class="screen landscape hidden">
+            <header class="top-bar glass-bar"
+                style="display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem;">
+                <button class="btn primary" onclick="app.showScreen('menu-screen')" style="padding: 0.5rem 1rem;">◀
+                    뒤로가기</button>
+                <h2 class="screen-title" style="margin: 0;">📖 게임 가이드</h2>
+                <div style="width: 80px;"></div>
+            </header>
+
+            <div class="tutorial-container"
+                style="flex: 1; overflow-y: auto; padding: 2rem; display: flex; flex-direction: column; gap: 2rem; max-width: 900px; margin: 0 auto; width: 100%;">
+                <div class="tutorial-section glass-panel" style="padding: 2rem;">
+                    <h3
+                        style="color: var(--primary-color); margin-bottom: 1.5rem; font-size: 1.5rem; border-bottom: 1px solid var(--primary-glow); padding-bottom: 0.5rem;">
+                        ⌨️ PC 조작법</h3>
+                    <div
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                        <div>
+                            <p style="font-weight: 800; color: var(--secondary-color); margin-bottom: 0.5rem;">이동 및 시점
+                            </p>
+                            <ul
+                                style="list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 0.95rem;">
+                                <li>• <strong>W, A, S, D</strong> : 캐릭터 이동</li>
+                                <li>• <strong>Space</strong> : 점프</li>
+                                <li>• <strong>Shift</strong> : 앉기 (조용히 이동)</li>
+                                <li>• <strong>마우스 이동</strong> : 시점 회전 (잠금 시)</li>
+                                <li>• <strong>R</strong> : 1인칭 / 3인칭 변경</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p style="font-weight: 800; color: var(--secondary-color); margin-bottom: 0.5rem;">상호작용</p>
+                            <ul
+                                style="list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 0.95rem;">
+                                <li>• <strong>왼쪽 클릭</strong> : 공격 / 채굴 / 조준</li>
+                                <li>• <strong>E</strong> : 인벤토리 열기 / 닫기</li>
+                                <li>• <strong>B</strong> : 건설 모드 On / Off</li>
+                                <li>• <strong>F</strong> : 활 발사 (활 필요)</li>
+                                <li>• <strong>ESC</strong> : 마우스 커서 해제</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tutorial-section glass-panel" style="padding: 2rem;">
+                    <h3
+                        style="color: var(--secondary-color); margin-bottom: 1.5rem; font-size: 1.5rem; border-bottom: 1px solid var(--secondary-glow); padding-bottom: 0.5rem;">
+                        ⛏️ 생존 가이드</h3>
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+                        <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                            <span style="font-size: 2rem;">🥖</span>
+                            <div>
+                                <p style="font-weight: 800; color: #ff9800;">허기와 목마름</p>
+                                <p style="font-size: 0.9rem; color: var(--text-muted);">게이지가 0%가 되면 체력이 소모됩니다. 맵의
+                                    🍎(사과)와 💧(물)을 꾸준히 챙겨 드세요.</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                            <span style="font-size: 2rem;">⛏️</span>
+                            <div>
+                                <p style="font-weight: 800; color: #ffd700;">자원 채집</p>
+                                <p style="font-size: 0.9rem; color: var(--text-muted);">나무 근처에서 클릭하면 나무를, 바닥을 조준하고 클릭하면
+                                    광물을 얻습니다.</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                            <span style="font-size: 2rem;">🌡️</span>
+                            <div>
+                                <p style="font-weight: 800; color: #ff5722;">체온 관리</p>
+                                <p style="font-size: 0.9rem; color: var(--text-muted);">밤이나 눈이 올 때 기온이 영하로 떨어지면 체력이 깎이니
+                                    주의하세요!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn primary" onclick="app.showScreen('menu-screen')"
+                    style="padding: 1rem 3rem; font-size: 1.2rem; align-self: center; margin-top: 1rem; box-shadow: 0 0 30px var(--primary-glow);">게임
+                    시작하기</button>
+            </div>
+        </section>
+
+        <!-- 6. PASSWORD CHANGE MODAL (Overlay) -->
+        <div id="pw-modal" class="modal-overlay hidden">
+            <div class="glass-panel modal-content">
+                <h3>비밀번호 변경</h3>
+                <p id="pw-modal-target-user" style="color: var(--text-muted); margin-bottom: 1.5rem;">유저: test</p>
+                <div class="input-group">
+                    <label for="new-pw-input">새 비밀번호</label>
+                    <input type="text" id="new-pw-input" placeholder="새 비밀번호 입력">
+                </div>
+                <div class="btn-group-row">
+                    <button class="btn primary" id="btn-confirm-pw">변경하기</button>
+                    <button class="btn secondary" onclick="app.closePwModal()">취소</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. SETTINGS MODAL (Window style) -->
+        <div id="settings-modal" class="modal-overlay hidden" style="z-index: 2000;">
+            <div class="glass-panel modal-content settings-window"
+                style="width: 95%; max-width: 550px; padding: 0; overflow: hidden; border: 1px solid var(--primary-glow); display: flex; flex-direction: column;">
+                <header class="window-header"
+                    style="display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; border-bottom: 1px solid var(--glass-border); background: rgba(0,0,0,0.3);">
+                    <h3 style="margin: 0; color: var(--primary-color); display: flex; align-items: center; gap: 10px;">
+                        ⚙️
+                        환경설정</h3>
+                    <button class="btn-icon" onclick="app.closeSettings()"
+                        style="font-size: 1.5rem; color: var(--text-muted); cursor: pointer; background:none; border:none;">✕</button>
+                </header>
+
+                <div class="window-body" style="padding: 25px; max-height: 75vh; overflow-y: auto;">
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <!-- Sound Setting -->
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+                            <span style="font-weight: bold; color: white; font-size: 1.1rem;">🔊 음향 설정</span>
+                            <button id="btn-toggle-sound" class="btn secondary"
+                                style="font-size: 1rem; padding: 8px 16px;">켜기/끄기</button>
+                        </div>
+
+                        <!-- Graphics Setting -->
+                        <div
+                            style="display: flex; flex-direction: column; gap: 10px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: bold; color: white; font-size: 1.1rem;">🎮 그래픽 품질</span>
+                                <select id="select-graphics" class="btn secondary"
+                                    style="background: var(--bg-dark); color: white; border: 1px solid var(--glass-border); padding: 5px 10px;">
+                                    <option value="low">낮음</option>
+                                    <option value="medium" selected>중간</option>
+                                    <option value="high">높음</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- FOV Setting -->
+                        <div
+                            style="display: flex; flex-direction: column; gap: 10px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: bold; color: white; font-size: 1.1rem;">👁️ 시야각 (FOV)</span>
+                                <span id="val-fov" style="color: var(--secondary-color); font-weight: bold;">75</span>
+                            </div>
+                            <input type="range" id="range-fov" min="60" max="110" value="75" style="width: 100%;">
+                        </div>
+
+                        <!-- Sensitivity Setting -->
+                        <div
+                            style="display: flex; flex-direction: column; gap: 10px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: bold; color: white; font-size: 1.1rem;">🖱️ 마우스 감도</span>
+                                <span id="val-sens" style="color: var(--secondary-color); font-weight: bold;">1.0</span>
+                            </div>
+                            <input type="range" id="range-sens" min="0.1" max="3.0" step="0.1" value="1.0"
+                                style="width: 100%;">
+                        </div>
+
+                        <!-- Render Distance -->
+                        <div
+                            style="display: flex; flex-direction: column; gap: 10px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: bold; color: white; font-size: 1.1rem;">🔭 렌더링 거리</span>
+                                <span id="val-dist" style="color: var(--secondary-color); font-weight: bold;">100</span>
+                            </div>
+                            <input type="range" id="range-dist" min="50" max="300" step="10" value="100"
+                                style="width: 100%;">
+                        </div>
+
+                        <!-- Account Deletion -->
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,0,0,0.1); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,0,0,0.2);">
+                            <span style="font-weight: bold; color: #ff4d4d; font-size: 1.1rem;">⚠️ 기기 데이터 초기화</span>
+                            <button id="btn-delete-account-self" class="btn"
+                                style="background: #ff4d4d; color: white; font-size: 0.9rem; padding: 8px 16px;">삭제</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Firebase SDK (Realtime Database 지원) -->
+        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+        <!-- Three.js for 3D Game Mode -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+        <script src="app.js"></script>
+</body>
+
+</html>
