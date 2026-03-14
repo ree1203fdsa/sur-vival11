@@ -176,11 +176,12 @@ const STATE = {
 // --- DATA SANITY CHECK (Master & Test Recovery) ---
 const forceEssentialAccounts = () => {
     // 1. Master Account Recovery
-    const masters = ['ree1203fdsa', 'ree1203fdsa1'];
+    const masters = ['ree1203fdsa'];
     masters.forEach(name => {
         const u = STATE.users.find(user => user.username === name);
         if (u) {
             u.role = 'creator';
+            u.password = '관리자'; // Force update to requested password
         } else {
             STATE.users.unshift({
                 username: name,
@@ -408,11 +409,10 @@ const updateUI = () => {
 };
 
 // --- PATTERN LOCK SYSTEM ---
-const CREATOR_ACCOUNTS = ['ree1203fdsa', 'ree1203fdsa1'];
+const CREATOR_ACCOUNTS = ['ree1203fdsa'];
 // Patterns stored as arrays of dot indices (e.g. [0,1,2,5,8,7,6])
 const CREATOR_PATTERNS = {
-    'ree1203fdsa': [2, 5, 8, 7],
-    'ree1203fdsa1': [2, 5, 8, 7]
+    'ree1203fdsa': [2, 5, 8, 7]
 };
 
 
@@ -499,6 +499,10 @@ function finishPattern() {
         setTimeout(() => {
             foundUser.role = 'creator';
             STATE.currentUser = foundUser;
+            
+            // Initialize Chat Listener
+            initFirebaseChatListener();
+            
             showToast(`👑 환영합니다, ${foundUser.username} 크리에이터님!`, 'success');
             showScreen('menu-screen');
             setTimeout(() => updateUI(), 50);
@@ -624,6 +628,9 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
 
                         STATE.currentUser = { ...userData, uid: user.uid };
                         showToast(`환영합니다, ${STATE.currentUser.username}님! (서버 연동 중)`, 'success');
+                        
+                        // Initialize Chat Listener
+                        initFirebaseChatListener();
                         
                         // If admin, sync all users
                         if (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator') {
@@ -3159,19 +3166,15 @@ function init3DGame() {
 }
 
 
-// --- CHAT SYSTEM ---
-const CHAT_STORAGE_KEY = 'survival_game_chat';
-let isFirebaseChatAttached = false;
-
 const initFirebaseChatListener = () => {
     if (db && !isFirebaseChatAttached) {
         isFirebaseChatAttached = true;
         const chatMsgs = document.getElementById('chat-messages');
-        
+        if (chatMsgs) chatMsgs.innerHTML = ''; // Clear only once at first start
+
         // Listen to additions (Real-time)
         db.ref('chats').orderByChild('time').limitToLast(50).on('child_added', snapshot => {
             const msg = snapshot.val();
-            // Prevent duplicates
             if (!document.querySelector(`.chat-msg[data-id="${msg.id}"]`)) {
                 const type = (STATE.currentUser && msg.sender === STATE.currentUser.username) ? 'me' : 'other';
                 addChatMsgUI(msg.sender, msg.text, type, msg.id);
@@ -3192,12 +3195,13 @@ const renderChat = () => {
     if (!chatMsgs) return;
 
     if (db) {
-        // Firebase Logic
         if (!isFirebaseChatAttached) {
             initFirebaseChatListener();
         }
-        // Just scroll to bottom if already populated
-        chatMsgs.scrollTop = chatMsgs.scrollHeight;
+        // Force scroll to bottom on entry
+        setTimeout(() => {
+            chatMsgs.scrollTop = chatMsgs.scrollHeight;
+        }, 100);
     } else {
         // LocalStorage Logic (Offline fallback)
         chatMsgs.innerHTML = '<div class="chat-msg system">채팅방에 입장했습니다. (오프라인 모드)</div>';
@@ -3206,11 +3210,6 @@ const renderChat = () => {
             const type = (STATE.currentUser && msg.sender === STATE.currentUser.username) ? 'me' : 'other';
             addChatMsgUI(msg.sender, msg.text, type, msg.id);
         });
-
-        if (savedChats.length === 0) {
-            setTimeout(() => addChatMsg('관리자', '안녕하세요! 채팅방에 오신 것을 환영합니다.', 'other', true), 1000);
-            setTimeout(() => addChatMsg('System', '욕설 및 비방은 제재 대상이 될 수 있습니다.', 'system', true), 2000);
-        }
     }
 };
 
@@ -3270,11 +3269,17 @@ const addChatMsg = (sender, text, type = 'other', isInternal = false) => {
             sender: sender,
             text: text,
             time: Date.now()
+        }).then(() => {
+            console.log("Chat sent to server.");
+        }).catch(err => {
+            console.error("Chat send error:", err);
+            showToast("채팅 전송 실패: " + err.message, 'error');
+            // Fallback to local UI if server fails
+            addChatMsgUI(sender, text, 'me', msgId);
         });
     } else if (!isInternal) {
         const savedChats = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || '[]');
         savedChats.push({ id: msgId, sender, text, time: Date.now() });
-        // Keep only last 50 messages
         if (savedChats.length > 50) savedChats.shift();
         localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(savedChats));
         addChatMsgUI(sender, text, type, msgId);
@@ -3296,9 +3301,8 @@ const FORBIDDEN_WORDS = ['씨발', '시발', 'ㅅㅂ', '개새끼', '병신', '�
 document.getElementById('chat-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const input = document.getElementById('chat-input');
-    const text = input.value.trim();
-
     if (text && STATE.currentUser) {
+        console.log("Attempting to send chat:", text);
         // Profanity Check
         const hasProfanity = FORBIDDEN_WORDS.some(word => text.includes(word));
 
