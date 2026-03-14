@@ -67,7 +67,7 @@ if (FIREBASE_ENABLED && typeof firebase !== 'undefined') {
                 const userData = snapshot.val();
                 if (userData) {
                     // Auto-promote master accounts if needed
-                    if (CREATOR_ACCOUNTS.includes(userData.username) && userData.role !== 'creator') {
+                    if (CREATOR_ACCOUNTS.includes(userData.username)) {
                         userData.role = 'creator';
                         db.ref('users/' + user.uid + '/role').set('creator');
                     }
@@ -887,7 +887,7 @@ document.getElementById('register-form').addEventListener('submit', (e) => {
                     hunger: 100,
                     thirst: 100,
                     treasures: 0,
-                    role: 'user',
+                    role: CREATOR_ACCOUNTS.includes(id) ? 'creator' : 'user',
                     uid: user.uid
                 };
                 // Initial save to Firebase
