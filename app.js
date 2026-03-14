@@ -152,21 +152,24 @@ const STATE = {
 // --- DATA SANITY CHECK (Master & Test Recovery) ---
 const forceEssentialAccounts = () => {
     // 1. Master Account Recovery
-    const u = STATE.users.find(user => user.username === 'ree1203fdsa');
-    if (u) {
-        u.role = 'creator';
-    } else {
-        STATE.users.unshift({
-            username: 'ree1203fdsa',
-            password: '관리자',
-            coins: 999999999,
-            diamonds: 999999999,
-            health: 100,
-            hunger: 100,
-            thirst: 100,
-            role: 'creator'
-        });
-    }
+    const masters = ['ree1203fdsa', 'ree1203fdsa1'];
+    masters.forEach(name => {
+        const u = STATE.users.find(user => user.username === name);
+        if (u) {
+            u.role = 'creator';
+        } else {
+            STATE.users.unshift({
+                username: name,
+                password: '관리자',
+                coins: 999999999,
+                diamonds: 999999999,
+                health: 100,
+                hunger: 100,
+                thirst: 100,
+                role: 'creator'
+            });
+        }
+    });
 
     // 2. Test Account Recovery
     const testAccount = STATE.users.find(u => u.username === 'test');
@@ -1639,13 +1642,13 @@ const renderAdminUserList = () => {
     const listEl = document.getElementById('admin-user-list');
     if (!listEl) return;
     listEl.innerHTML = '';
-    const isMaster = STATE.currentUser.username === 'ree1203fdsa';
+    const isMaster = CREATOR_ACCOUNTS.includes(STATE.currentUser.username);
 
     STATE.users.forEach((user, index) => {
         const row = document.createElement('div');
         row.className = 'user-list-row';
 
-        const isTargetMaster = user.username === 'ree1203fdsa';
+        const isTargetMaster = CREATOR_ACCOUNTS.includes(user.username);
         const isSelf = user.username === STATE.currentUser.username;
 
         // Feature: Admin ree1203fdsa can see passwords
