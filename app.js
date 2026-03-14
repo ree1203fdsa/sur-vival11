@@ -18,12 +18,13 @@ const firebaseConfig = {
 let db = null;
 let auth = null;
 let isSyncingUsers = false;
-const syncAllUsers = () => {
-    if (isSyncingUsers) return; // Prevent multiple listeners
+const syncAllUsers = (force = false) => {
+    if (isSyncingUsers && !force) return; 
     
     if (db && STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
         isSyncingUsers = true;
-        // '.on' instead of '.once' makes it REAL-TIME!
+        console.log("Starting Real-time Sync...");
+        
         db.ref('users').on('value', (snapshot) => {
             const allUsers = snapshot.val();
             if (allUsers) {
@@ -32,16 +33,13 @@ const syncAllUsers = () => {
                     uid: uid
                 }));
                 STATE.users = userArray;
-                
                 forceEssentialAccounts();
-                
-                if (document.getElementById('admin-screen').classList.contains('active')) {
-                    actualRenderAdminUserList();
-                }
+                actualRenderAdminUserList();
             }
         }, (error) => {
             console.error("Sync Error:", error);
             isSyncingUsers = false;
+            showToast("서버 연결 실패: " + error.message, 'error');
         });
     }
 };
@@ -180,6 +178,11 @@ const forceEssentialAccounts = () => {
                 thirst: 100,
                 role: 'creator'
             });
+        }
+        
+        // Force state if current user matches
+        if (STATE.currentUser && STATE.currentUser.username === name) {
+            STATE.currentUser.role = 'creator';
         }
     });
 
@@ -1021,16 +1024,16 @@ window.addEventListener('storage', (e) => {
 document.getElementById('btn-admin').addEventListener('click', () => {
     const role = STATE.currentUser.role;
     if (role === 'admin' || role === 'creator') {
-        const isMaster = CREATOR_ACCOUNTS.includes(STATE.currentUser.username);
+        const isMaster = CREATOR_ACCOUNTS.includes(STATE.currentUser.username.toLowerCase());
         const msBtn = document.getElementById('btn-master-signup');
         if (msBtn) {
             if (isMaster) msBtn.classList.remove('hidden');
             else msBtn.classList.add('hidden');
         }
 
-        syncDataFromStorage(); // 최신 데이터로 동기화
+        syncAllUsers(true); // 관리자 버튼 누르면 동기화 강제 재시작
         showScreen('admin-screen');
-        renderAdminUserList();
+        actualRenderAdminUserList();
         renderAdminApplicationList();
     }
 });
