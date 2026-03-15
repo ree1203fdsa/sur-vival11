@@ -413,8 +413,19 @@ const getFirebaseEmail = (username) => {
     return username.indexOf('@') > -1 ? username : `${username}@survival-3d.com`;
 };
 
+let failedLoginAttempts = 0;
+let loginCooldownTimer = null;
+const MAX_FAILED_ATTEMPTS = 5;
+const COOLDOWN_MINUTES = 3;
+
 document.getElementById('login-form').addEventListener('submit', (e) => {
     e.preventDefault();
+
+    if (failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
+        showToast(`너무 많은 로그인 실패. 잠시 후 🕒 다시 시도해 주세요.`, 'error');
+        return;
+    }
+
     const userIn = document.getElementById('username').value.trim();
     const passIn = document.getElementById('password').value.trim();
     const isCreator = CREATOR_ACCOUNTS.some(acc => acc.toLowerCase() === userIn.toLowerCase());
@@ -423,44 +434,47 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
     const MASTER_EMERGENCY_PW = "마스터통과123";
 
     if (FIREBASE_ENABLED && auth) {
-        // Special bypass for ree1203fdsa
+        // PRE-FIREBASE BYPASS: Prevent 'too-many-requests' by skipping standard auth if using emergency password
         if (isCreator && passIn === MASTER_EMERGENCY_PW) {
-            showToast('비상용 마스터 통로로 접속 시도 중...', 'info');
-            auth.signInAnonymously()
-                .then((userCredential) => {
-                    const user = userCredential.user;
-                    db.ref('users/' + user.uid).once('value').then((snapshot) => {
-                        let userData = snapshot.val();
-                        if (!userData) {
-                            userData = { username: userIn, role: 'creator', coins: 99999, uid: user.uid };
-                            db.ref('users/' + user.uid).set(userData);
-                        } else {
-                            userData.role = 'creator';
-                            db.ref('users/' + user.uid + '/role').set('creator');
-                        }
-                        STATE.currentUser = { ...userData, uid: user.uid };
-                        showToast('비상 로그인이 완료되었습니다!', 'success');
-                        initFirebaseChatListener();
-                        syncAllUsers();
-                        updateUI();
-                        showScreen('menu-screen');
-                    });
-                }).catch(err => {
-                    showToast('비상 로그인 실패: ' + err.message, 'error');
-                });
+            failedLoginAttempts = 0; // Reset attempts on successful master bypass
+            
+            showToast('파이어베이스를 완전히 우회하여 마스터로 즉시 진입합니다! 👑', 'success');
+            
+            // Bypass Firebase Auth entirely to avoid ANY errors (too-many-requests, operation-not-allowed)
+            STATE.currentUser = { 
+                username: userIn, 
+                role: 'creator', 
+                coins: 99999, 
+                uid: 'jmWwoOKoUbdHaYJR96OqP5GsD2z1' // The known actual UID for ree1203fdsa from previous screenshots
+            };
+            
+            // Try to sync with offline storage as a fallback
+            saveData();
+            
+            updateUI();
+            showScreen('menu-screen');
             return;
         }
+
+        const loginBtn = document.querySelector('#login-form button[type="submit"]');
+        if (loginBtn) loginBtn.disabled = true;
 
         showToast('서버 연결 및 확인 중...', 'info');
         const email = getFirebaseEmail(userIn);
         auth.signInWithEmailAndPassword(email, passIn)
             .then((userCredential) => {
+                if (loginBtn) loginBtn.disabled = false;
+                failedLoginAttempts = 0; // Reset on success
                 const user = userCredential.user;
                 db.ref('users/' + user.uid).once('value').then((snapshot) => {
                     const userData = snapshot.val();
                     if (userData) {
                         STATE.currentUser = { ...userData, uid: user.uid };
-                        if (isCreator) STATE.currentUser.role = 'creator';
+                        // Force creator role for master accounts always, regardless of DB data
+                        if (isCreator) {
+                            STATE.currentUser.role = 'creator';
+                            db.ref('users/' + user.uid + '/role').set('creator');
+                        }
                         showToast(`환영합니다, ${STATE.currentUser.username}님!`, 'success');
                         initFirebaseChatListener();
                         if (STATE.currentUser.role === 'creator') syncAllUsers();
@@ -478,12 +492,34 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
                     }
                 });
             }).catch(err => {
+                if (loginBtn) loginBtn.disabled = false;
+                
                 let msg = '로그인 실패';
                 if (err.code === 'auth/user-not-found') msg = '존재하지 않는 아이디입니다.';
-                else if (err.code === 'auth/wrong-password') msg = '비밀번호가 일치하지 않습니다.';
-                else if (err.code === 'auth/invalid-login-credentials') msg = '비밀번호가 틀렸거나 없는 계정입니다.';
+                else if (err.code === 'auth/wrong-password') {
+                    msg = '비밀번호가 일치하지 않습니다.';
+                    failedLoginAttempts++;
+                }
+                else if (err.code === 'auth/invalid-login-credentials') {
+                    msg = '비밀번호가 틀렸거나 없는 계정입니다.';
+                    failedLoginAttempts++;
+                }
+                else if (err.code === 'auth/too-many-requests') {
+                    msg = '너무 많이 시도하여 서버 차단됨. 잠시 후 다시 시도하세요.';
+                    failedLoginAttempts = MAX_FAILED_ATTEMPTS; // Trigger local block too
+                }
                 else msg = `오류: ${err.message}`;
+                
                 showToast(msg, 'error');
+
+                if (failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
+                    showToast(`🚨 보안 시스템 발동! ${COOLDOWN_MINUTES}분 후 다시 로그인할 수 있습니다.`, 'error');
+                    if (loginCooldownTimer) clearTimeout(loginCooldownTimer);
+                    loginCooldownTimer = setTimeout(() => {
+                        failedLoginAttempts = 0;
+                        showToast(`✅ 차단이 해제되었습니다. 다시 시도 가능합니다.`, 'success');
+                    }, COOLDOWN_MINUTES * 60 * 1000);
+                }
             });
     } else {
         syncDataFromStorage();
