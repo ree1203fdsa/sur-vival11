@@ -567,6 +567,73 @@ if (guestLoginBtn) {
     });
 }
 
+const googleLoginBtn = document.getElementById('btn-google-login');
+if (googleLoginBtn) {
+    googleLoginBtn.addEventListener('click', () => {
+        if (!FIREBASE_ENABLED || !auth) {
+            showToast('서버(Firebase)가 연결되지 않아 구글 로그인을 사용할 수 없습니다.', 'error');
+            return;
+        }
+
+        const provider = new firebase.auth.GoogleAuthProvider();
+        showToast('구글 로그인 창을 여는 중...', 'info');
+        
+        auth.signInWithPopup(provider).then((result) => {
+            const user = result.user;
+            
+            // Check if user exists in DB
+            db.ref('users/' + user.uid).once('value').then((snapshot) => {
+                const userData = snapshot.val();
+                if (userData) {
+                    STATE.currentUser = { ...userData, uid: user.uid };
+                    showToast(`환영합니다, ${userData.username}님! (구글 로그인)`, 'success');
+                } else {
+                    // Create new user Data from Google
+                    // Extract email prefix or use displayName
+                    let newUsername = user.displayName;
+                    if (!newUsername && user.email) {
+                         newUsername = user.email.split('@')[0];
+                    }
+                    if (!newUsername) newUsername = "GoogleUser_" + Math.floor(Math.random() * 10000);
+                    
+                    const newUser = {
+                        username: newUsername,
+                        role: CREATOR_ACCOUNTS.includes(newUsername) ? 'creator' : 'user',
+                        coins: 1000,
+                        diamonds: 10,
+                        wood: 0,
+                        stone: 0,
+                        iron: 0,
+                        gold: 0,
+                        health: 100,
+                        hunger: 100,
+                        thirst: 100,
+                        treasures: 0,
+                        phone: user.phoneNumber || '',
+                        uid: user.uid
+                    };
+                    db.ref('users/' + user.uid).set(newUser);
+                    STATE.currentUser = newUser;
+                    showToast(`구글 계정으로 신규 가입되었습니다, ${newUsername}님!`, 'success');
+                }
+                
+                initFirebaseChatListener();
+                if (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator') syncAllUsers();
+                updateUI();
+                showScreen('menu-screen');
+            });
+            
+        }).catch((error) => {
+            console.error(error);
+            if (error.code === 'auth/operation-not-allowed') {
+                showToast('Firebase에서 Google 로그인이 켜져있지 않습니다! 개발자 설정을 확인하세요.', 'error');
+            } else if (error.code !== 'auth/popup-closed-by-user') {
+                showToast(`구글 로그인 실패: ${error.message}`, 'error');
+            }
+        });
+    });
+}
+
 // --- PUBLIC REGISTER LOGIC ---
 document.getElementById('register-form').addEventListener('submit', (e) => {
     e.preventDefault();
