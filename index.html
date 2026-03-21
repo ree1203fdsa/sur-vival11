@@ -58,7 +58,7 @@
                         </div>
                         <div class="password-wrapper">
                             <input type="password" id="password" placeholder="비밀번호를 입력하세요">
-                            <button type="button" id="toggle-password" class="btn-icon toggle-pwd-btn">👁️</button>
+                            <button type="button" id="toggle-password" class="btn-icon toggle-pwd-btn" onclick="const p=document.getElementById('password'); if(p.type==='password'){p.type='text';this.textContent='🔒';}else{p.type='password';this.textContent='👁️';}">👁️</button>
                         </div>
                     </div>
 
@@ -1056,7 +1056,7 @@
         </div>
 
             <!-- 15. ANNOUNCEMENT SCREEN -->
-        <section id="announcement-screen" class="screen portrait hidden">
+        <section id="announcement-screen" class="screen portrait hidden" style="background: #11141a !important;">
             <div class="glass-panel" style="width: 90%; max-width: 600px; height: 80vh; display: flex; flex-direction: column; background: #1a1a24;">
                 <h2 style="font-size: 2rem; color: var(--primary-color); margin-bottom: 20px;">📢 공지사항</h2>
                 
@@ -1073,7 +1073,7 @@
         </section>
 
         <!-- 16. ANNOUNCEMENT DETAIL SCREEN -->
-        <section id="announcement-detail-screen" class="screen portrait hidden">
+        <section id="announcement-detail-screen" class="screen portrait hidden" style="background: #11141a !important;">
             <div class="glass-panel" style="width: 90%; max-width: 600px; height: 85vh; display: flex; flex-direction: column; background: #1a1a24;">
                 <div style="border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px;">
                     <h2 id="ann-detail-title" style="font-size: 1.5rem; color: var(--secondary-color); margin-bottom: 5px;">공지 제목</h2>
