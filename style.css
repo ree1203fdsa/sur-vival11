@@ -2067,3 +2067,35 @@ canvas {
         font-size: 1.7rem !important;
     }
 }
+
+/* --- PASSWORD TOGGLE UI --- */
+.password-wrapper {
+    position: relative;
+    width: 100%;
+}
+.password-wrapper input {
+    width: 100%;
+    padding-right: 40px !important;
+    box-sizing: border-box;
+}
+.toggle-pwd-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0;
+    outline: none;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+.toggle-pwd-btn:hover {
+    color: var(--primary-color);
+}
