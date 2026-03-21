@@ -3365,6 +3365,175 @@ document.getElementById('btn-forgot-password').addEventListener('click', () => {
     }
 });
 
+// --- ANNOUNCEMENT SYSTEM ---
+let currentAnnId = null;
+let annListener = null;
+let annCommentsListener = null;
+
+const renderAnnouncements = () => {
+    const listEl = document.getElementById('announcement-list');
+    if (!listEl) return;
+    
+    // Check if master
+    const isMaster = STATE.currentUser && STATE.currentUser.username === 'ree1203fdsa';
+    const btnNew = document.getElementById('btn-new-announcement');
+    if (btnNew) {
+        if (isMaster) btnNew.classList.remove('hidden');
+        else btnNew.classList.add('hidden');
+    }
+
+    const isOnline = db && auth && auth.currentUser;
+    if (isOnline) {
+        if (annListener) db.ref('announcements').off('value', annListener);
+        listEl.innerHTML = '<div style="text-align:center; color:#fff;">불러오는 중...</div>';
+        
+        annListener = db.ref('announcements').on('value', snapshot => {
+            const data = snapshot.val();
+            listEl.innerHTML = '';
+            if (!data) {
+                listEl.innerHTML = '<div style="text-align:center; color:#ccc;">등록된 공지사항이 없습니다.</div>';
+                return;
+            }
+            
+            // Sort by time descending
+            const posts = Object.values(data).sort((a,b) => b.time - a.time);
+            posts.forEach(post => {
+                const div = document.createElement('div');
+                div.style.cssText = 'background: rgba(255,193,7,0.1); border: 1px solid rgba(255,193,7,0.4); padding: 15px; border-radius: 8px; cursor: pointer; transition: 0.2s;';
+                div.onclick = () => openAnnouncementDetail(post);
+                
+                const d = new Date(post.time);
+                const dateStr = `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+                const commentCount = post.comments ? Object.keys(post.comments).length : 0;
+                
+                div.innerHTML = `
+                    <div style="font-size: 1.1rem; font-weight: bold; color: #ffd54f; margin-bottom: 5px;">${post.title}</div>
+                    <div style="font-size: 0.8rem; color: #aaa; display: flex; justify-content: space-between;">
+                        <span>작성자: ${post.author}</span>
+                        <span>${dateStr} | 댓글 ${commentCount}</span>
+                    </div>
+                `;
+                listEl.appendChild(div);
+            });
+        }, err => {
+            listEl.innerHTML = '<div style="text-align:center; color:#ccc;">공지사항을 불러오지 못했습니다. (권한 없음)</div>';
+        });
+    } else {
+        listEl.innerHTML = '<div style="text-align:center; color:#ccc;">오프라인/에러 모드에서는 공지사항을 볼 수 없습니다.</div>';
+    }
+};
+
+// Expose these carefully to a global context if needed or just use via button
+const openAnnouncementDetail = (post) => {
+    currentAnnId = post.id;
+    app.showScreen('announcement-detail-screen');
+    
+    document.getElementById('ann-detail-title').textContent = post.title;
+    document.getElementById('ann-detail-author').textContent = post.author;
+    const d = new Date(post.time);
+    document.getElementById('ann-detail-date').textContent = `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+    document.getElementById('ann-detail-content').textContent = post.content;
+    
+    const isOnline = db && auth && auth.currentUser;
+    const listEl = document.getElementById('ann-comments-list');
+    listEl.innerHTML = '';
+    document.getElementById('ann-comment-count').textContent = '0';
+    
+    if (isOnline) {
+        if (annCommentsListener) db.ref('announcements/' + post.id + '/comments').off('value', annCommentsListener);
+        
+        annCommentsListener = db.ref('announcements/' + post.id + '/comments').on('value', snapshot => {
+            const data = snapshot.val();
+            listEl.innerHTML = '';
+            if (!data) {
+                document.getElementById('ann-comment-count').textContent = '0';
+                listEl.innerHTML = '<div style="text-align:center; color:#aaa; font-size: 0.8rem;">첫 번째 댓글을 남겨보세요!</div>';
+                return;
+            }
+            
+            const comments = Object.values(data).sort((a,b) => a.time - b.time);
+            document.getElementById('ann-comment-count').textContent = comments.length;
+            
+            comments.forEach(c => {
+                const cDiv = document.createElement('div');
+                cDiv.style.cssText = 'background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; font-size: 0.9rem;';
+                const isMasterUser = c.author === 'ree1203fdsa';
+                cDiv.innerHTML = `
+                    <div style="font-size: 0.75rem; color: ${isMasterUser ? '#ff5252' : '#aaa'}; font-weight: bold; margin-bottom: 3px;">
+                        ${isMasterUser ? '👑 ' : ''}${c.author}
+                    </div>
+                    <div style="color: #eee;">${c.text}</div>
+                `;
+                listEl.appendChild(cDiv);
+            });
+            listEl.scrollTop = listEl.scrollHeight;
+        });
+    }
+};
+
+const btnAnnouncements = document.getElementById('btn-announcements');
+if (btnAnnouncements) {
+    btnAnnouncements.addEventListener('click', () => {
+        app.showScreen('announcement-screen');
+        renderAnnouncements();
+    });
+}
+
+const btnNewAnn = document.getElementById('btn-new-announcement');
+if (btnNewAnn) {
+    btnNewAnn.addEventListener('click', () => {
+        const title = prompt("공지사항 제목을 입력하세요:");
+        if (!title) return;
+        const content = prompt("공지사항 내용을 입력하세요:");
+        if (!content) return;
+        
+        const isOnline = db && auth && auth.currentUser;
+        if (isOnline) {
+            const id = 'ann_' + Date.now();
+            db.ref('announcements/' + id).set({
+                id: id,
+                title: title,
+                content: content,
+                author: STATE.currentUser.username,
+                time: Date.now()
+            }).then(() => {
+                showToast('공지사항이 성공적으로 등록되었습니다.', 'success');
+            }).catch(e => {
+                showToast('공지 등록 실패: ' + e.message, 'error');
+            });
+        } else {
+             showToast('현재 오프라인 모드라 공지를 쓸 수 없습니다.', 'error');
+        }
+    });
+}
+
+const annForm = document.getElementById('ann-comment-form');
+if (annForm) {
+    annForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('ann-comment-input');
+        const text = input.value.trim();
+        if (!text || !currentAnnId) return;
+        
+        const isOnline = db && auth && auth.currentUser;
+        if (isOnline) {
+            const cId = 'com_' + Date.now() + Math.random().toString(36).substr(2,4);
+            db.ref('announcements/' + currentAnnId + '/comments/' + cId).set({
+                id: cId,
+                author: STATE.currentUser.username,
+                text: text,
+                time: Date.now()
+            }).then(() => {
+                input.value = '';
+            }).catch(e => {
+                showToast('댓글 등록 실패: ' + e.message, 'error');
+            });
+        } else {
+            showToast('오프라인 모드에서는 댓글을 쓸 수 없습니다.', 'warning');
+        }
+    });
+}
+
 // Initial Setup
 window.app = app;
 setTimeout(() => {

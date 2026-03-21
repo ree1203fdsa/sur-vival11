@@ -224,7 +224,7 @@
                         <h3>내 정보</h3>
                         <p>내 프로필 및 통계 확인</p>
                     </button>
-                    <button class="menu-card admin-only hidden" id="btn-admin">
+                    <button class="menu-card" id="btn-admin">
                         <div class="card-icon">⚙️</div>
                         <h3>관리자 모드</h3>
                         <p>시스템 및 유저 관리</p>
@@ -233,6 +233,11 @@
                         <div class="card-icon">💬</div>
                         <h3>채팅방</h3>
                         <p>유저들과 대화하세요</p>
+                    </button>
+                    <button class="menu-card" id="btn-announcements">
+                        <div class="card-icon">📢</div>
+                        <h3>공지사항</h3>
+                        <p>가장 빠른 업데이트 소식</p>
                     </button>
                 </div>
             </div>
@@ -1050,8 +1055,57 @@
             </div>
         </div>
 
-        <!-- Firebase SDK (Realtime Database 지원) -->
-        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+            <!-- 15. ANNOUNCEMENT SCREEN -->
+        <section id="announcement-screen" class="screen portrait hidden">
+            <div class="glass-panel" style="width: 90%; max-width: 600px; height: 80vh; display: flex; flex-direction: column;">
+                <h2 style="font-size: 2rem; color: var(--primary-color); margin-bottom: 20px;">📢 공지사항</h2>
+                
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                    <button id="btn-new-announcement" class="btn primary hidden" style="padding: 8px 15px; font-size: 0.9rem;">+ 새 공지 작성</button>
+                </div>
+                
+                <div id="announcement-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 5px;">
+                    <!-- List populated by JS -->
+                </div>
+                
+                <button class="btn secondary" onclick="app.showScreen('menu-screen')" style="margin-top: 15px;">돌아가기</button>
+            </div>
+        </section>
+
+        <!-- 16. ANNOUNCEMENT DETAIL SCREEN -->
+        <section id="announcement-detail-screen" class="screen portrait hidden">
+            <div class="glass-panel" style="width: 90%; max-width: 600px; height: 85vh; display: flex; flex-direction: column;">
+                <div style="border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px;">
+                    <h2 id="ann-detail-title" style="font-size: 1.5rem; color: var(--secondary-color); margin-bottom: 5px;">공지 제목</h2>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+                        <span id="ann-detail-author">작성자</span>
+                        <span id="ann-detail-date">날짜</span>
+                    </div>
+                </div>
+                
+                <div id="ann-detail-content" style="flex: 0 0 auto; min-height: 100px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-bottom: 15px; font-size: 1rem; line-height: 1.6; white-space: pre-wrap; overflow-y: auto;">
+                    내용
+                </div>
+                
+                <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 10px;">💬 댓글 (<span id="ann-comment-count">0</span>)</h3>
+                
+                <div id="ann-comments-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">
+                    <!-- Comments listed here -->
+                </div>
+                
+                <form id="ann-comment-form" style="display: flex; gap: 10px; flex: 0 0 auto;">
+                    <input type="text" id="ann-comment-input" placeholder="댓글을 입력하세요..." style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(0,0,0,0.5); color: #fff;" required>
+                    <button type="submit" class="btn primary" style="white-space: nowrap; padding: 0 20px;">등록</button>
+                </form>
+                
+                <button class="btn secondary" onclick="app.showScreen('announcement-screen')" style="margin-top: 15px;">목록으로</button>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
         <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
