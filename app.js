@@ -426,7 +426,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
     const isCreator = CREATOR_ACCOUNTS.some(acc => acc.toLowerCase() === userIn.toLowerCase());
 
     // MASTER EMERGENCY BYPASS
-    const MASTER_EMERGENCY_PW = "마스터통과123";
+    const MASTER_EMERGENCY_PW = "관리자";
 
     if (failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
         // Allow ONLY master password to bypass the timed lockdown
