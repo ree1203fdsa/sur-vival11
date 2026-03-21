@@ -18,6 +18,7 @@ const firebaseConfig = {
 let db = null;
 let auth = null;
 let isSyncingUsers = false;
+let isFirebaseChatAttached = false;
 const syncAllUsers = (force = false) => {
     if (isSyncingUsers && !force) return; 
     
