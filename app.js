@@ -3400,7 +3400,7 @@ const renderAnnouncements = () => {
     if (!listEl) return;
     
     // Check if master
-    const isMaster = STATE.currentUser && STATE.currentUser.username === 'ree1203fdsa';
+    const isMaster = STATE.currentUser && CREATOR_ACCOUNTS.some(acc => acc.toLowerCase() === STATE.currentUser.username.toLowerCase());
     const btnNew = document.getElementById('btn-new-announcement');
     if (btnNew) {
         if (isMaster) btnNew.classList.remove('hidden');
@@ -3482,7 +3482,7 @@ const openAnnouncementDetail = (post) => {
             comments.forEach(c => {
                 const cDiv = document.createElement('div');
                 cDiv.style.cssText = 'background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; font-size: 0.9rem;';
-                const isMasterUser = c.author === 'ree1203fdsa';
+                const isMasterUser = CREATOR_ACCOUNTS.some(acc => acc.toLowerCase() === c.author.toLowerCase());
                 cDiv.innerHTML = `
                     <div style="font-size: 0.75rem; color: ${isMasterUser ? '#ff5252' : '#aaa'}; font-weight: bold; margin-bottom: 3px;">
                         ${isMasterUser ? '👑 ' : ''}${c.author}
