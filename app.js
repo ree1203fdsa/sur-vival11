@@ -2605,18 +2605,35 @@ function init3DGame() {
             c.position.y = -2 + Math.sin(Date.now() * 0.002 + c.position.x) * 0.2;
         });
 
-        // Animate Collectibles
-        scene.userData.collectibles.forEach(item => {
+        // Animate Collectibles & Auto-collect Meat
+        for (let i = scene.userData.collectibles.length - 1; i >= 0; i--) {
+            const item = scene.userData.collectibles[i];
+            
+            // Animation
             if (item.userData.type === 'thirst') { // Water Drop
                 item.rotation.y += 0.01;
-                // Wobble effect: scale Y slightly
                 const wobble = 1 + Math.sin(Date.now() * 0.005 + item.position.x) * 0.1;
                 item.scale.set(1 / wobble, wobble, 1 / wobble);
             } else {
                 item.rotation.y += 0.02;
             }
             item.position.y = 0.5 + Math.sin(Date.now() * 0.005 + item.position.x) * 0.1;
-        });
+
+            // Auto-pickup logic for Meat
+            if (item.userData.symbol === '🍖') {
+                if (item.position.distanceTo(playerGroup.position) < 2.0) {
+                    STATE.currentUser.hunger = Math.min(100, (STATE.currentUser.hunger || 0) + item.userData.amount);
+                    STATE.currentUser.health = Math.min(100, (STATE.currentUser.health || 0) + 10);
+                    app.updateQuestProgress('eat', 1);
+                    showToast(`고기(+${item.userData.amount}🍖) 자동 섭취! 허기와 체력이 회복되었습니다.`, 'success');
+                    
+                    scene.remove(item);
+                    scene.userData.collectibles.splice(i, 1);
+                    updateUI();
+                    saveData();
+                }
+            }
+        }
 
         // Survival System: Hunger & Thirst
         if (STATE.currentUser.role !== 'admin' && STATE.currentUser.role !== 'creator' && Date.now() % 1000 < 20) {
