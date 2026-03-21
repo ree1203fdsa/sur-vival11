@@ -54,40 +54,11 @@ if (FIREBASE_ENABLED && typeof firebase !== 'undefined') {
     db = firebase.database();
     auth = firebase.auth();
 
-    // persistent login check
+    // persistent login check (Auto-login disabled per user request)
     auth.onAuthStateChanged((user) => {
+        // Automatically sign out if there's a residual session, enforcing manual login
         if (user && !STATE.currentUser) {
-            db.ref('users/' + user.uid).once('value').then((snapshot) => {
-                const userData = snapshot.val();
-                if (userData) {
-                    STATE.currentUser = { ...userData, uid: user.uid };
-                    
-                    // Auto-promote master accounts completely regardless of online DB info
-                    if (CREATOR_ACCOUNTS.includes(STATE.currentUser.username) || STATE.currentUser.username === 'ree1203fdsa') {
-                        STATE.currentUser.role = 'creator';
-                        db.ref('users/' + user.uid + '/role').set('creator').catch(e => console.warn('Bypassed permission set'));
-                    }
-                    
-                    updateUI();
-                    
-                    // If creator, sync.
-                    if (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator') {
-                        syncAllUsers();
-                    }
-                    
-                    initFirebaseChatListener();
-                    
-                    showScreen('menu-screen');
-                    showToast(`${STATE.currentUser.username}님, 자동 로그인되었습니다. 👑`, 'info');
-                }
-            }).catch(err => {
-                // If permission is denied even reading own row, force as master if email matches
-                if (user.email && user.email.includes("ree1203fdsa")) {
-                     STATE.currentUser = { username: 'ree1203fdsa', role: 'creator', coins: 99999, uid: user.uid };
-                     updateUI();
-                     showScreen('menu-screen');
-                }
-            });
+            auth.signOut().catch(e => console.error("Sign out error", e));
         }
     });
 }
