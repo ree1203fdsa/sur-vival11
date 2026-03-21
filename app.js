@@ -390,6 +390,21 @@ let loginCooldownTimer = null;
 const MAX_FAILED_ATTEMPTS = 5;
 const COOLDOWN_MINUTES = 3;
 
+// Password Visibility Toggle
+const togglePwdBtn = document.getElementById('toggle-password');
+const pwdInput = document.getElementById('password');
+if (togglePwdBtn && pwdInput) {
+    togglePwdBtn.addEventListener('click', () => {
+        if (pwdInput.type === 'password') {
+            pwdInput.type = 'text';
+            togglePwdBtn.textContent = '🔒'; // Hide icon
+        } else {
+            pwdInput.type = 'password';
+            togglePwdBtn.textContent = '👁️'; // Show icon
+        }
+    });
+}
+
 document.getElementById('login-form').addEventListener('submit', (e) => {
     e.preventDefault();
 
