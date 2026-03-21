@@ -627,8 +627,8 @@ if (googleLoginBtn) {
             console.error(error);
             if (error.code === 'auth/operation-not-allowed') {
                 showToast('Firebase에서 Google 로그인이 켜져있지 않습니다! 개발자 설정을 확인하세요.', 'error');
-            } else if (error.code !== 'auth/popup-closed-by-user') {
-                showToast(`구글 로그인 실패: ${error.message}`, 'error');
+            } else {
+                showToast(`구글 로그인 실패 (${error.code}): ${error.message}`, 'error');
             }
         });
     });
