@@ -228,6 +228,16 @@ const showScreen = (screenId) => {
         if (screenId === 'menu-screen' && STATE.currentUser) updateUI();
     }, 10);
 
+    // Toggle aurora background based on screen
+    const bgWrapper = document.querySelector('.bg-wrapper');
+    if (bgWrapper) {
+        if (screenId.includes('announcement-')) {
+            bgWrapper.style.display = 'none'; // Hide completely for announcements
+        } else {
+            bgWrapper.style.display = 'block'; // Show for all other screens
+        }
+    }
+
     // Orientation check for game screen on mobile
     const warning = document.getElementById('orientation-warning');
     const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
