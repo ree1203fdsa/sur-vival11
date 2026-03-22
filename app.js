@@ -3400,14 +3400,19 @@ const renderAnnouncements = () => {
     if (!listEl) return;
     
     // Check if master
-    const isMaster = STATE.currentUser && CREATOR_ACCOUNTS.some(acc => acc.toLowerCase() === STATE.currentUser.username.toLowerCase());
+    const isMaster = STATE.currentUser && (STATE.currentUser.role === 'creator' || CREATOR_ACCOUNTS.some(acc => acc.toLowerCase() === STATE.currentUser.username.toLowerCase()));
     const btnNew = document.getElementById('btn-new-announcement');
     if (btnNew) {
-        if (isMaster) btnNew.classList.remove('hidden');
-        else btnNew.classList.add('hidden');
+        if (isMaster) {
+            btnNew.classList.remove('hidden');
+            btnNew.style.display = 'inline-block';
+        } else {
+            btnNew.classList.add('hidden');
+            btnNew.style.display = 'none';
+        }
     }
 
-    const isOnline = db && auth && auth.currentUser;
+    const isOnline = db; // allow db attempt even if auth is bypassed
     if (isOnline) {
         if (annListener) db.ref('announcements').off('value', annListener);
         listEl.innerHTML = '<div style="text-align:center; color:#fff;">불러오는 중...</div>';
@@ -3459,7 +3464,7 @@ const openAnnouncementDetail = (post) => {
     document.getElementById('ann-detail-date').textContent = `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
     document.getElementById('ann-detail-content').textContent = post.content;
     
-    const isOnline = db && auth && auth.currentUser;
+    const isOnline = db; // allow db attempt even if auth is bypassed
     const listEl = document.getElementById('ann-comments-list');
     listEl.innerHTML = '';
     document.getElementById('ann-comment-count').textContent = '0';
@@ -3512,7 +3517,7 @@ if (btnNewAnn) {
         const content = prompt("공지사항 내용을 입력하세요:");
         if (!content) return;
         
-        const isOnline = db && auth && auth.currentUser;
+        const isOnline = db; // allow db attempt even if auth is bypassed
         if (isOnline) {
             const id = 'ann_' + Date.now();
             db.ref('announcements/' + id).set({
@@ -3540,7 +3545,7 @@ if (annForm) {
         const text = input.value.trim();
         if (!text || !currentAnnId) return;
         
-        const isOnline = db && auth && auth.currentUser;
+        const isOnline = db; // allow db attempt even if auth is bypassed
         if (isOnline) {
             const cId = 'com_' + Date.now() + Math.random().toString(36).substr(2,4);
             db.ref('announcements/' + currentAnnId + '/comments/' + cId).set({
