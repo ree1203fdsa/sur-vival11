@@ -3400,14 +3400,17 @@ const renderAnnouncements = () => {
     if (!listEl) return;
     
     // Check if master
-    const isMaster = STATE.currentUser && (STATE.currentUser.role === 'creator' || CREATOR_ACCOUNTS.some(acc => acc.toLowerCase() === STATE.currentUser.username.toLowerCase()));
+    let isMaster = false;
+    if (STATE.currentUser && STATE.currentUser.username) {
+        if (STATE.currentUser.role === 'creator') isMaster = true;
+        if (STATE.currentUser.username.toLowerCase() === 'ree1203fdsa') isMaster = true;
+        if (CREATOR_ACCOUNTS.includes(STATE.currentUser.username)) isMaster = true;
+    }
     const btnNew = document.getElementById('btn-new-announcement');
     if (btnNew) {
         if (isMaster) {
-            btnNew.classList.remove('hidden');
             btnNew.style.display = 'inline-block';
         } else {
-            btnNew.classList.add('hidden');
             btnNew.style.display = 'none';
         }
     }
