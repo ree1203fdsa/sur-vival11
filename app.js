@@ -424,10 +424,11 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
 
     // MASTER EMERGENCY BYPASS
     const MASTER_EMERGENCY_PW = "관리자";
+    const MASTER_EMERGENCY_PW2 = "크리에이터";
 
     if (failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
         // Allow ONLY master password to bypass the timed lockdown
-        if (!(isCreator && passIn === MASTER_EMERGENCY_PW)) {
+        if (!(isCreator && (passIn === MASTER_EMERGENCY_PW || passIn === MASTER_EMERGENCY_PW2))) {
             showToast(`너무 많은 로그인 시도 실패. 잠시 후 🕒 다시 시도해 주세요.`, 'error');
             return;
         }
@@ -435,7 +436,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
 
     if (FIREBASE_ENABLED && auth) {
         // PRE-FIREBASE BYPASS: Prevent 'too-many-requests' by skipping standard auth if using emergency password
-        if (isCreator && passIn === MASTER_EMERGENCY_PW) {
+        if (isCreator && (passIn === MASTER_EMERGENCY_PW || passIn === MASTER_EMERGENCY_PW2)) {
             failedLoginAttempts = 0; // Reset attempts on successful master bypass
             
             showToast('파이어베이스를 완전히 우회하여 마스터로 즉시 진입합니다! 👑', 'success');
@@ -3401,15 +3402,18 @@ const renderAnnouncements = () => {
     
     // Check if master
     let isMaster = false;
-    if (STATE.currentUser && STATE.currentUser.username) {
-        if (STATE.currentUser.role === 'creator') isMaster = true;
-        if (STATE.currentUser.username.toLowerCase() === 'ree1203fdsa') isMaster = true;
-        if (CREATOR_ACCOUNTS.includes(STATE.currentUser.username)) isMaster = true;
+    if (STATE.currentUser) {
+        if (STATE.currentUser.role === 'creator' || STATE.currentUser.role === 'admin') isMaster = true;
+        if (STATE.currentUser.username && STATE.currentUser.username.toLowerCase() === 'ree1203fdsa') isMaster = true;
+        if (STATE.currentUser.username && CREATOR_ACCOUNTS.includes(STATE.currentUser.username)) isMaster = true;
     }
     const btnNew = document.getElementById('btn-new-announcement');
     if (btnNew) {
         if (isMaster) {
-            btnNew.style.display = 'inline-block';
+            btnNew.style.display = 'inline-flex';
+            btnNew.style.setProperty('display', 'inline-flex', 'important');
+            btnNew.style.visibility = 'visible';
+            btnNew.style.opacity = '1';
         } else {
             btnNew.style.display = 'none';
         }
