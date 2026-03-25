@@ -3699,8 +3699,11 @@ if (btnNewAnn) {
         if (modal) {
             document.getElementById('new-ann-title').value = '';
             document.getElementById('new-ann-content').value = '';
-            modal.classList.add('active'); // ensure it shows
             modal.style.display = 'flex';
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.add('show'), 10);
+            const panel = modal.querySelector('.glass-panel');
+            if (panel) panel.style.transform = 'scale(1)';
         }
     });
 }
@@ -3726,7 +3729,12 @@ if (btnSubmitAnn) {
                 time: Date.now()
             }).then(() => {
                 showToast('공지사항이 성공적으로 등록되었습니다.', 'success');
-                document.getElementById('ann-create-modal').style.display = 'none';
+                const modal = document.getElementById('ann-create-modal');
+                if (modal) {
+                    modal.classList.remove('show');
+                    setTimeout(() => modal.classList.add('hidden'), 300);
+                    modal.style.display = 'none';
+                }
             }).catch(e => {
                 showToast('공지 등록 실패: ' + e.message, 'error');
             });
