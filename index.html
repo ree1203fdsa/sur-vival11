@@ -1079,7 +1079,12 @@
 
             <div class="glass-panel" style="width: 90%; max-width: 600px; height: 80vh; display: flex; flex-direction: column; background: #1a1a24; position: relative; padding: 40px 20px 20px; border-radius: 20px;">
                 <button class="btn secondary" onclick="app.showScreen('menu-screen')" style="align-self: flex-start; margin-bottom: 15px; padding: 10px 20px; background-color: #ff5252 !important; color: #fff !important; border: 2px solid #fff; font-size: 1rem; font-weight: 900; pointer-events: all; border-radius: 10px; box-shadow: 0 4px 10px rgba(255,0,0,0.3);">◀ 돌아가기</button>
-                <h2 style="font-size: 2.2rem; color: #00ff88; margin-bottom: 25px; text-align: center; text-shadow: 0 0 10px rgba(0,255,136,0.5);">📢 공지사항</h2>
+                <div id="ann-tabs" style="display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px;">
+                    <button class="btn" onclick="renderAnnouncements('all')" style="flex:1; white-space:nowrap; padding: 8px 12px; background: rgba(0,255,136,0.2); color: #00ff88; border: 1px solid #00ff88; border-radius: 8px; font-size: 0.9rem;">전체</button>
+                    <button class="btn" onclick="renderAnnouncements('notice')" style="flex:1; white-space:nowrap; padding: 8px 12px; background: rgba(255,255,255,0.05); color: #ccc; border: 1px solid #444; border-radius: 8px; font-size: 0.9rem;">📢 공지</button>
+                    <button class="btn" onclick="renderAnnouncements('event')" style="flex:1; white-space:nowrap; padding: 8px 12px; background: rgba(255,255,255,0.05); color: #ccc; border: 1px solid #444; border-radius: 8px; font-size: 0.9rem;">🎁 이벤트</button>
+                    <button class="btn" onclick="renderAnnouncements('update')" style="flex:1; white-space:nowrap; padding: 8px 12px; background: rgba(255,255,255,0.05); color: #ccc; border: 1px solid #444; border-radius: 8px; font-size: 0.9rem;">🛠️ 업데이트</button>
+                </div>
                 
                 <div id="announcement-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding-right: 10px;">
                     <!-- List populated by JS -->
@@ -1093,9 +1098,19 @@
                 <h2 style="color: var(--primary-color); margin-bottom: 25px; text-align: center; font-size: 1.8rem;">🆕 새 공지 작성</h2>
                 
                 <div style="display: flex; flex-direction: column; gap: 20px;">
-                    <div class="input-group">
-                        <label style="color: #00ff88; font-weight: bold; margin-bottom: 8px; display: block;">제목</label>
-                        <input type="text" id="new-ann-title" placeholder="제목을 입력하세요" style="width: 100%; padding: 14px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 10px; font-size: 1.1rem; box-sizing: border-box;">
+                    <div style="display: flex; gap: 15px;">
+                        <div class="input-group" style="flex: 1;">
+                            <label style="color: #00ff88; font-weight: bold; margin-bottom: 8px; display: block;">카테고리</label>
+                            <select id="new-ann-type" style="width: 100%; padding: 14px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 10px; font-size: 1.1rem;">
+                                <option value="notice">📢 공지사항</option>
+                                <option value="event">🎁 이벤트</option>
+                                <option value="update">🛠️ 업데이트</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="flex: 2;">
+                            <label style="color: #00ff88; font-weight: bold; margin-bottom: 8px; display: block;">제목</label>
+                            <input type="text" id="new-ann-title" placeholder="제목을 입력하세요" style="width: 100%; padding: 14px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 10px; font-size: 1.1rem; box-sizing: border-box;">
+                        </div>
                     </div>
                     <div class="input-group">
                         <label style="color: #00ff88; font-weight: bold; margin-bottom: 8px; display: block;">내용</label>
@@ -1146,7 +1161,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=14"></script>
+        <script src="app.js?v=15"></script>
 </body>
 
 </html>

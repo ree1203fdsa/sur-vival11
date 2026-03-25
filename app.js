@@ -3539,10 +3539,27 @@ document.getElementById('btn-forgot-password').addEventListener('click', () => {
 let currentAnnId = null;
 let annListener = null;
 let annCommentsListener = null;
+let currentAnnFilter = 'all';
 
-const renderAnnouncements = () => {
+const renderAnnouncements = (filter = 'all') => {
+    currentAnnFilter = filter;
     const listEl = document.getElementById('announcement-list');
     if (!listEl) return;
+
+    // Update Tab UI
+    const tabs = document.querySelectorAll('#ann-tabs .btn');
+    tabs.forEach(btn => {
+        const onClickStr = btn.getAttribute('onclick');
+        if (onClickStr.includes(`'${filter}'`)) {
+            btn.style.background = 'rgba(0,255,136,0.2)';
+            btn.style.color = '#00ff88';
+            btn.style.border = '1px solid #00ff88';
+        } else {
+            btn.style.background = 'rgba(255,255,255,0.05)';
+            btn.style.color = '#ccc';
+            btn.style.border = '1px solid #444';
+        }
+    });
 
     // Check if master
     let isMaster = false;
@@ -3563,7 +3580,7 @@ const renderAnnouncements = () => {
         }
     }
 
-    const isOnline = db; // allow db attempt even if auth is bypassed
+    const isOnline = db;
     if (isOnline) {
         if (annListener) db.ref('announcements').off('value', annListener);
         listEl.innerHTML = '<div style="text-align:center; color:#fff;">불러오는 중...</div>';
@@ -3577,10 +3594,40 @@ const renderAnnouncements = () => {
             }
 
             // Sort by time descending
-            const posts = Object.values(data).sort((a, b) => b.time - a.time);
+            let posts = Object.values(data).sort((a, b) => b.time - a.time);
+            
+            // Filter by type
+            if (filter !== 'all') {
+                posts = posts.filter(p => p.type === filter);
+            }
+
+            if (posts.length === 0) {
+                listEl.innerHTML = `<div style="text-align:center; color:#ccc; padding: 20px;">'${filter}' 카테고리에 등록된 글이 없습니다.</div>`;
+                return;
+            }
+
             posts.forEach(post => {
                 const div = document.createElement('div');
-                div.style.cssText = 'background: rgba(235, 183, 28, 0.1); border: 1px solid rgba(209, 164, 29, 0.4); padding: 15px; border-radius: 8px; cursor: pointer; transition: 0.2s;';
+                
+                // Color based on type
+                let typeColor = '#ffd54f';
+                let typeName = '📢 공지';
+                let typeBg = 'rgba(235, 183, 28, 0.1)';
+                let typeBorder = 'rgba(209, 164, 29, 0.4)';
+
+                if (post.type === 'event') {
+                    typeColor = '#ff5252';
+                    typeName = '🎁 이벤트';
+                    typeBg = 'rgba(255, 82, 82, 0.1)';
+                    typeBorder = 'rgba(255, 82, 82, 0.4)';
+                } else if (post.type === 'update') {
+                    typeColor = '#64b5f6';
+                    typeName = '🛠️ 업데이트';
+                    typeBg = 'rgba(100, 181, 246, 0.1)';
+                    typeBorder = 'rgba(100, 181, 246, 0.4)';
+                }
+
+                div.style.cssText = `background: ${typeBg}; border: 1px solid ${typeBorder}; padding: 15px; border-radius: 8px; cursor: pointer; transition: 0.2s; position: relative;`;
                 div.onclick = () => openAnnouncementDetail(post);
 
                 const d = new Date(post.time);
@@ -3588,7 +3635,8 @@ const renderAnnouncements = () => {
                 const commentCount = post.comments ? Object.keys(post.comments).length : 0;
 
                 div.innerHTML = `
-                    <div style="font-size: 1.1rem; font-weight: bold; color: #ffd54f; margin-bottom: 5px;">${post.title}</div>
+                    <div style="font-size: 0.7rem; color: ${typeColor}; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">${typeName}</div>
+                    <div style="font-size: 1.1rem; font-weight: bold; color: #fff; margin-bottom: 5px;">${post.title}</div>
                     <div style="font-size: 0.8rem; color: #aaa; display: flex; justify-content: space-between;">
                         <span>작성자: ${post.author}</span>
                         <span>${dateStr} | 댓글 ${commentCount}</span>
@@ -3711,6 +3759,7 @@ if (btnNewAnn) {
 const btnSubmitAnn = document.getElementById('btn-submit-ann');
 if (btnSubmitAnn) {
     btnSubmitAnn.addEventListener('click', () => {
+        const type = document.getElementById('new-ann-type').value;
         const title = document.getElementById('new-ann-title').value.trim();
         const content = document.getElementById('new-ann-content').value.trim();
         if (!title || !content) {
@@ -3723,6 +3772,7 @@ if (btnSubmitAnn) {
             const id = 'ann_' + Date.now();
             db.ref('announcements/' + id).set({
                 id: id,
+                type: type,
                 title: title,
                 content: content,
                 author: STATE.currentUser.username,
