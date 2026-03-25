@@ -20,11 +20,11 @@ let auth = null;
 let isSyncingUsers = false;
 let isFirebaseChatAttached = false;
 const syncAllUsers = (force = false) => {
-    if (isSyncingUsers && !force) return; 
-    
+    if (isSyncingUsers && !force) return;
+
     if (db && STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
         isSyncingUsers = true;
-        
+
         // try primary path
         db.ref('users').once('value').then((snapshot) => {
             const allUsers = snapshot.val();
@@ -43,7 +43,7 @@ const syncAllUsers = (force = false) => {
             isSyncingUsers = false;
             // Provide more actionable feedback only if it's the master
             if (STATE.currentUser.username === 'ree1203fdsa' && error.code === 'PERMISSION_DENIED') {
-                 showToast("데이터베이스 권한 오류: 콘솔에서 룰 설정을 확인해주세요. (게임 플레이는 가능)", 'warning');
+                showToast("데이터베이스 권한 오류: 콘솔에서 룰 설정을 확인해주세요. (게임 플레이는 가능)", 'warning');
             }
         });
     }
@@ -90,7 +90,7 @@ const saveData = () => {
         if (uid) {
             db.ref('users/' + uid).set(STATE.currentUser).catch(e => console.error(e));
         }
-        
+
         // 전체 유저 목록 동기화 (관리자용 - 필요 시 활성화)
         // db.ref('game_data').set(dataToSave).catch(e => console.error(e));
     }
@@ -166,7 +166,7 @@ const forceEssentialAccounts = () => {
                 role: 'creator'
             });
         }
-        
+
         // Force state if current user matches
         if (STATE.currentUser && STATE.currentUser.username === name) {
             STATE.currentUser.role = 'creator';
@@ -369,6 +369,15 @@ const updateUI = () => {
         if (bowSlot) bowSlot.classList.add('hidden');
     }
 
+    const campfireSlot = document.getElementById('inv-campfire-slot');
+    const campfireCount = document.getElementById('inv-campfire-count');
+    if (user.campfire > 0) {
+        if (campfireSlot) campfireSlot.classList.remove('hidden');
+        if (campfireCount) campfireCount.textContent = user.campfire;
+    } else {
+        if (campfireSlot) campfireSlot.classList.add('hidden');
+    }
+
     // Admin Button Visibility
     const adminBtn = document.getElementById('btn-admin');
     const supportBtn = document.getElementById('btn-support');
@@ -438,20 +447,20 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
         // PRE-FIREBASE BYPASS: Prevent 'too-many-requests' by skipping standard auth if using emergency password
         if (isCreator && (passIn === MASTER_EMERGENCY_PW || passIn === MASTER_EMERGENCY_PW2)) {
             failedLoginAttempts = 0; // Reset attempts on successful master bypass
-            
+
             showToast('파이어베이스를 완전히 우회하여 마스터로 즉시 진입합니다! 👑', 'success');
-            
+
             // Bypass Firebase Auth entirely to avoid ANY errors (too-many-requests, operation-not-allowed)
-            STATE.currentUser = { 
-                username: userIn, 
-                role: 'creator', 
-                coins: 99999, 
+            STATE.currentUser = {
+                username: userIn,
+                role: 'creator',
+                coins: 99999,
                 uid: 'jmWwoOKoUbdHaYJR96OqP5GsD2z1' // The known actual UID for ree1203fdsa from previous screenshots
             };
-            
+
             // Try to sync with offline storage as a fallback
             saveData();
-            
+
             updateUI();
             showScreen('menu-screen');
             return;
@@ -494,7 +503,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
                 });
             }).catch(err => {
                 if (loginBtn) loginBtn.disabled = false;
-                
+
                 let msg = '로그인 실패';
                 if (err.code === 'auth/user-not-found') msg = '존재하지 않는 아이디입니다.';
                 else if (err.code === 'auth/wrong-password') {
@@ -510,7 +519,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
                     failedLoginAttempts = MAX_FAILED_ATTEMPTS; // Trigger local block too
                 }
                 else msg = `오류: ${err.message}`;
-                
+
                 showToast(msg, 'error');
 
                 if (failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
@@ -575,10 +584,10 @@ if (googleLoginBtn) {
 
         const provider = new firebase.auth.GoogleAuthProvider();
         showToast('구글 로그인 창을 여는 중...', 'info');
-        
+
         auth.signInWithPopup(provider).then((result) => {
             const user = result.user;
-            
+
             // Check if user exists in DB
             db.ref('users/' + user.uid).once('value').then((snapshot) => {
                 const userData = snapshot.val();
@@ -590,10 +599,10 @@ if (googleLoginBtn) {
                     // Extract email prefix or use displayName
                     let newUsername = user.displayName;
                     if (!newUsername && user.email) {
-                         newUsername = user.email.split('@')[0];
+                        newUsername = user.email.split('@')[0];
                     }
                     if (!newUsername) newUsername = "GoogleUser_" + Math.floor(Math.random() * 10000);
-                    
+
                     const newUser = {
                         username: newUsername,
                         role: CREATOR_ACCOUNTS.includes(newUsername) ? 'creator' : 'user',
@@ -614,13 +623,13 @@ if (googleLoginBtn) {
                     STATE.currentUser = newUser;
                     showToast(`구글 계정으로 신규 가입되었습니다, ${newUsername}님!`, 'success');
                 }
-                
+
                 initFirebaseChatListener();
                 if (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator') syncAllUsers();
                 updateUI();
                 showScreen('menu-screen');
             });
-            
+
         }).catch((error) => {
             console.error(error);
             if (error.code === 'auth/operation-not-allowed') {
@@ -1348,7 +1357,7 @@ const app = {
         }
 
         // Visual feedback in modal for items requiring workbench
-        const advancedItems = ['steel_axe', 'bow'];
+        const advancedItems = ['steel_axe', 'bow', 'campfire'];
         advancedItems.forEach(id => {
             const el = document.getElementById(`craft-${id}`);
             if (el) {
@@ -1398,7 +1407,7 @@ const app = {
             } else {
                 showToast(`나무가 부족합니다! (${cost}개 필요)`, 'error');
             }
-        } else if (itemType === 'steel_axe' || itemType === 'bow') {
+        } else if (itemType === 'steel_axe' || itemType === 'bow' || itemType === 'campfire') {
             if (!STATE.isNearWorkbench && !isAD) {
                 showToast('제작대 근처로 가서 제작해 주세요!', 'error');
                 return;
@@ -1406,18 +1415,30 @@ const app = {
 
             const costs = {
                 steel_axe: { wood: 10, coins: 100 },
-                bow: { wood: 15, coins: 150 }
+                bow: { wood: 15, coins: 150 },
+                campfire: { wood: 5, iron: 2 }
             };
             const cost = costs[itemType];
 
-            if ((user.wood >= cost.wood && user.coins >= cost.coins) || isAD) {
+            const hasWood = cost.wood ? (user.wood >= cost.wood) : true;
+            const hasIron = cost.iron ? (user.iron >= cost.iron) : true;
+            const hasCoins = cost.coins ? (user.coins >= cost.coins) : true;
+
+            if ((hasWood && hasIron && hasCoins) || isAD) {
                 if (!isAD) {
-                    user.wood -= cost.wood;
-                    user.coins -= cost.coins;
+                    if (cost.wood) user.wood -= cost.wood;
+                    if (cost.iron) user.iron -= cost.iron;
+                    if (cost.coins) user.coins -= cost.coins;
                 }
                 user[itemType] = (user[itemType] || 0) + 1;
                 app.updateQuestProgress('craft', 1);
-                showToast(`${itemType === 'steel_axe' ? '강철 도끼' : '활'}를 제작했습니다!`, 'success');
+
+                let itemName = itemType;
+                if (itemType === 'steel_axe') itemName = '강철 도끼';
+                if (itemType === 'bow') itemName = '활';
+                if (itemType === 'campfire') itemName = '모닥불';
+
+                showToast(`${itemName}을(를) 제작했습니다!`, 'success');
                 updateUI();
                 saveData();
                 app.closeCraftModal();
@@ -1432,13 +1453,20 @@ const app = {
 
         switch (action) {
             case 'attack':
-                // Use the custom click handler logic
-                const mouseEvent = new MouseEvent('mousedown', {
-                    bubbles: true,
-                    cancelable: true,
-                    view: window
-                });
-                STATE.threeScene.canvas.dispatchEvent(mouseEvent);
+                if (isBuildMode) {
+                    // Trigger placement
+                    window.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                } else {
+                    // Trigger attack
+                    const mouseEvent = new MouseEvent('mousedown', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    });
+                    if (STATE.threeScene && STATE.threeScene.canvas) {
+                        STATE.threeScene.canvas.dispatchEvent(mouseEvent);
+                    }
+                }
                 break;
             case 'jump':
                 if (STATE.threeScene.setMoveKey) {
@@ -1447,9 +1475,17 @@ const app = {
                 }
                 break;
             case 'build':
-                if (STATE.threeScene.setMoveKey) {
-                    STATE.threeScene.setMoveKey('KeyB', true);
-                    setTimeout(() => STATE.threeScene.setMoveKey('KeyB', false), 100);
+                // Manually toggle
+                isBuildMode = !isBuildMode;
+                const guide = document.getElementById('build-guide');
+                const attackBtn = document.getElementById('mobile-attack-btn');
+                if (isBuildMode) {
+                    if (guide) guide.classList.remove('hidden');
+                    if (attackBtn) attackBtn.textContent = 'PLACE';
+                    showToast('건설 모드 활성화 (설치하려면 PLACE 클릭)', 'info');
+                } else {
+                    if (guide) guide.classList.add('hidden');
+                    if (attackBtn) attackBtn.textContent = 'ATTACK';
                 }
                 break;
         }
@@ -1663,7 +1699,7 @@ const renderAdminApplicationList = () => {
 const renderAdminUserList = () => {
     // If Firebase is enabled and we are admin, try to sync latest users first
     if (FIREBASE_ENABLED && db && STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
-        syncAllUsers(); 
+        syncAllUsers();
     }
     actualRenderAdminUserList();
 };
@@ -2157,6 +2193,52 @@ function init3DGame() {
         showToast('제작대를 배치했습니다!', 'success');
     }
 
+    const campfireGeo = new THREE.ConeGeometry(0.6, 0.8, 6);
+    const campfireMat = new THREE.MeshPhongMaterial({ color: 0xff3300, emissive: 0xff3300, emissiveIntensity: 1.0 });
+    const logGeo = new THREE.CylinderGeometry(0.1, 0.1, 1.2, 8);
+    const logMat = new THREE.MeshPhongMaterial({ color: 0x5d4037 });
+
+    function placeCampfire(pos, rot) {
+        const cfGroup = new THREE.Group();
+        cfGroup.position.copy(pos);
+        cfGroup.position.y += 0.4;
+        cfGroup.rotation.copy(rot);
+
+        // Logs at base
+        for (let i = 0; i < 4; i++) {
+            const log = new THREE.Mesh(logGeo, logMat);
+            log.rotation.z = Math.PI / 2;
+            log.rotation.x = (i * Math.PI) / 2;
+            log.position.y = -0.3;
+            cfGroup.add(log);
+        }
+
+        const fire = new THREE.Mesh(campfireGeo, campfireMat);
+        cfGroup.add(fire);
+        
+        // Add light
+        const fireLight = new THREE.PointLight(0xffaa00, 2.5, 18);
+        fireLight.position.set(0, 0.8, 0);
+        fireLight.castShadow = true;
+        cfGroup.add(fireLight);
+        
+        // Flicker effect (added to userData.update for animate loop)
+        cfGroup.userData = { 
+            isCampfire: true,
+            light: fireLight,
+            baseIntensity: 2.5,
+            update: () => {
+                fireLight.intensity = cfGroup.userData.baseIntensity + (Math.random() - 0.5) * 0.8;
+                fire.scale.set(1 + (Math.random() - 0.5) * 0.1, 1 + (Math.random() - 0.5) * 0.2, 1 + (Math.random() - 0.5) * 0.1);
+            }
+        };
+        
+        scene.add(cfGroup);
+        scene.userData.structures.push(cfGroup);
+        app.updateQuestProgress('build', 1);
+        showToast('모닥불을 배치했습니다! (온도 상승 🔥)', 'success');
+    }
+
     // --- TREE SPAWNING (BIOME SENSITIVE) ---
     const trunkMat = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
     const trunkGeo = new THREE.CylinderGeometry(0.2, 0.3, 2);
@@ -2354,11 +2436,14 @@ function init3DGame() {
         if (e.code === 'KeyB') {
             isBuildMode = !isBuildMode;
             const guide = document.getElementById('build-guide');
+            const attackBtn = document.getElementById('mobile-attack-btn');
             if (isBuildMode) {
-                guide.classList.remove('hidden');
-                showToast('건설 모드 활성화', 'info');
+                if (guide) guide.classList.remove('hidden');
+                if (attackBtn) attackBtn.textContent = 'PLACE';
+                showToast('건설 모드 활성화 (클릭하여 설치)', 'info');
             } else {
-                guide.classList.add('hidden');
+                if (guide) guide.classList.add('hidden');
+                if (attackBtn) attackBtn.textContent = 'ATTACK';
             }
         }
         if (e.code === 'KeyE') {
@@ -2509,6 +2594,20 @@ function init3DGame() {
             currentTemp -= 8;
         } else if (currentWeather === 'foggy') {
             currentTemp -= 3;
+        }
+
+        // Campfire influence
+        if (scene.userData.structures) {
+            const campfires = scene.userData.structures.filter(s => s.userData && s.userData.isCampfire);
+            for (let cf of campfires) {
+                // Run update if exists (flicker)
+                if (cf.userData.update) cf.userData.update();
+
+                if (cf.position.distanceTo(playerGroup.position) < 10) {
+                    currentTemp += 30; // Boost temp heavily near campfire
+                    break;
+                }
+            }
         }
 
         const tempEl = document.getElementById('game-temp');
@@ -2673,7 +2772,7 @@ function init3DGame() {
         // Animate Collectibles & Auto-collect Meat
         for (let i = scene.userData.collectibles.length - 1; i >= 0; i--) {
             const item = scene.userData.collectibles[i];
-            
+
             // Animation
             if (item.userData.type === 'thirst') { // Water Drop
                 item.rotation.y += 0.01;
@@ -2691,7 +2790,7 @@ function init3DGame() {
                     STATE.currentUser.health = Math.min(100, (STATE.currentUser.health || 0) + 10);
                     app.updateQuestProgress('eat', 1);
                     showToast(`고기(+${item.userData.amount}🍖) 자동 섭취! 허기와 체력이 회복되었습니다.`, 'success');
-                    
+
                     scene.remove(item);
                     scene.userData.collectibles.splice(i, 1);
                     updateUI();
@@ -2852,8 +2951,16 @@ function init3DGame() {
         if (!STATE.threeScene || document.getElementById('game-screen').classList.contains('hidden')) return;
 
         if (isBuildMode) {
-            // Priority: Place Workbench if held, otherwise place Wall
-            if (STATE.currentUser.workbench > 0) {
+            // Priority: Place Campfire if held, else Workbench if held, else Wall
+            if (STATE.currentUser.campfire > 0) {
+                if (STATE.currentUser.role !== 'admin') STATE.currentUser.campfire--;
+                const pos = playerGroup.position.clone();
+                const forward = new THREE.Vector3(0, 0, -2);
+                forward.applyQuaternion(playerGroup.quaternion);
+                pos.add(forward);
+                placeCampfire(pos, playerGroup.rotation);
+                updateUI();
+            } else if (STATE.currentUser.workbench > 0) {
                 if (STATE.currentUser.role !== 'admin') STATE.currentUser.workbench--;
                 const pos = playerGroup.position.clone();
                 const forward = new THREE.Vector3(0, 0, -2);
@@ -3002,12 +3109,23 @@ function init3DGame() {
                 if (rock.userData.hits <= 0) {
                     const amount = 3 + Math.floor(Math.random() * 4);
                     STATE.currentUser.stone = (STATE.currentUser.stone || 0) + amount;
+                    
+                    // Added Iron drop chance
+                    let ironGained = 0;
+                    if (Math.random() < 0.3) {
+                        ironGained = 1 + Math.floor(Math.random() * 2);
+                        STATE.currentUser.iron = (STATE.currentUser.iron || 0) + ironGained;
+                    }
+
                     app.updateQuestProgress('stone', amount);
                     const xpGain = amount * 2;
                     app.addXP(xpGain);
                     scene.remove(rock);
                     scene.userData.mineables = scene.userData.mineables.filter(m => m !== rock);
-                    showToast(`돌(+${amount}🪨, +${xpGain}XP)을 채굴했습니다!`, 'success');
+                    
+                    let msg = `돌(+${amount}🪨)을 채굴했습니다!`;
+                    if (ironGained > 0) msg += ` 철(+${ironGained}⛓️)도 발견했습니다!`;
+                    showToast(msg, 'success');
                     updateUI();
                     saveData();
                 } else {
@@ -3185,7 +3303,7 @@ const initFirebaseChatListener = () => {
             console.warn("Chat listener failed due to permissions, falling back to offline mode.");
             isFirebaseChatAttached = true; // Prevent multiple retries
         });
-        
+
         // Listen to deletions
         db.ref('chats').on('child_removed', snapshot => {
             const key = snapshot.key;
@@ -3214,12 +3332,12 @@ const renderChat = () => {
     } else {
         // Fallback to offline local chat
         if (!document.querySelector('.chat-msg.system.offline-mode')) {
-             chatMsgs.innerHTML = '<div class="chat-msg system offline-mode">채팅방에 입장했습니다. (오프라인 모드)</div>';
-             const savedChats = JSON.parse(localStorage.getItem('SURVIVAL_CHATS') || '[]');
-             savedChats.forEach(msg => {
-                 const type = (STATE.currentUser && msg.sender === STATE.currentUser.username) ? 'me' : 'other';
-                 addChatMsgUI(msg.sender, msg.text, type, msg.id);
-             });
+            chatMsgs.innerHTML = '<div class="chat-msg system offline-mode">채팅방에 입장했습니다. (오프라인 모드)</div>';
+            const savedChats = JSON.parse(localStorage.getItem('SURVIVAL_CHATS') || '[]');
+            savedChats.forEach(msg => {
+                const type = (STATE.currentUser && msg.sender === STATE.currentUser.username) ? 'me' : 'other';
+                addChatMsgUI(msg.sender, msg.text, type, msg.id);
+            });
         }
         setTimeout(() => {
             chatMsgs.scrollTop = chatMsgs.scrollHeight;
@@ -3374,15 +3492,15 @@ document.getElementById('btn-forgot-password').addEventListener('click', () => {
         if (answer === "관리자 비밀번호 초기화") {
             const patternCorrect = confirm("패턴을 성공적으로 그리셨나요? 패턴이 맞아야 리셋이 가능합니다.");
             if (patternCorrect) {
-                 const newPw = prompt("새로 사용할 비밀번호를 입력하세요 (6자 이상)");
-                 if (newPw && newPw.length >= 6) {
-                     // Since we can't easily change Firebase Auth PW from client without old PW,
-                     // we advise the most practical way for creator.
-                     showToast('서버 관리자 시스템에 요청이 전송되었습니다. (실제 리셋은 Firebase Console의 Authentication에서 해당 유저 삭제 후 재가입을 권장합니다.)', 'info');
-                     alert(`[개발자 가이드]\n현재 보안 정책상 클라이언트에서 직접 비밀번호를 강제 변경할 수 없습니다.\n\n가장 빠른 방법:\n1. Firebase Console 접속\n2. Authentication에서 ${userIn} 삭제\n3. 게임에서 새 비밀번호로 다시 가입`);
-                 } else {
-                     showToast('비밀번호가 너무 짧습니다.', 'error');
-                 }
+                const newPw = prompt("새로 사용할 비밀번호를 입력하세요 (6자 이상)");
+                if (newPw && newPw.length >= 6) {
+                    // Since we can't easily change Firebase Auth PW from client without old PW,
+                    // we advise the most practical way for creator.
+                    showToast('서버 관리자 시스템에 요청이 전송되었습니다. (실제 리셋은 Firebase Console의 Authentication에서 해당 유저 삭제 후 재가입을 권장합니다.)', 'info');
+                    alert(`[개발자 가이드]\n현재 보안 정책상 클라이언트에서 직접 비밀번호를 강제 변경할 수 없습니다.\n\n가장 빠른 방법:\n1. Firebase Console 접속\n2. Authentication에서 ${userIn} 삭제\n3. 게임에서 새 비밀번호로 다시 가입`);
+                } else {
+                    showToast('비밀번호가 너무 짧습니다.', 'error');
+                }
             }
         }
     } else {
@@ -3399,7 +3517,7 @@ let annCommentsListener = null;
 const renderAnnouncements = () => {
     const listEl = document.getElementById('announcement-list');
     if (!listEl) return;
-    
+
     // Check if master
     let isMaster = false;
     if (STATE.currentUser) {
@@ -3423,7 +3541,7 @@ const renderAnnouncements = () => {
     if (isOnline) {
         if (annListener) db.ref('announcements').off('value', annListener);
         listEl.innerHTML = '<div style="text-align:center; color:#fff;">불러오는 중...</div>';
-        
+
         annListener = db.ref('announcements').on('value', snapshot => {
             const data = snapshot.val();
             listEl.innerHTML = '';
@@ -3431,18 +3549,18 @@ const renderAnnouncements = () => {
                 listEl.innerHTML = '<div style="text-align:center; color:#ccc;">등록된 공지사항이 없습니다.</div>';
                 return;
             }
-            
+
             // Sort by time descending
-            const posts = Object.values(data).sort((a,b) => b.time - a.time);
+            const posts = Object.values(data).sort((a, b) => b.time - a.time);
             posts.forEach(post => {
                 const div = document.createElement('div');
-                div.style.cssText = 'background: rgba(255,193,7,0.1); border: 1px solid rgba(255,193,7,0.4); padding: 15px; border-radius: 8px; cursor: pointer; transition: 0.2s;';
+                div.style.cssText = 'background: rgba(235, 183, 28, 0.1); border: 1px solid rgba(209, 164, 29, 0.4); padding: 15px; border-radius: 8px; cursor: pointer; transition: 0.2s;';
                 div.onclick = () => openAnnouncementDetail(post);
-                
+
                 const d = new Date(post.time);
-                const dateStr = `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+                const dateStr = `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
                 const commentCount = post.comments ? Object.keys(post.comments).length : 0;
-                
+
                 div.innerHTML = `
                     <div style="font-size: 1.1rem; font-weight: bold; color: #ffd54f; margin-bottom: 5px;">${post.title}</div>
                     <div style="font-size: 0.8rem; color: #aaa; display: flex; justify-content: space-between;">
@@ -3464,21 +3582,21 @@ const renderAnnouncements = () => {
 const openAnnouncementDetail = (post) => {
     currentAnnId = post.id;
     app.showScreen('announcement-detail-screen');
-    
+
     document.getElementById('ann-detail-title').textContent = post.title;
     document.getElementById('ann-detail-author').textContent = post.author;
     const d = new Date(post.time);
-    document.getElementById('ann-detail-date').textContent = `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+    document.getElementById('ann-detail-date').textContent = `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
     document.getElementById('ann-detail-content').textContent = post.content;
-    
+
     const isOnline = db; // allow db attempt even if auth is bypassed
     const listEl = document.getElementById('ann-comments-list');
     listEl.innerHTML = '';
     document.getElementById('ann-comment-count').textContent = '0';
-    
+
     if (isOnline) {
         if (annCommentsListener) db.ref('announcements/' + post.id + '/comments').off('value', annCommentsListener);
-        
+
         annCommentsListener = db.ref('announcements/' + post.id + '/comments').on('value', snapshot => {
             const data = snapshot.val();
             listEl.innerHTML = '';
@@ -3487,23 +3605,55 @@ const openAnnouncementDetail = (post) => {
                 listEl.innerHTML = '<div style="text-align:center; color:#aaa; font-size: 0.8rem;">첫 번째 댓글을 남겨보세요!</div>';
                 return;
             }
-            
-            const comments = Object.values(data).sort((a,b) => a.time - b.time);
+
+            const comments = Object.values(data).sort((a, b) => a.time - b.time);
             document.getElementById('ann-comment-count').textContent = comments.length;
-            
+
             comments.forEach(c => {
                 const cDiv = document.createElement('div');
-                cDiv.style.cssText = 'background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; font-size: 0.9rem;';
+                cDiv.style.cssText = 'background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; font-size: 0.9rem; position: relative;';
                 const isMasterUser = CREATOR_ACCOUNTS.some(acc => acc.toLowerCase() === c.author.toLowerCase());
+                const isAuthor = STATE.currentUser && STATE.currentUser.username === c.author;
+                const canDelete = isAuthor || (STATE.currentUser && (STATE.currentUser.role === 'creator' || STATE.currentUser.role === 'admin'));
+
                 cDiv.innerHTML = `
                     <div style="font-size: 0.75rem; color: ${isMasterUser ? '#ff5252' : '#aaa'}; font-weight: bold; margin-bottom: 3px;">
                         ${isMasterUser ? '👑 ' : ''}${c.author}
                     </div>
                     <div style="color: #eee;">${c.text}</div>
+                    ${canDelete ? `<button onclick="deleteAnnComment('${post.id}', '${c.id}')" style="position: absolute; top: 5px; right: 5px; background: none; border: none; color: #ff5252; cursor: pointer; font-size: 0.7rem;">✕</button>` : ''}
                 `;
                 listEl.appendChild(cDiv);
             });
             listEl.scrollTop = listEl.scrollHeight;
+        });
+    }
+
+    // Deletion visibility
+    const delBtn = document.getElementById('btn-delete-ann');
+    const isAdmin = STATE.currentUser && (STATE.currentUser.role === 'creator' || STATE.currentUser.role === 'admin');
+    const isPostAuthor = STATE.currentUser && STATE.currentUser.username === post.author;
+    if (delBtn) {
+        if (isAdmin || isPostAuthor) {
+            delBtn.style.display = 'block';
+            delBtn.onclick = () => {
+                if (confirm('정말로 이 공지사항을 삭제하시겠습니까?')) {
+                    db.ref('announcements/' + post.id).remove().then(() => {
+                        showToast('공지가 삭제되었습니다.', 'success');
+                        app.showScreen('announcement-screen');
+                    });
+                }
+            };
+        } else {
+            delBtn.style.display = 'none';
+        }
+    }
+};
+
+const deleteAnnComment = (postId, commentId) => {
+    if (confirm('댓글을 삭제하시겠습니까?')) {
+        db.ref(`announcements/${postId}/comments/${commentId}`).remove().catch(e => {
+            showToast('댓글 삭제 실패: ' + e.message, 'error');
         });
     }
 };
@@ -3519,12 +3669,26 @@ if (btnAnnouncements) {
 const btnNewAnn = document.getElementById('btn-new-announcement');
 if (btnNewAnn) {
     btnNewAnn.addEventListener('click', () => {
-        const title = prompt("공지사항 제목을 입력하세요:");
-        if (!title) return;
-        const content = prompt("공지사항 내용을 입력하세요:");
-        if (!content) return;
-        
-        const isOnline = db; // allow db attempt even if auth is bypassed
+        const modal = document.getElementById('ann-create-modal');
+        if (modal) {
+            document.getElementById('new-ann-title').value = '';
+            document.getElementById('new-ann-content').value = '';
+            modal.style.display = 'flex';
+        }
+    });
+}
+
+const btnSubmitAnn = document.getElementById('btn-submit-ann');
+if (btnSubmitAnn) {
+    btnSubmitAnn.addEventListener('click', () => {
+        const title = document.getElementById('new-ann-title').value.trim();
+        const content = document.getElementById('new-ann-content').value.trim();
+        if (!title || !content) {
+            showToast('제목과 내용을 모두 입력해주세요.', 'error');
+            return;
+        }
+
+        const isOnline = db;
         if (isOnline) {
             const id = 'ann_' + Date.now();
             db.ref('announcements/' + id).set({
@@ -3535,11 +3699,12 @@ if (btnNewAnn) {
                 time: Date.now()
             }).then(() => {
                 showToast('공지사항이 성공적으로 등록되었습니다.', 'success');
+                document.getElementById('ann-create-modal').style.display = 'none';
             }).catch(e => {
                 showToast('공지 등록 실패: ' + e.message, 'error');
             });
         } else {
-             showToast('현재 오프라인 모드라 공지를 쓸 수 없습니다.', 'error');
+            showToast('현재 오프라인 모드라 공지를 쓸 수 없습니다.', 'error');
         }
     });
 }
@@ -3551,10 +3716,10 @@ if (annForm) {
         const input = document.getElementById('ann-comment-input');
         const text = input.value.trim();
         if (!text || !currentAnnId) return;
-        
+
         const isOnline = db; // allow db attempt even if auth is bypassed
         if (isOnline) {
-            const cId = 'com_' + Date.now() + Math.random().toString(36).substr(2,4);
+            const cId = 'com_' + Date.now() + Math.random().toString(36).substr(2, 4);
             db.ref('announcements/' + currentAnnId + '/comments/' + cId).set({
                 id: cId,
                 author: STATE.currentUser.username,

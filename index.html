@@ -777,6 +777,20 @@
                                     15</span>
                                 <button class="btn primary" onclick="app.craftItem('bow')"
                                     style="padding: 5px 10px; font-size: 0.8rem;">제작</button>
+                             </div>
+                        </div>
+
+                        <div class="craft-item glass-panel" id="craft-campfire">
+                            <div style="font-size: 2rem;">🔥</div>
+                            <div style="flex-grow: 1; margin: 0 15px;">
+                                <h4 style="margin: 0; color: #ff5722;">모닥불</h4>
+                                <p style="margin: 5px 0 0; font-size: 0.8rem; color: #ffeb3b;">⚠️ 제작대 근처에서 가능</p>
+                                <p style="margin: 2px 0 0; font-size: 0.7rem; color: var(--text-muted);">주변의 온도를 올려줍니다</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="display: block; font-size: 0.75rem; margin-bottom: 5px;">🪵 5 / ⛓️ 2</span>
+                                <button class="btn primary" onclick="app.craftItem('campfire')"
+                                    style="padding: 5px 10px; font-size: 0.8rem;">제작</button>
                             </div>
                         </div>
                     </div>
@@ -785,7 +799,7 @@
 
             <div id="build-guide" class="hidden"
                 style="position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 10px 20px; border-radius: 20px; border: 1px solid var(--secondary-color); pointer-events: none;">
-                [B] 건설 모드 활성화 (나무 5개 필요)
+                [B] 건설 모드 활성화 (클릭하여 설치)
             </div>
 
             <div class="game-hint"
@@ -839,6 +853,10 @@
                         <span class="inv-icon">🏹</span>
                         <span class="inv-count" id="inv-bow-count">0</span>
                     </div>
+                    <div class="inv-slot hidden" id="inv-campfire-slot">
+                        <span class="inv-icon">🔥</span>
+                        <span class="inv-count" id="inv-campfire-count">0</span>
+                    </div>
                 </div>
             </div>
             <div class="mobile-controls" id="mobile-controls">
@@ -849,7 +867,7 @@
                 </div>
 
                 <div class="mobile-action-btns">
-                    <div class="mobile-btn big" ontouchstart="app.mobileAction('attack')">
+                    <div class="mobile-btn big" id="mobile-attack-btn" ontouchstart="app.mobileAction('attack')">
                         ATTACK
                     </div>
                     <div class="mobile-btn-row">
@@ -1060,19 +1078,41 @@
             <div class="glass-panel" style="width: 90%; max-width: 600px; height: 80vh; display: flex; flex-direction: column; background: #1a1a24;">
                 <h2 style="font-size: 2rem; color: var(--primary-color); margin-bottom: 20px;">📢 공지사항</h2>
                 
-                <button id="btn-new-announcement" class="btn primary" style="position: absolute; bottom: 20px; right: 20px; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 300; padding: 0; padding-bottom: 4px; box-shadow: 0 4px 15px var(--primary-glow); z-index: 9999; pointer-events: all;">+</button>
+                <button id="btn-new-announcement" class="btn primary" style="position: absolute; bottom: 20px; right: 20px; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 800; padding: 0; padding-bottom: 4px; box-shadow: 0 4px 15px var(--primary-glow); z-index: 9999; pointer-events: all; background-color: #00ff88 !important; color: #000000 !important; border: 2px solid #ffffff;">+</button>
                 
                 <div id="announcement-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 5px;">
                     <!-- List populated by JS -->
                 </div>
-                
-                <button class="btn secondary" onclick="app.showScreen('menu-screen')" style="margin-top: 15px;">돌아가기</button>
+                <button class="btn secondary" onclick="app.showScreen('menu-screen')" style="position: absolute; top: 15px; left: 15px; padding: 8px 15px; background-color: #333333 !important; color: #ffffff !important; border: 1px solid #ffffff; z-index: 9999; font-size: 0.9rem; font-weight: bold; pointer-events: all; border-radius: 8px;">◀ 돌아가기</button>
             </div>
         </section>
 
-        <!-- 16. ANNOUNCEMENT DETAIL SCREEN -->
+        <!-- 17. NEW ANNOUNCEMENT MODAL -->
+        <div id="ann-create-modal" class="screen hidden" style="background: rgba(0,0,0,0.85); z-index: 11000; align-items: center; justify-content: center; opacity: 1; pointer-events: all; display: none;">
+            <div class="glass-panel" style="width: 90%; max-width: 500px; padding: 25px; background: #1a1a24; border: 1px solid var(--primary-color);">
+                <h2 style="color: var(--primary-color); margin-bottom: 20px;">🆕 새 공지 작성</h2>
+                
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <div class="input-group">
+                        <label style="color: #aaa;">공지 제목</label>
+                        <input type="text" id="new-ann-title" placeholder="제목을 입력하세요" style="width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: #fff; border-radius: 8px;">
+                    </div>
+                    <div class="input-group">
+                        <label style="color: #aaa;">공지 내용</label>
+                        <textarea id="new-ann-content" rows="6" placeholder="내용을 입력하세요" style="width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: #fff; border-radius: 8px; resize: none; font-family: inherit;"></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button class="btn secondary" onclick="document.getElementById('ann-create-modal').style.display='none'" style="flex: 1;">취소</button>
+                        <button class="btn primary" id="btn-submit-ann" style="flex: 1;">등록하기</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <section id="announcement-detail-screen" class="screen portrait hidden" style="background: #11141a !important;">
-            <div class="glass-panel" style="width: 90%; max-width: 600px; height: 85vh; display: flex; flex-direction: column; background: #1a1a24;">
+            <div class="glass-panel" style="width: 90%; max-width: 600px; height: 85vh; display: flex; flex-direction: column; background: #1a1a24; position: relative;">
+                <button id="btn-delete-ann" class="btn" style="position: absolute; top: 15px; right: 15px; background: rgba(255,0,0,0.2); color: #ff5252; padding: 6px 12px; font-size: 0.8rem; border: 1px solid rgba(255,0,0,0.3); border-radius: 6px; display: none;">삭제</button>
                 <div style="border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px;">
                     <h2 id="ann-detail-title" style="font-size: 1.5rem; color: var(--secondary-color); margin-bottom: 5px;">공지 제목</h2>
                     <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between;">
@@ -1108,7 +1148,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=6"></script>
+        <script src="app.js?v=10"></script>
 </body>
 
 </html>
