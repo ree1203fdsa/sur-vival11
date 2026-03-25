@@ -3673,6 +3673,7 @@ if (btnNewAnn) {
         if (modal) {
             document.getElementById('new-ann-title').value = '';
             document.getElementById('new-ann-content').value = '';
+            modal.classList.remove('hidden');
             modal.style.display = 'flex';
         }
     });
