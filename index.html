@@ -876,10 +876,10 @@
                     </div>
                 </div>
             </div>
-    </div>
-    </div>
-    <!-- 5.5 CHAT SCREEN -->
-    <section id="chat-screen" class="screen landscape hidden">
+        </section>
+
+        <!-- 5.5 CHAT SCREEN -->
+        <section id="chat-screen" class="screen landscape hidden">
         <header class="top-bar glass-bar">
             <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
             <h2 class="screen-title">💬 채팅방</h2>
@@ -990,7 +990,7 @@
                     <button class="btn secondary" onclick="app.closePwModal()">취소</button>
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- 7. SETTINGS MODAL (Window style) -->
         <div id="settings-modal" class="modal-overlay hidden" style="z-index: 2000;">
@@ -1074,11 +1074,11 @@
         </div>
 
         <!-- 15. ANNOUNCEMENT SCREEN -->
-        <section id="ann-screen-v2" class="screen portrait hidden" style="background: #11141a !important; display: flex; align-items: center; justify-content: center;">
+        <section id="ann-list-screen" class="screen portrait hidden" style="background: #11141a !important; display: flex; align-items: center; justify-content: center;">
             <button id="btn-new-announcement" class="btn primary" style="position: absolute; bottom: 30px; right: 30px; width: 65px; height: 65px; border-radius: 50%; display: flex !important; align-items: center; justify-content: center; font-size: 2.8rem; font-weight: 800; padding: 0; padding-bottom: 5px; box-shadow: 0 5px 20px rgba(0,255,136,0.6); z-index: 10000; pointer-events: all; background-color: #00ff88 !important; color: #000 !important; border: 3px solid #fff;">+</button>
-            <button class="btn secondary" onclick="app.showScreen('menu-screen')" style="position: absolute; top: 25px; left: 25px; padding: 12px 24px; background-color: #ff5252 !important; color: #fff !important; border: 2px solid #fff; z-index: 10000; font-size: 1.1rem; font-weight: 900; pointer-events: all; border-radius: 12px; box-shadow: 0 4px 15px rgba(255,0,0,0.5);">◀ 돌아가기</button>
 
             <div class="glass-panel" style="width: 90%; max-width: 600px; height: 80vh; display: flex; flex-direction: column; background: #1a1a24; position: relative; padding: 40px 20px 20px; border-radius: 20px;">
+                <button class="btn secondary" onclick="app.showScreen('menu-screen')" style="align-self: flex-start; margin-bottom: 15px; padding: 10px 20px; background-color: #ff5252 !important; color: #fff !important; border: 2px solid #fff; font-size: 1rem; font-weight: 900; pointer-events: all; border-radius: 10px; box-shadow: 0 4px 10px rgba(255,0,0,0.3);">◀ 돌아가기</button>
                 <h2 style="font-size: 2.2rem; color: #00ff88; margin-bottom: 25px; text-align: center; text-shadow: 0 0 10px rgba(0,255,136,0.5);">📢 공지사항</h2>
                 
                 <div id="announcement-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding-right: 10px;">
@@ -1110,9 +1110,10 @@
             </div>
         </div>
 
-        <section id="ann-detail-screen-v2" class="screen portrait hidden" style="background: #11141a !important; display: flex; align-items: center; justify-content: center;">
+        <!-- 16. ANNOUNCEMENT DETAIL SCREEN -->
+        <section id="ann-detail-screen" class="screen portrait hidden" style="background: #11141a !important; display: flex; align-items: center; justify-content: center;">
             <div class="glass-panel" style="width: 90%; max-width: 600px; height: 85vh; display: flex; flex-direction: column; background: #1a1a24; position: relative;">
-                <button class="btn secondary" onclick="app.showScreen('ann-screen-v2')" style="position: absolute; top: -50px; left: 0; padding: 8px 16px; background: #444 !important; color: #fff !important; border: 1px solid #fff; border-radius: 8px;">◀ 목록으로</button>
+                <button class="btn secondary" onclick="app.showScreen('ann-list-screen')" style="position: absolute; top: -50px; left: 0; padding: 8px 16px; background: #444 !important; color: #fff !important; border: 1px solid #fff; border-radius: 8px;">◀ 목록으로</button>
                 <button id="btn-delete-ann" class="btn" style="position: absolute; top: 15px; right: 15px; background: rgba(255,0,0,0.2); color: #ff5252; padding: 6px 12px; font-size: 0.8rem; border: 1px solid rgba(255,0,0,0.3); border-radius: 6px; display: none;">삭제</button>
                 <div style="border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px;">
                     <h2 id="ann-detail-title" style="font-size: 1.5rem; color: var(--secondary-color); margin-bottom: 5px;">공지 제목</h2>
@@ -1122,22 +1123,18 @@
                     </div>
                 </div>
                 
-                <div id="ann-detail-content" style="flex: 0 0 auto; min-height: 100px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-bottom: 15px; font-size: 1rem; line-height: 1.6; white-space: pre-wrap; overflow-y: auto;">
-                    내용
-                </div>
+                <div id="ann-detail-content" style="flex: 0 0 auto; min-height: 100px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-bottom: 15px; font-size: 1rem; line-height: 1.6; white-space: pre-wrap; overflow-y: auto;">내용</div>
                 
                 <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 10px;">💬 댓글 (<span id="ann-comment-count">0</span>)</h3>
                 
-                <div id="ann-comments-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">
-                    <!-- Comments listed here -->
-                </div>
+                <div id="ann-comments-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;"></div>
                 
                 <form id="ann-comment-form" style="display: flex; gap: 10px; flex: 0 0 auto;">
                     <input type="text" id="ann-comment-input" placeholder="댓글을 입력하세요..." style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(0,0,0,0.5); color: #fff;" required>
                     <button type="submit" class="btn primary" style="white-space: nowrap; padding: 0 20px;">등록</button>
                 </form>
                 
-                <button class="btn secondary" onclick="app.showScreen('announcement-screen')" style="margin-top: 15px;">목록으로</button>
+                <button class="btn secondary" onclick="app.showScreen('ann-list-screen')" style="margin-top: 15px;">목록으로</button>
             </div>
         </section>
 
@@ -1149,7 +1146,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=12"></script>
+        <script src="app.js?v=14"></script>
 </body>
 
 </html>

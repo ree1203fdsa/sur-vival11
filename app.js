@@ -231,7 +231,7 @@ const showScreen = (screenId) => {
     // Toggle aurora background based on screen
     const bgWrapper = document.querySelector('.bg-wrapper');
     if (bgWrapper) {
-        if (screenId.includes('ann-screen')) {
+        if (screenId.includes('ann-')) {
             bgWrapper.style.display = 'none'; // Hide completely for announcements
         } else {
             bgWrapper.style.display = 'block'; // Show for all other screens
@@ -1097,7 +1097,33 @@ const app = {
         }
     },
     openSettings: () => {
-        showToast('아직 미완성 입니다.', 'info');
+        const modal = document.getElementById('settings-modal');
+        if (modal) {
+            // Sync values before showing
+            const set = STATE.settings;
+            if (document.getElementById('select-graphics')) document.getElementById('select-graphics').value = set.graphics || 'medium';
+            if (document.getElementById('range-fov')) {
+                document.getElementById('range-fov').value = set.fov || 75;
+                document.getElementById('val-fov').textContent = set.fov || 75;
+            }
+            if (document.getElementById('range-sens')) {
+                document.getElementById('range-sens').value = set.sens || 1.0;
+                document.getElementById('val-sens').textContent = (set.sens || 1.0).toFixed(1);
+            }
+            if (document.getElementById('range-dist')) {
+                document.getElementById('range-dist').value = set.dist || 100;
+                document.getElementById('val-dist').textContent = set.dist || 100;
+            }
+            if (document.getElementById('btn-toggle-sound')) {
+                const soundBtn = document.getElementById('btn-toggle-sound');
+                soundBtn.textContent = set.sound ? '소리 켜짐' : '소리 꺼짐';
+                soundBtn.className = set.sound ? 'btn primary' : 'btn';
+            }
+
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.add('show'), 10);
+            if (document.pointerLockElement) document.exitPointerLock();
+        }
     },
     closeSettings: () => {
         const modal = document.getElementById('settings-modal');
@@ -3581,7 +3607,7 @@ const renderAnnouncements = () => {
 // Expose these carefully to a global context if needed or just use via button
 const openAnnouncementDetail = (post) => {
     currentAnnId = post.id;
-    app.showScreen('ann-detail-screen-v2');
+    app.showScreen('ann-detail-screen');
 
     document.getElementById('ann-detail-title').textContent = post.title;
     document.getElementById('ann-detail-author').textContent = post.author;
@@ -3640,7 +3666,7 @@ const openAnnouncementDetail = (post) => {
                 if (confirm('정말로 이 공지사항을 삭제하시겠습니까?')) {
                     db.ref('announcements/' + post.id).remove().then(() => {
                         showToast('공지가 삭제되었습니다.', 'success');
-                        app.showScreen('ann-screen-v2');
+                        app.showScreen('ann-list-screen');
                     });
                 }
             };
@@ -3661,7 +3687,7 @@ const deleteAnnComment = (postId, commentId) => {
 const btnAnnouncements = document.getElementById('btn-announcements');
 if (btnAnnouncements) {
     btnAnnouncements.addEventListener('click', () => {
-        app.showScreen('ann-screen-v2');
+        app.showScreen('ann-list-screen');
         renderAnnouncements();
     });
 }
@@ -3673,7 +3699,7 @@ if (btnNewAnn) {
         if (modal) {
             document.getElementById('new-ann-title').value = '';
             document.getElementById('new-ann-content').value = '';
-            modal.classList.remove('hidden');
+            modal.classList.add('active'); // ensure it shows
             modal.style.display = 'flex';
         }
     });
