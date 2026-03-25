@@ -231,7 +231,7 @@ const showScreen = (screenId) => {
     // Toggle aurora background based on screen
     const bgWrapper = document.querySelector('.bg-wrapper');
     if (bgWrapper) {
-        if (screenId.includes('announcement-')) {
+        if (screenId.includes('ann-screen')) {
             bgWrapper.style.display = 'none'; // Hide completely for announcements
         } else {
             bgWrapper.style.display = 'block'; // Show for all other screens
@@ -3581,7 +3581,7 @@ const renderAnnouncements = () => {
 // Expose these carefully to a global context if needed or just use via button
 const openAnnouncementDetail = (post) => {
     currentAnnId = post.id;
-    app.showScreen('announcement-detail-screen');
+    app.showScreen('ann-detail-screen-v2');
 
     document.getElementById('ann-detail-title').textContent = post.title;
     document.getElementById('ann-detail-author').textContent = post.author;
@@ -3640,7 +3640,7 @@ const openAnnouncementDetail = (post) => {
                 if (confirm('정말로 이 공지사항을 삭제하시겠습니까?')) {
                     db.ref('announcements/' + post.id).remove().then(() => {
                         showToast('공지가 삭제되었습니다.', 'success');
-                        app.showScreen('announcement-screen');
+                        app.showScreen('ann-screen-v2');
                     });
                 }
             };
@@ -3661,7 +3661,7 @@ const deleteAnnComment = (postId, commentId) => {
 const btnAnnouncements = document.getElementById('btn-announcements');
 if (btnAnnouncements) {
     btnAnnouncements.addEventListener('click', () => {
-        app.showScreen('announcement-screen');
+        app.showScreen('ann-screen-v2');
         renderAnnouncements();
     });
 }
