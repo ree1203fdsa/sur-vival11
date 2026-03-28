@@ -1976,7 +1976,9 @@ const app = window.app = {
     switchTab,
     addFriend,
     addFriendByCode,
-    removeFriend
+    removeFriend,
+    addVoteOptionField,
+    applyVoteTemplate
 };
 
 const defaultQuests = [
@@ -3920,7 +3922,7 @@ const openAnnouncementDetail = (post) => {
 
     // --- MINI GAME AREA ---
     const gameArea = document.getElementById('ann-event-game-area');
-    if (post.type === 'event') {
+    if (post.type === 'event' || post.hasWheel) {
         gameArea.style.display = 'block';
         const spinBtn = document.getElementById('btn-open-wheel');
         spinBtn.onclick = () => initWheel(post.id);
@@ -4080,15 +4082,24 @@ const wheelPrizes = [
     { text: '1000🪙', color: '#ffd700', reward: 1000 }
 ];
 
-const initWheel = (eventId) => {
+function initWheel(eventId) {
     const modal = document.getElementById('wheel-modal');
-    modal.classList.remove('hidden');
-    drawWheel();
+    if (!modal) return;
     
-    document.getElementById('btn-spin-wheel').onclick = () => spinWheel(eventId);
-};
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex'; // Ensure display is flex
+    
+    // Draw initial wheel
+    setTimeout(() => drawWheel(), 50);
+    
+    const spinBtn = document.getElementById('btn-spin-wheel');
+    spinBtn.onclick = () => {
+        playSound('click');
+        spinWheel(eventId);
+    };
+}
 
-const drawWheel = (angle = 0) => {
+function drawWheel(angle = 0) {
     const canvas = document.getElementById('wheel-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -4121,29 +4132,43 @@ const drawWheel = (angle = 0) => {
         ctx.fillText(p.text, radius - 20, 5);
         ctx.restore();
     });
-};
+}
 
-const spinWheel = (eventId) => {
+function spinWheel(eventId) {
     if (isSpinning) return;
-    if (!STATE.currentUser || STATE.currentUser.isGuest) return showToast("로그인 후 참여 가능합니다.", "warning");
+    
+    // Check account status
+    if (!STATE.currentUser || STATE.currentUser.isGuest) {
+        showToast("보상 수령을 위해 먼저 로그인해 주세요! (게스트 참여 불가)", "warning");
+        return;
+    }
 
-    // Check if daily spin is done (just 1 spin per visit for now)
+    // Check if already spun
     const lastSpin = localStorage.getItem('last_spin_' + eventId + '_' + STATE.currentUser.uid);
     if (lastSpin) {
         showToast("이 이벤트는 이미 참여하셨습니다!", "info");
         return;
     }
 
+    const canvas = document.getElementById('wheel-canvas');
+    if (!canvas) {
+        showToast("데이터 오류: 돌림판을 찾을 수 없습니다.", "error");
+        return;
+    }
+
+    playSound('click');
     isSpinning = true;
-    let currentRotation = 0;
-    const spins = 5 + Math.random() * 5;
+    
+    const spins = 7 + Math.random() * 5; // More spins for dramatic effect
     const totalRotation = spins * 360;
-    const duration = 4000;
+    const duration = 5000; // 5 seconds
     const start = performance.now();
 
-    const animate = (time) => {
+    function animate(time) {
         const elapsed = time - start;
         const t = Math.min(elapsed / duration, 1);
+        
+        // Easing out cubic
         const easeOut = 1 - Math.pow(1 - t, 3);
         const rotation = easeOut * totalRotation;
         
@@ -4153,17 +4178,19 @@ const spinWheel = (eventId) => {
             requestAnimationFrame(animate);
         } else {
             isSpinning = false;
+            // Calculate prize based on final rotation
             const finalAngle = (rotation % 360);
             const prizeIdx = Math.floor(((360 - (finalAngle + 90) % 360) % 360) / (360 / wheelPrizes.length));
             const win = wheelPrizes[prizeIdx];
             
             showWinnerModal(win, eventId);
         }
-    };
+    }
+    
     requestAnimationFrame(animate);
-};
+}
 
-const showWinnerModal = (win, eventId) => {
+function showWinnerModal(win, eventId) {
     if (win.reward > 0) {
         STATE.currentUser.coins += win.reward;
         showToast(`축하합니다! ${win.text}을 획득했습니다! 🎁`, "success");
@@ -4179,15 +4206,15 @@ const showWinnerModal = (win, eventId) => {
     setTimeout(() => {
         document.getElementById('wheel-modal').classList.add('hidden');
     }, 2000);
-};
+}
 
-const deleteAnnComment = (postId, commentId) => {
+function deleteAnnComment(postId, commentId) {
     if (confirm('댓글을 삭제하시겠습니까?')) {
         db.ref(`announcements/${postId}/comments/${commentId}`).remove().catch(e => {
             showToast('댓글 삭제 실패: ' + e.message, 'error');
         });
     }
-};
+}
 
 const btnAnnouncements = document.getElementById('btn-announcements');
 if (btnAnnouncements) {
@@ -4214,16 +4241,46 @@ if (btnNewAnn) {
     });
 }
 
+function addVoteOptionField(val = '') {
+    const list = document.getElementById('new-ann-vote-options-list');
+    if (!list) return;
+    const div = document.createElement('div');
+    div.style.display = 'flex';
+    div.style.gap = '8px';
+    div.innerHTML = `
+        <input type="text" class="vote-opt-input" placeholder="옵션 이름" value="${val}" style="flex:1; padding:12px; background:rgba(0,0,0,0.5); border:1px solid #444; color:#fff; border-radius:8px; font-size:0.95rem;">
+        <button class="btn" style="background:rgba(255,82,82,0.2); color:#ff5252; padding:0 12px; border:1px solid rgba(255,82,82,0.3); border-radius:8px;" onclick="this.parentElement.remove()">✕</button>
+    `;
+    list.appendChild(div);
+}
+
+function applyVoteTemplate(theme) {
+    const list = document.getElementById('new-ann-vote-options-list');
+    list.innerHTML = '';
+    const templates = {
+        'content': ['신규 무기', '신규 맵', '신규 펫', '신규 코스튬'],
+        'gameplay': ['최적화 강화', '밸런스 패치', 'UI/UX 개선', '버그 수정'],
+        'event': ['퀴즈 대항전', '보물찾기', '생존 왕 선발', '낚시 대회'],
+        'custom': ['', '']
+    };
+    if (templates[theme]) {
+        templates[theme].forEach(opt => addVoteOptionField(opt));
+    }
+}
+
 const btnSubmitAnn = document.getElementById('btn-submit-ann');
 if (btnSubmitAnn) {
     btnSubmitAnn.addEventListener('click', () => {
         const type = document.getElementById('new-ann-type').value;
         const title = document.getElementById('new-ann-title').value.trim();
         const content = document.getElementById('new-ann-content').value.trim();
+        const hasWheel = document.getElementById('new-ann-has-wheel').checked;
+        
         let voteOptions = null;
         if (type === 'event') {
-            const raw = document.getElementById('new-ann-vote-options').value.trim();
-            if (raw) voteOptions = raw.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            const inputs = document.querySelectorAll('.vote-opt-input');
+            voteOptions = Array.from(inputs).map(i => i.value.trim()).filter(v => v.length > 0);
+            if (voteOptions.length === 0) voteOptions = null;
         }
 
         if (!title || !content) {
@@ -4240,19 +4297,22 @@ if (btnSubmitAnn) {
                 title: title,
                 content: content,
                 author: STATE.currentUser.username,
-                time: Date.now()
+                time: Date.now(),
+                hasWheel: hasWheel
             };
             if (voteOptions) postData.voteOptions = voteOptions;
 
             db.ref('announcements/' + id).set(postData).then(() => {
-                showToast('공지사항이 성공적으로 등록되었습니다.', 'success');
+                showToast('공지가 성공적으로 등록되었습니다.', 'success');
                 const modal = document.getElementById('ann-create-modal');
                 if (modal) {
                     modal.classList.remove('show');
                     setTimeout(() => modal.classList.add('hidden'), 300);
                     modal.style.display = 'none';
-                    // Reset fields
-                    document.getElementById('new-ann-vote-options').value = '';
+                    // Reset field
+                    document.getElementById('new-ann-vote-options-list').innerHTML = '';
+                    document.getElementById('new-ann-vote-theme').value = '';
+                    document.getElementById('new-ann-has-wheel').checked = false;
                 }
             }).catch(e => {
                 showToast('공지 등록 실패: ' + e.message, 'error');

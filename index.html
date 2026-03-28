@@ -1164,7 +1164,7 @@
             <div class="glass-panel" style="width: 92%; max-width: 500px; padding: 30px; background: #1a1a24; border: 2px solid var(--primary-color); border-radius: 20px; box-shadow: 0 0 30px var(--primary-glow); transform: scale(0.9); transition: transform 0.3s ease;">
                 <h2 style="color: var(--primary-color); margin-bottom: 25px; text-align: center; font-size: 1.8rem;">🆕 새 공지 작성</h2>
                 
-                <div style="display: flex; flex-direction: column; gap: 20px;">
+                <div style="display: flex; flex-direction: column; gap: 20px; max-height: 65vh; overflow-y: auto; padding-right: 8px;">
                     <div style="display: flex; gap: 15px;">
                         <div class="input-group" style="flex: 1;">
                             <label style="color: #00ff88; font-weight: bold; margin-bottom: 8px; display: block;">카테고리</label>
@@ -1180,9 +1180,28 @@
                         </div>
                     </div>
 
+                    <!-- Wheel Toggle -->
+                    <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,82,82,0.1); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,82,82,0.2);">
+                        <input type="checkbox" id="new-ann-has-wheel" style="width: 20px; height: 20px; cursor: pointer;">
+                        <label for="new-ann-has-wheel" style="color: #ff5252; font-weight: bold; cursor: pointer; flex: 1; margin: 0;">🎡 행운의 돌림판 포함하기</label>
+                        <span style="font-size: 0.75rem; color: #aaa;">(체크 시 유저들이 돌림판을 돌릴 수 있습니다)</span>
+                    </div>
+
                     <div id="new-ann-vote-options-group" class="input-group" style="display: none; margin-bottom: 15px;">
-                        <label style="color: #ffd700; font-weight: bold; margin-bottom: 8px; display: block;">📊 투표 옵션 (쉼표로 구분)</label>
-                        <input type="text" id="new-ann-vote-options" placeholder="예: 무기추가, 맵확장, 펫시스템" style="width: 100%; padding: 14px; background: rgba(255,165,0,0.1); border: 1px solid #ffd700; color: #fff; border-radius: 10px; font-size: 1rem; box-sizing: border-box;">
+                        <label style="color: #ffd700; font-weight: bold; margin-bottom: 8px; display: block;">📊 투표 항목 테마 (카테고리)</label>
+                        <select id="new-ann-vote-theme" style="width: 100%; padding: 14px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 10px; font-size: 1rem; margin-bottom: 12px;" onchange="app.applyVoteTemplate(this.value)">
+                            <option value="">-- 테마 선택 안함 --</option>
+                            <option value="content">🎮 신규 콘텐츠 (무기, 맵, 펫...)</option>
+                            <option value="gameplay">🛠️ 게임플레이 개선 (밸런스, 벅스...)</option>
+                            <option value="event">🎈 이벤트 방식 (퀴즈, 숨바꼭질...)</option>
+                            <option value="custom">✍️ 직접 입력 공란</option>
+                        </select>
+
+                        <label style="color: #aaa; font-size: 0.85rem; margin-bottom: 8px; display: block;">항목 편집</label>
+                        <div id="new-ann-vote-options-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
+                            <!-- Options based on category will appear here -->
+                        </div>
+                        <button class="btn secondary" onclick="app.addVoteOptionField()" style="width: 100%; padding: 10px; font-size: 0.9rem; border-style: dashed; border-color: #ffd700; color: #ffd700;">+ 필드 추가하기</button>
                     </div>
 
                     <div class="input-group">
@@ -1243,16 +1262,16 @@
         <!-- WHEEL MODAL -->
         <div id="wheel-modal" class="modal-overlay hidden" style="z-index: 100000; background: rgba(0,0,0,0.9);">
             <div class="glass-panel" style="width: 320px; text-align: center; position: relative;">
-                <h2 style="color: #ff5252; margin-bottom: 20px;">🎡 럭키 휠</h2>
+                <h2 style="color: #ff5252; margin-bottom: 20px;">🎡 행운의 돌림판</h2>
                 <div id="wheel-container" style="position: relative; width: 250px; height: 250px; margin: 0 auto 20px; border: 5px solid #fff; border-radius: 50%; overflow: hidden; background: #222;">
                     <!-- Canvas for wheel -->
                     <canvas id="wheel-canvas" width="250" height="250"></canvas>
                     <div id="wheel-pointer" style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid #ff5252; z-index: 10;"></div>
                 </div>
-                <button class="btn primary" id="btn-spin-wheel" style="width: 100%; padding: 15px; font-size: 1.2rem; margin-bottom: 10px;">SPIN!</button>
+                <button class="btn primary" id="btn-spin-wheel" style="width: 100%; padding: 15px; font-size: 1.2rem; margin-bottom: 10px;">돌리기!</button>
                 <button class="btn secondary" onclick="document.getElementById('wheel-modal').classList.add('hidden')" style="width: 100%;">닫기</button>
             </div>
-        </section>
+        </div>
 
     </div>
 
@@ -1262,7 +1281,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=50"></script>
+        <script src="app.js?v=60"></script>
 </body>
 
 </html>
