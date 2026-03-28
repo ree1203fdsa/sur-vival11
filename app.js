@@ -19,11 +19,18 @@ let db = null;
 let auth = null;
 let isSyncingUsers = false;
 let isFirebaseChatAttached = false;
+updateBGMPlaying();
 const syncAllUsers = (force = false) => {
     if (isSyncingUsers && !force) return;
 
     if (db && STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
         isSyncingUsers = true;
+
+        // Init Chat for Admin
+        if (STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
+            // Initialize BGM
+            updateBGMPlaying();
+        }
 
         // try primary path
         db.ref('users').once('value').then((snapshot) => {
@@ -145,6 +152,104 @@ const STATE = {
     threeScene: null
 };
 
+// --- AUDIO SYSTEM ---
+const playSound = (type = 'click') => {
+    if (!STATE.settings.sound) return;
+    
+    // Resume audio context if needed
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    const now = ctx.currentTime;
+    
+    switch(type) {
+        case 'click':
+            osc.className = 'sine';
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+            break;
+        case 'hover':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(300, now);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+            osc.start(now);
+            osc.stop(now + 0.05);
+            break;
+        case 'success':
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(400, now);
+            osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+            break;
+        case 'error':
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, now);
+            osc.frequency.linearRampToValueAtTime(50, now + 0.3);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+            break;
+        case 'open':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+            break;
+    }
+};
+
+// --- BGM SYSTEM ---
+let bgmAudio = null;
+const BGM_URL = 'solarflex-roblox-minecraft-fortnite-video-game-music-491492 (3).mp3';
+
+const initBGM = () => {
+    if (bgmAudio) return;
+    bgmAudio = new Audio(BGM_URL);
+    bgmAudio.loop = true;
+    bgmAudio.volume = 0.3;
+    
+    // Attempt play on first user interaction (browser policy)
+    const playOnInteract = () => {
+        if (STATE.settings.sound && bgmAudio.paused) {
+            bgmAudio.play().catch(e => console.warn("BGM play failed:", e));
+        }
+        window.removeEventListener('mousedown', playOnInteract);
+        window.removeEventListener('keydown', playOnInteract);
+        window.removeEventListener('touchstart', playOnInteract);
+    };
+    window.addEventListener('mousedown', playOnInteract);
+    window.addEventListener('keydown', playOnInteract);
+    window.addEventListener('touchstart', playOnInteract);
+};
+
+const updateBGMPlaying = () => {
+    if (!bgmAudio) initBGM();
+    if (STATE.settings.sound) {
+        if (bgmAudio.paused) bgmAudio.play().catch(e => {});
+    } else {
+        bgmAudio.pause();
+    }
+};
+
 // --- DATA SANITY CHECK (Master & Test Recovery) ---
 const forceEssentialAccounts = () => {
     // 1. Master Account Recovery
@@ -196,6 +301,10 @@ forceEssentialAccounts();
 
 // --- UTILS & UI ---
 const showToast = (message, type = 'info') => {
+    if (type === 'error') playSound('error');
+    else if (type === 'success') playSound('success');
+    else playSound('open');
+
     const toast = document.getElementById('toast');
     toast.textContent = message;
     toast.className = `toast show ${type}`;
@@ -206,6 +315,7 @@ const showToast = (message, type = 'info') => {
 };
 
 const showScreen = (screenId) => {
+    playSound('open');
     // Hide all screens except the target
     document.querySelectorAll('.screen').forEach(el => {
         if (el.id !== screenId) {
@@ -759,6 +869,7 @@ document.getElementById('btn-toggle-sound').addEventListener('click', () => {
     const soundBtn = document.getElementById('btn-toggle-sound');
     soundBtn.textContent = STATE.settings.sound ? '소리 켜짐' : '소리 꺼짐';
     soundBtn.className = STATE.settings.sound ? 'btn primary' : 'btn';
+    updateBGMPlaying();
 });
 
 document.getElementById('select-graphics').addEventListener('change', (e) => {
@@ -1097,6 +1208,7 @@ const app = {
         }
     },
     openSettings: () => {
+        playSound('click');
         const modal = document.getElementById('settings-modal');
         if (modal) {
             // Sync values before showing
@@ -3654,6 +3766,7 @@ const renderAnnouncements = (filter = 'all') => {
 
 // Expose these carefully to a global context if needed or just use via button
 const openAnnouncementDetail = (post) => {
+    playSound('click');
     currentAnnId = post.id;
     app.showScreen('ann-detail-screen');
 
@@ -3735,6 +3848,7 @@ const deleteAnnComment = (postId, commentId) => {
 const btnAnnouncements = document.getElementById('btn-announcements');
 if (btnAnnouncements) {
     btnAnnouncements.addEventListener('click', () => {
+        playSound('click');
         app.showScreen('ann-list-screen');
         renderAnnouncements();
     });
