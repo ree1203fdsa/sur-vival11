@@ -147,36 +147,40 @@ const STATE = {
         sens: 1.0,
         dist: 100
     },
+    selectedMap: 'classic',
     threeScene: null
 };
 
 // --- AUDIO SYSTEM ---
+let audioCtx = null;
 const playSound = (type = 'click') => {
-    if (!STATE.settings.sound) return;
-    
-    // Resume audio context if needed
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    
-    const now = ctx.currentTime;
-    
-    switch(type) {
-        case 'click':
-            osc.className = 'sine';
-            osc.frequency.setValueAtTime(600, now);
-            osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
-            gain.gain.setValueAtTime(0.1, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-            osc.start(now);
-            osc.stop(now + 0.1);
-            break;
+    try {
+        if (!STATE.settings.sound) return;
+        
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        
+        if (!audioCtx) audioCtx = new AudioContext();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        const now = audioCtx.currentTime;
+        
+        switch(type) {
+            case 'click':
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+                break;
         case 'hover':
             osc.type = 'sine';
             osc.frequency.setValueAtTime(300, now);
@@ -212,6 +216,9 @@ const playSound = (type = 'click') => {
             osc.start(now);
             osc.stop(now + 0.15);
             break;
+    }
+    } catch (e) {
+        console.warn("Audio system error:", e);
     }
 };
 
@@ -1030,7 +1037,6 @@ document.getElementById('toggle-password').addEventListener('click', () => {
     }
 });
 
-// --- MENU NAVIGATION ---
 document.getElementById('btn-start-game').addEventListener('click', () => {
     // Check for Ban
     if (STATE.currentUser && STATE.currentUser.banUntil) {
@@ -1045,34 +1051,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
             saveData();
         }
     }
-
-    showScreen('loading-screen');
-    const loadingBar = document.getElementById('loading-bar');
-    const loadingText = document.getElementById('loading-text');
-    let progress = 0;
-
-    // Reset bar
-    loadingBar.style.width = '0%';
-    loadingText.textContent = '자원 로딩 중 (0%)';
-
-    // Simulate loading
-    const interval = setInterval(() => {
-        progress += Math.random() * 15 + 5;
-        if (progress > 100) progress = 100;
-
-        loadingBar.style.width = `${progress}%`;
-        loadingText.textContent = progress < 30 ? `월드 지형 생성 중... (${Math.floor(progress)}%)` :
-            progress < 70 ? `몬스터 및 자원 배치 중... (${Math.floor(progress)}%)` :
-                `최적화 중... (${Math.floor(progress)}%)`;
-
-        if (progress >= 100) {
-            clearInterval(interval);
-            setTimeout(() => {
-                showScreen('game-screen');
-                init3DGame();
-            }, 300); // short wait after 100%
-        }
-    }, 150);
+    console.log("Showing Map Selection Screen...");
+    showScreen('map-selection-screen');
 });
 
 document.getElementById('btn-shop').addEventListener('click', () => {
@@ -1186,8 +1166,48 @@ document.getElementById('apply-form').addEventListener('submit', (e) => {
 });
 
 // --- SHOP LOGIC ---
-const app = {
+const app = window.app = {
     showScreen,
+    startWithMap: (mapId) => {
+        console.log("startWithMap called with:", mapId);
+        // alert("맵을 생성합니다: " + mapId);
+        try {
+            STATE.selectedMap = mapId;
+            showScreen('loading-screen');
+            const loadingBar = document.getElementById('loading-bar');
+            const loadingText = document.getElementById('loading-text');
+            let progress = 0;
+            loadingBar.style.width = '0%';
+            loadingText.textContent = '지형 정보 확인 중...';
+
+            const interval = setInterval(() => {
+                progress += Math.random() * 15 + 5;
+                if (progress > 100) progress = 100;
+                loadingBar.style.width = `${progress}%`;
+                loadingText.textContent = progress < 40 ? `매핑 데이터 로드 중... (${Math.floor(progress)}%)` : 
+                                         progress < 80 ? `환경 파라미터 최적화 중... (${Math.floor(progress)}%)` : 
+                                         `월드 진입 준비 중... (${Math.floor(progress)}%)`;
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        showScreen('game-screen');
+                        setTimeout(() => {
+                            try {
+                                init3DGame();
+                            } catch (e) {
+                                console.error("Internal start error:", e);
+                                showToast("게임 시작 오류: " + e.message, "error");
+                                showScreen('menu-screen');
+                            }
+                        }, 100);
+                    }, 400);
+                }
+            }, 120);
+        } catch (err) {
+            console.error("StartWithMap Error:", err);
+            showToast("맵 선택 오류: " + err.message, "error");
+        }
+    },
     openTutorial: () => {
         const active = document.querySelector('.screen.active');
         STATE.lastActiveScreen = active ? active.id : 'menu-screen';
@@ -1892,7 +1912,11 @@ const actualRenderAdminUserList = () => {
 
 // --- 3D GAME LOGIC (THREE.JS) ---
 function init3DGame() {
-    const container = document.getElementById('game-screen');
+    try {
+        const mapType = STATE.selectedMap || 'classic';
+        console.log("Initializing 3D Game with map:", mapType);
+        const container = document.getElementById('game-screen');
+        if (!container) throw new Error("Game container not found");
 
     const scene = new THREE.Scene();
 
@@ -1903,9 +1927,9 @@ function init3DGame() {
         snow: { bg: 0xdddddd, fog: 0xdddddd, fogDensity: 0.04, particles: 'snow' },
         foggy: { bg: 0x888888, fog: 0x888888, fogDensity: 0.1, particles: null }
     };
-    let currentWeather = 'clear';
-
-    // Particle Setup
+    let currentWeather = mapType === 'snow' ? 'snow' : 'clear';
+    
+    // --- PARTICLE SETUP ---
     const particleCount = 2000;
     const particleGeometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
@@ -1915,7 +1939,8 @@ function init3DGame() {
     const rainMat = new THREE.PointsMaterial({ color: 0xaaaaaf, size: 0.1, transparent: true, opacity: 0.6 });
     const snowMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.2, transparent: true, opacity: 0.8 });
     const particles = new THREE.Points(particleGeometry, rainMat);
-    particles.visible = false;
+    particles.visible = (currentWeather !== 'clear');
+    if (currentWeather === 'snow') particles.material = snowMat;
     scene.add(particles);
 
     function setWeather(type) {
@@ -1927,14 +1952,13 @@ function init3DGame() {
             scene.fog.near = 1;
             scene.fog.far = 100 / (w.fogDensity * 15);
         }
-
         particles.visible = !!w.particles;
         particles.material = w.particles === 'snow' ? snowMat : rainMat;
-        showToast(`날씨 변경: ${type.toUpperCase()}`, 'info');
     }
 
-    scene.background = new THREE.Color(weathers.clear.bg);
-    scene.fog = new THREE.Fog(weathers.clear.fog, 1, STATE.settings.dist || 100);
+    const startWeather = weathers[currentWeather];
+    scene.background = new THREE.Color(startWeather.bg);
+    scene.fog = new THREE.Fog(startWeather.fog, 1, STATE.settings.dist || 100);
 
     const weatherInterval = setInterval(() => {
         const types = Object.keys(weathers);
@@ -2083,7 +2107,15 @@ function init3DGame() {
         MOUNTAIN: { color: 0x8B4513, treeColor: 0x2d4c2d, name: 'Highlands' }
     };
 
+    const mapTypeLocal = mapType; // just in case local scope is needed for some logic, but usually mapType is enough
+
     function getBiomeAt(x, z) {
+        if (mapType === 'snow') return BIOME.SNOW;
+        if (mapType === 'ocean') {
+             const d = Math.sqrt(x*x + z*z);
+             if (d < 15) return BIOME.OAK; // Center island
+             return { color: 0x1976d2, name: 'Ocean' };
+        }
         if (x < -30) return BIOME.SNOW;
         if (x > 30) return BIOME.MOUNTAIN;
         return BIOME.OAK;
@@ -2102,58 +2134,47 @@ function init3DGame() {
     for (let i = 0; i < posAttr.count; i++) {
         const vx = posAttr.getX(i);
         const vy = posAttr.getY(i);
-
-        // Height Logic
-        let h = 0;
         const dist = Math.sqrt(vx * vx + vy * vy);
+        let h = 0;
 
-        if (vx > 30 && dist <= 80) {
-            // Mountain Biome Height
-            h = Math.sin(vx * 0.2) * Math.cos(vy * 0.2) * 5 + 3;
-            h += Math.sin(vx * 0.5) * 1.5;
-        }
-
-        if (dist > 80) {
-            let depth = (dist - 80) * 0.4;
-            if (depth > 5) depth = 5;
-            h -= depth;
+        if (mapType === 'ocean') {
+            if (dist < 15) h = Math.sin(vx*0.5)*0.5 + 0.5;
+            else h = -3 - (dist-15)*0.2;
+        } else if (mapType === 'snow') {
+            h = Math.sin(vx*0.1)*Math.cos(vy*0.1)*3 + Math.random()*0.5;
+        } else {
+            if (vx > 30 && dist <= 80) {
+                h = Math.sin(vx * 0.2) * Math.cos(vy * 0.2) * 5 + 3;
+                h += Math.sin(vx * 0.5) * 1.5;
+            }
+            if (dist > 80) h -= Math.min(5, (dist - 80) * 0.4);
         }
         posAttr.setZ(i, h);
 
-        // Color Logic based on Biome
         const biome = getBiomeAt(vx, vy);
         tempColor.set(biome.color);
-
-        if (biome === BIOME.SNOW) {
-            tempColor.offsetHSL(0.01, 0, (Math.random() - 0.5) * 0.05);
-        } else if (biome === BIOME.OAK) {
-            tempColor.offsetHSL((Math.random() - 0.5) * 0.1, 0, (Math.random() - 0.5) * 0.1);
-        } else {
-            if (h > 4) tempColor.set(0xaaaaaa);
-            else {
-                tempColor.set(0x8B4513);
-                tempColor.offsetHSL(0, 0, (Math.random() - 0.5) * 0.1);
-            }
-        }
-
+        if (biome === BIOME.SNOW) tempColor.offsetHSL(0.01, 0, (Math.random()-0.5)*0.05);
+        else if (biome === BIOME.OAK) tempColor.offsetHSL((Math.random()-0.5)*0.1, 0, (Math.random()-0.5)*0.1);
+        else if (mapType === 'ocean' && dist >= 15) tempColor.set(0x1a237e);
+        
         colorAttr.setXYZ(i, tempColor.r, tempColor.g, tempColor.b);
     }
     groundGeo.computeVertexNormals();
 
     function getHeightAt(x, z) {
         const dist = Math.sqrt(x * x + z * z);
+        if (mapType === 'ocean') {
+            if (dist < 15) return Math.sin(x*0.5)*0.5 + 0.5;
+            return -3 - (dist-15)*0.2;
+        }
+        if (mapType === 'snow') return Math.sin(x*0.1)*Math.cos(z*0.1)*3;
+        
         let h = 0;
-
         if (x > 30 && dist <= 80) {
             h = Math.sin(x * 0.2) * Math.cos(z * 0.2) * 5 + 3;
             h += Math.sin(x * 0.5) * 1.5;
         }
-
-        if (dist > 80) {
-            let depth = (dist - 80) * 0.4;
-            if (depth > 5) depth = 5;
-            h -= depth;
-        }
+        if (dist > 80) h -= Math.min(5, (dist - 80) * 0.4);
         return h;
     }
 
@@ -3177,6 +3198,11 @@ function init3DGame() {
         lookArea.addEventListener('touchend', () => {
             lastTouch = null;
         }, { passive: true });
+        }
+    } catch (err) {
+        console.error("CRITICAL GAME ERROR:", err);
+        showToast("게임 로딩 중 치명적 오류: " + err.message, "error");
+        showScreen('menu-screen');
     }
 }
 
@@ -3693,7 +3719,6 @@ if (annForm) {
 }
 
 // Initial Setup
-window.app = app;
 setTimeout(() => {
     // Show login screen by default on load
     document.getElementById('login-screen').classList.add('active');

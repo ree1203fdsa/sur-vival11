@@ -243,6 +243,34 @@
             </div>
         </section>
 
+        <!-- 2.4 MAP SELECTION SCREEN -->
+        <section id="map-selection-screen" class="screen landscape hidden">
+            <header class="top-bar glass-bar">
+                <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
+                <h2 class="screen-title">🗺️ 맵 선택</h2>
+            </header>
+            <div class="menu-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
+                <p style="color: #00ff88; margin-bottom: 2rem; font-size: 1.2rem; text-shadow: 0 0 10px rgba(0,255,136,0.3);">탐험할 지역을 선택하세요</p>
+                <div class="menu-grid" style="width: 90%; max-width: 900px;">
+                    <button class="menu-card" onclick="app.startWithMap('classic')">
+                        <div class="card-icon">🌲</div>
+                        <h3>클래식 계곡</h3>
+                        <p>균형 잡힌 자원과 지형</p>
+                    </button>
+                    <button class="menu-card" onclick="app.startWithMap('ocean')">
+                        <div class="card-icon">🏝️</div>
+                        <h3>끝없는 바다</h3>
+                        <p>작은 섬들과 넓은 바다 (어려움)</p>
+                    </button>
+                    <button class="menu-card" onclick="app.startWithMap('snow')">
+                        <div class="card-icon">❄️</div>
+                        <h3>얼어붙은 설산</h3>
+                        <p>극심한 추위와 눈 덮인 산맥</p>
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <!-- 2.5 LOADING SCREEN -->
         <section id="loading-screen" class="screen landscape hidden">
             <div class="loading-container"
@@ -1161,7 +1189,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=21"></script>
+        <script src="app.js?v=35"></script>
 </body>
 
 </html>
