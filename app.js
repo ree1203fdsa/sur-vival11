@@ -1305,7 +1305,7 @@ const renderMultiplayerList = () => {
                     <span style="font-size: 0.8rem; color: #00e5ff;">📍 ${mapLabel}</span>
                     <div style="display: flex; gap: 5px;">
                         ${(!isSelf && !isFriend) ? `<button class="btn secondary" style="padding: 6px; font-size: 0.75rem;" onclick="app.addFriend('${uid}', '${username}')">⭐ 친구추가</button>` : ''}
-                        ${pGame ? `<button class="btn primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="app.showScreen('map-selection-screen')">참여하기</button>` : ''}
+                        ${!isSelf ? `<button class="btn primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="app.showScreen('map-selection-screen')">${pGame ? '참여하기' : '멀티플레이'}</button>` : ''}
                     </div>
                 `;
                 listEl.appendChild(row);
@@ -1340,7 +1340,7 @@ const renderMultiplayerList = () => {
                     <span style="font-size: 0.8rem; color: ${isOnline ? '#00e5ff' : '#666'};">${isOnline ? '📍 ' + mapLabel : '💤 오프라인'}</span>
                     <div style="display: flex; gap: 5px;">
                         <button class="btn secondary" style="padding: 6px; font-size: 0.75rem; border-color: rgba(255,82,82,0.3); color: #ff5252;" onclick="app.removeFriend('${uid}')">삭제</button>
-                        ${pGame ? `<button class="btn primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="app.showScreen('map-selection-screen')">참여하기</button>` : ''}
+                        ${isOnline ? `<button class="btn primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="app.showScreen('map-selection-screen')">${pGame ? '참여하기' : '멀티플레이'}</button>` : ''}
                     </div>
                 `;
                 listEl.appendChild(row);
