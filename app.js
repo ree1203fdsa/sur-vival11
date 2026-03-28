@@ -19,7 +19,6 @@ let db = null;
 let auth = null;
 let isSyncingUsers = false;
 let isFirebaseChatAttached = false;
-updateBGMPlaying();
 const syncAllUsers = (force = false) => {
     if (isSyncingUsers && !force) return;
 
@@ -28,8 +27,7 @@ const syncAllUsers = (force = false) => {
 
         // Init Chat for Admin
         if (STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
-            // Initialize BGM
-            updateBGMPlaying();
+            // Re-sync logic here if needed
         }
 
         // try primary path
