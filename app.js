@@ -1118,6 +1118,17 @@ let currentMultiTab = 'global';
 
 const ensureFriendCode = () => {
     if (!STATE.currentUser || STATE.currentUser.isGuest) return;
+    
+    // --- Presence Sync ---
+    if (FIREBASE_ENABLED && db) {
+        const presenceRef = db.ref('presence/' + STATE.currentUser.uid);
+        presenceRef.set({
+            username: STATE.currentUser.username,
+            lastSeen: Date.now()
+        });
+        presenceRef.onDisconnect().remove();
+    }
+
     if (STATE.currentUser.friendCode) {
         const el = document.getElementById('my-friend-code');
         if (el) el.textContent = STATE.currentUser.friendCode;
@@ -1245,29 +1256,37 @@ const renderMultiplayerList = () => {
     loadingEl.textContent = currentMultiTab === 'global' ? '플레이어 목록 불러오는 중...' : '친구 목록 불러오는 중...';
     listEl.innerHTML = '';
 
-    // Fetch BOTH players (online) and user data (for friend names)
+    // Fetch players (ingame), presence (global online), and friends
     Promise.all([
         db.ref('players').once('value'),
+        db.ref('presence').once('value'),
         db.ref('users/' + (STATE.currentUser?.uid || 'none') + '/friends').once('value')
-    ]).then(([playerSnap, friendSnap]) => {
-        const onlinePlayers = playerSnap.val() || {};
+    ]).then(([playerSnap, presenceSnap, friendSnap]) => {
+        const inGamePlayers = playerSnap.val() || {};
+        const presence = presenceSnap.val() || {};
         const friends = friendSnap.val() || {};
         loadingEl.style.display = 'none';
         
+        // Merge in-game and presence for a total online list
+        const onlineUids = new Set([...Object.keys(inGamePlayers), ...Object.keys(presence)]);
+
         if (currentMultiTab === 'global') {
-            const playerUids = Object.keys(onlinePlayers);
-            if (playerUids.length === 0) {
+            if (onlineUids.size === 0) {
                 listEl.innerHTML = '<div style="text-align:center; color:#aaa; margin: 30px 0;">현재 접속 중인 플레이어가 없습니다. 🏜️</div>';
                 return;
             }
 
-            playerUids.forEach(uid => {
-                const p = onlinePlayers[uid];
+            onlineUids.forEach(uid => {
+                const pGame = inGamePlayers[uid];
+                const pPres = presence[uid];
+                if (!pGame && !pPres) return; // safety
+
+                const username = pGame?.username || pPres?.username || 'Unknown';
                 const isSelf = STATE.currentUser && uid === STATE.currentUser.uid;
                 const isFriend = friends[uid];
                 
                 const mapNames = { 'classic': '🌲 클래식', 'ocean': '🏝️ 바다', 'snow': '❄️ 설산' };
-                const mapLabel = p.mapId ? (mapNames[p.mapId] || p.mapId) : '메뉴';
+                const mapLabel = pGame ? (mapNames[pGame.mapId] || pGame.mapId) : '로비';
 
                 const row = document.createElement('div');
                 row.className = 'user-list-row';
@@ -1279,14 +1298,14 @@ const renderMultiplayerList = () => {
                 
                 row.innerHTML = `
                     <div style="font-weight: bold; color: #fff;">
-                        ${p.username || 'Unknown'} 
+                        ${username} 
                         ${isSelf ? '<span class="badge admin">나</span>' : ''}
                         ${isFriend ? '<span style="color:#ffd700; font-size:0.8rem; margin-left:5px;">⭐</span>' : ''}
                     </div>
                     <span style="font-size: 0.8rem; color: #00e5ff;">📍 ${mapLabel}</span>
                     <div style="display: flex; gap: 5px;">
-                        ${(!isSelf && !isFriend) ? `<button class="btn secondary" style="padding: 6px; font-size: 0.75rem;" onclick="app.addFriend('${uid}', '${p.username}')">⭐ 친구추가</button>` : ''}
-                        <button class="btn primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="app.showScreen('map-selection-screen')">참여하기</button>
+                        ${(!isSelf && !isFriend) ? `<button class="btn secondary" style="padding: 6px; font-size: 0.75rem;" onclick="app.addFriend('${uid}', '${username}')">⭐ 친구추가</button>` : ''}
+                        ${pGame ? `<button class="btn primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="app.showScreen('map-selection-screen')">참여하기</button>` : ''}
                     </div>
                 `;
                 listEl.appendChild(row);
@@ -1301,11 +1320,11 @@ const renderMultiplayerList = () => {
 
             friendUids.forEach(uid => {
                 const f = friends[uid];
-                const onlineData = onlinePlayers[uid];
-                const isOnline = !!onlineData;
+                const pGame = inGamePlayers[uid];
+                const isOnline = onlineUids.has(uid);
                 
                 const mapNames = { 'classic': '🌲 클래식', 'ocean': '🏝️ 바다', 'snow': '❄️ 설산' };
-                const mapLabel = isOnline ? (onlineData.mapId ? (mapNames[onlineData.mapId] || onlineData.mapId) : '메뉴') : '오프라인';
+                const mapLabel = pGame ? (mapNames[pGame.mapId] || pGame.mapId) : (isOnline ? '로비' : '오프라인');
 
                 const row = document.createElement('div');
                 row.className = 'user-list-row';
@@ -1321,7 +1340,7 @@ const renderMultiplayerList = () => {
                     <span style="font-size: 0.8rem; color: ${isOnline ? '#00e5ff' : '#666'};">${isOnline ? '📍 ' + mapLabel : '💤 오프라인'}</span>
                     <div style="display: flex; gap: 5px;">
                         <button class="btn secondary" style="padding: 6px; font-size: 0.75rem; border-color: rgba(255,82,82,0.3); color: #ff5252;" onclick="app.removeFriend('${uid}')">삭제</button>
-                        ${isOnline ? `<button class="btn primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="app.showScreen('map-selection-screen')">참여하기</button>` : ''}
+                        ${pGame ? `<button class="btn primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="app.showScreen('map-selection-screen')">참여하기</button>` : ''}
                     </div>
                 `;
                 listEl.appendChild(row);
