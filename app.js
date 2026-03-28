@@ -2683,10 +2683,15 @@ function init3DGame() {
         if (keys['KeyD']) playerGroup.translateX(currentSpeed);
 
         const checkCollision = (px, pz) => {
+            // Only check nearby objects for performance
             for (let m of scene.userData.mineables) {
-                const tx = m.parent ? m.parent.position.x : m.position.x;
-                const tz = m.parent ? m.parent.position.z : m.position.z;
-                if (Math.sqrt((px - tx) ** 2 + (pz - tz) ** 2) < 0.8) return true;
+                // Determine true world position
+                const tx = (m.parent && m.parent.type !== 'Scene') ? m.parent.position.x : m.position.x;
+                const tz = (m.parent && m.parent.type !== 'Scene') ? m.parent.position.z : m.position.z;
+                
+                const dx = px - tx;
+                const dz = pz - tz;
+                if (dx*dx + dz*dz < 0.64) return true; // 0.8 radius check
             }
             return false;
         };
