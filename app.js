@@ -2547,6 +2547,63 @@ function init3DGame() {
         scene.userData.collectibles.push(mesh);
     }
 
+    // --- GOLEM DUNGEON SYSTEM ---
+    const stoneBrickMat = new THREE.MeshPhongMaterial({ color: 0x444444 });
+    const dungeonWallGeo = new THREE.BoxGeometry(2, 4, 1);
+    const golemMat = new THREE.MeshPhongMaterial({ color: 0x555555, emissive: 0x222222 });
+
+    function spawnGolemDungeon(x, z) {
+        const dungeonGroup = new THREE.Group();
+        const baseH = getHeightAt(x, z);
+        dungeonGroup.position.set(x, baseH, z);
+
+        // 1. Create walls (5x5 square)
+        for (let i = -2; i <= 2; i++) {
+            for (let j = -2; j <= 2; j++) {
+                if (Math.abs(i) === 2 || Math.abs(j) === 2) {
+                    if (i === 0 && j === 2) continue; // Entrance
+                    const wall = new THREE.Mesh(dungeonWallGeo, stoneBrickMat);
+                    wall.position.set(i * 2, 2, j * 2);
+                    if (i === 2 || i === -2) wall.rotation.y = Math.PI / 2;
+                    dungeonGroup.add(wall);
+                }
+            }
+        }
+        
+        // 2. Golem Boss
+        const golem = new THREE.Group();
+        const gBody = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2, 1), golemMat);
+        const gHead = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), golemMat);
+        gHead.position.y = 1.4;
+        const gLimb = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.5, 0.5), golemMat);
+        const gArmL = gLimb.clone(); gArmL.position.set(-1, 0.5, 0);
+        const gArmR = gLimb.clone(); gArmR.position.set(1, 0.5, 0);
+        const gLegL = gLimb.clone(); gLegL.position.set(-0.4, -1.2, 0);
+        const gLegR = gLimb.clone(); gLegR.position.set(0.4, -1.2, 0);
+        golem.add(gBody, gHead, gArmL, gArmR, gLegL, gLegR);
+        golem.position.set(0, 2.7, 0);
+        golem.scale.set(1.5, 1.5, 1.5);
+        golem.userData = { health: 800, isMonster: true, isGolem: true };
+        dungeonGroup.add(golem);
+        scene.userData.monsters.push(golem);
+
+        // 3. Treasure Chest
+        const chest = new THREE.Mesh(new THREE.BoxGeometry(1, 0.8, 0.8), new THREE.MeshPhongMaterial({ color: 0xffd700 }));
+        chest.position.set(1, 0.4, -1);
+        chest.userData = { 
+            isTreasure: true, 
+            isCollectible: true, // Allow picking up
+            type: 'treasure', 
+            yield: { coins: 500, diamonds: 25 },
+            symbol: '🎁'
+        };
+        dungeonGroup.add(chest);
+        scene.userData.collectibles.push(chest);
+
+        scene.add(dungeonGroup);
+        scene.userData.structures.push(dungeonGroup);
+    }
+
     // Spawn initial items
     for (let i = 0; i < 60; i++) {
         const rand = Math.random();
@@ -2555,10 +2612,17 @@ function init3DGame() {
         else if (rand > 0.75) type = 'food';
         else if (rand > 0.6) type = 'water';
 
-        const x = (Math.random() - 0.5) * 100;
-        const z = (Math.random() - 0.5) * 100;
+        const x = (Math.random() - 0.5) * 150;
+        const z = (Math.random() - 0.5) * 150;
         if (Math.abs(x) < 3 && Math.abs(z) < 3) continue;
         spawnWorldItem(type, x, z);
+        
+        // Very rare chance for Golem Dungeon (0.5%)
+        if (Math.random() < 0.005) {
+             const dx = (Math.random() - 0.5) * 200;
+             const dz = (Math.random() - 0.5) * 200;
+             if (Math.abs(dx) > 30 || Math.abs(dz) > 30) spawnGolemDungeon(dx, dz);
+        }
     }
 
     // Basic Movement Logic
@@ -2597,23 +2661,19 @@ function init3DGame() {
     let animationId;
 
     function animate() {
-        if (!STATE.threeScene) return; // Guard against running after exit
+        if (!STATE.threeScene) return;
         animationId = requestAnimationFrame(animate);
         STATE.threeScene.animationId = animationId;
 
-        // Movement Speed & Crouch Stats
+        // --- 1. MOVEMENT & STATS ---
         isCrouching = keys['ShiftLeft'] || keys['ShiftRight'];
         const isSwimming = playerGroup.position.y < -1.0;
         const currentSpeed = (isCrouching ? speed * 0.5 : speed) * (isSwimming ? 0.6 : 1);
-        const targetBodyY = isCrouching && !isSwimming ? 0.4 : 0.8;
-        const targetBodyScaleY = isCrouching && !isSwimming ? 0.5 : 1.0;
         const headHeight = isCrouching && !isSwimming ? 0.8 : 1.6;
 
-        // Smooth height transition
-        playerBody.position.y += (targetBodyY - playerBody.position.y) * 0.2;
-        playerBody.scale.y += (targetBodyScaleY - playerBody.scale.y) * 0.2;
+        playerBody.position.y += ((isCrouching ? 0.4 : 0.8) - playerBody.position.y) * 0.2;
+        playerBody.scale.y += ((isCrouching ? 0.5 : 1.0) - playerBody.scale.y) * 0.2;
 
-        // Movement Logic on PlayerGroup
         const oldX = playerGroup.position.x;
         const oldZ = playerGroup.position.z;
 
@@ -2622,29 +2682,11 @@ function init3DGame() {
         if (keys['KeyA']) playerGroup.translateX(-currentSpeed);
         if (keys['KeyD']) playerGroup.translateX(currentSpeed);
 
-        // Simple Collision Check
         const checkCollision = (px, pz) => {
-            // Trees & Rocks
             for (let m of scene.userData.mineables) {
-                if (m.parent && m.parent.userData && m.parent.userData.isWood) {
-                    const tx = m.parent.position.x;
-                    const tz = m.parent.position.z;
-                    const dist = Math.sqrt((px - tx) ** 2 + (pz - tz) ** 2);
-                    if (dist < 0.8) return true;
-                } else if (m.userData && m.userData.isStone) {
-                    const rx = m.position.x;
-                    const rz = m.position.z;
-                    const dist = Math.sqrt((px - rx) ** 2 + (pz - rz) ** 2);
-                    if (dist < 1.0) return true;
-                }
-            }
-            // Structures (Walls/Workbench)
-            for (let s of scene.userData.structures) {
-                const sx = s.position.x;
-                const sz = s.position.z;
-                const dist = Math.sqrt((px - sx) ** 2 + (pz - sz) ** 2);
-                // Approx radius for walls
-                if (dist < 1.2) return true;
+                const tx = m.parent ? m.parent.position.x : m.position.x;
+                const tz = m.parent ? m.parent.position.z : m.position.z;
+                if (Math.sqrt((px - tx) ** 2 + (pz - tz) ** 2) < 0.8) return true;
             }
             return false;
         };
@@ -2653,18 +2695,14 @@ function init3DGame() {
             playerGroup.position.x = oldX;
             playerGroup.position.z = oldZ;
         }
-        // Keyboard rotation removed in favor of mouse look
 
-        // Jump Logic (Cannot jump while crouching)
+        // Jump & Gravity
         if (keys['Space'] && canJump && !isCrouching) {
             velocityY = jumpForce;
             canJump = false;
         }
-
-        // Apply Gravity to PlayerGroup
         const terrainH = getHeightAt(playerGroup.position.x, playerGroup.position.z);
         playerGroup.position.y += velocityY;
-
         if (playerGroup.position.y > terrainH) {
             velocityY -= gravity;
         } else {
@@ -2673,381 +2711,91 @@ function init3DGame() {
             canJump = true;
         }
 
-        // Camera Follow Logic
+        // --- 2. CAMERA ---
         if (isThirdPerson) {
-            const offset = new THREE.Vector3(0, headHeight + 2, 5);
-            offset.applyQuaternion(playerGroup.quaternion);
+            const offset = new THREE.Vector3(0, headHeight + 2, 5).applyQuaternion(playerGroup.quaternion);
             camera.position.copy(playerGroup.position).add(offset);
-
-            // Look at player with pitch bias
-            const targetPos = playerGroup.position.clone();
-            targetPos.y += headHeight * 0.75;
-            camera.lookAt(targetPos);
+            camera.lookAt(playerGroup.position.x, playerGroup.position.y + headHeight * 0.75, playerGroup.position.z);
             playerBody.visible = true;
-            armGroup.position.y = headHeight - 0.4;
         } else {
-            // First Person View
             camera.position.copy(playerGroup.position);
             camera.position.y += headHeight;
-
-            // Apply slight forward offset to avoid internal clipping
-            const forwardDir = new THREE.Vector3(0, 0, -0.1);
-            forwardDir.applyQuaternion(playerGroup.quaternion);
-            camera.position.add(forwardDir);
-
-            // Stable rotation using Euler and Order
             camera.rotation.order = 'YXZ';
             camera.rotation.set(cameraPitch, playerGroup.rotation.y, 0);
-
             playerBody.visible = false;
-            armGroup.position.y = headHeight - 0.4;
-            // Align arms with camera pitch
-            armGroup.rotation.x = cameraPitch;
         }
 
-        // Day/Night Cycle Logic - SLOWED DOWN (from 0.005 to 0.0005)
-        dayTime = (dayTime + 0.0005) % 24;
-        const timeHours = Math.floor(dayTime);
-        const timeMinutes = Math.floor((dayTime % 1) * 60);
-        const timeStr = `${timeHours < 10 ? '0' : ''}${timeHours}:${timeMinutes < 10 ? '0' : ''}${timeMinutes}`;
-        const timeIcon = dayTime > 6 && dayTime < 18 ? '☀️' : '🌙';
-        document.getElementById('game-time').textContent = `${timeIcon} ${timeStr}`;
-
-        // --- TEMPERATURE LOGIC ---
-        const tempBase = 10;
-        const tempSin = Math.sin((dayTime - 6) / 24 * Math.PI * 2);
-        let currentTemp = tempBase + (tempSin * 20);
-
-        // Biome influence
-        const currentBiome = getBiomeAt(playerGroup.position.x, playerGroup.position.z);
-        if (currentBiome === BIOME.SNOW) currentTemp -= 15;
-        else if (currentBiome === BIOME.MOUNTAIN) currentTemp -= 5;
-
-        // Weather influence
-        if (currentWeather === 'snow') {
-            currentTemp = Math.min(0, currentTemp - 20);
-        } else if (currentWeather === 'rain') {
-            currentTemp -= 8;
-        } else if (currentWeather === 'foggy') {
-            currentTemp -= 3;
-        }
-
-        // Campfire influence
-        if (scene.userData.structures) {
-            const campfires = scene.userData.structures.filter(s => s.userData && s.userData.isCampfire);
-            for (let cf of campfires) {
-                // Run update if exists (flicker)
-                if (cf.userData.update) cf.userData.update();
-
-                if (cf.position.distanceTo(playerGroup.position) < 10) {
-                    currentTemp += 30; // Boost temp heavily near campfire
-                    break;
-                }
-            }
-        }
-
-        const tempEl = document.getElementById('game-temp');
-        if (tempEl) {
-            tempEl.textContent = `🌡️ ${currentTemp.toFixed(1)}°C`;
-            tempEl.style.color = currentTemp > 30 ? '#ff5722' : (currentTemp < 5 ? '#00e5ff' : '#ffd700');
-        }
-
-        // Effects: Cold Damage
-        if (currentTemp < 0 && STATE.currentUser.role !== 'admin' && Date.now() % 2000 < 20) {
-            STATE.currentUser.health = Math.max(0, STATE.currentUser.health - 2);
-            showToast('너무 춥습니다! 체력이 감소합니다.', 'error');
-            updateUI();
-        }
-
-        // Effects: Hot Sweat
-        if (currentTemp > 30) {
-            const sp = sweatParticles;
-            sp.visible = true;
-            const spa = sweatGeometry.attributes.position.array;
-            for (let i = 0; i < sweatCount; i++) {
-                if (spa[i * 3 + 1] < -0.3 || (spa[i * 3] === 0 && spa[i * 3 + 1] === 0)) {
-                    spa[i * 3] = (Math.random() - 0.5) * 0.6;
-                    spa[i * 3 + 1] = 0.2;
-                    spa[i * 3 + 2] = (Math.random() - 0.5) * 0.6;
-                }
-                spa[i * 3 + 1] -= 0.01;
-            }
-            sweatGeometry.attributes.position.needsUpdate = true;
-            sp.position.copy(playerGroup.position);
-            sp.position.y += headHeight;
-        } else {
-            sweatParticles.visible = false;
-        }
-
-        // Lighting Adjustment (Night shouldn't be pitch black)
-        const dayFactor = Math.max(0, Math.sin((dayTime - 6) / 24 * Math.PI * 2));
-        const nightFactor = 1 - dayFactor;
-
-        // Blend sky color
-        const skyBase = new THREE.Color(weathers[currentWeather].bg);
-        const nightSky = new THREE.Color(0x050515);
-        scene.background.copy(nightSky).lerp(skyBase, dayFactor);
-
-        // Sync fog
-        if (scene.fog) {
-            scene.fog.color.copy(scene.background);
-        }
-
-        hemiLight.intensity = 0.5 + dayFactor * 0.7; // Minimum 0.5 for better visibility
-        dirLight.intensity = 0.2 + dayFactor * 1.0; // Minimum 0.2 even at night
-        dirLight.color.setHSL(0.1, 0.5, 0.5 + dayFactor * 0.5);
-
-        // Night Monster Spawning
-        if (dayTime > 19 || dayTime < 5) {
-            if (scene.userData.monsters.length < 5 && Math.random() < 0.01) {
-                const angle = Math.random() * Math.PI * 2;
-                spawnMonster(playerGroup.position.x + Math.cos(angle) * 30, playerGroup.position.z + Math.sin(angle) * 30);
-            }
-        }
-
-        // Monster AI
+        // --- 3. AI & INTERACTIVE ---
+        const now = Date.now();
+        // Monsters
         scene.userData.monsters.forEach(m => {
-            const dist = m.position.distanceTo(playerGroup.position);
-            if (dist < 30) {
-                const dir = playerGroup.position.clone().sub(m.position).normalize();
-                m.position.add(dir.multiplyScalar(0.04));
-                m.lookAt(playerGroup.position);
-
-                if (dist < 1.5 && STATE.currentUser.role !== 'admin' && STATE.currentUser.role !== 'creator' && Date.now() % 1000 < 20) {
-                    STATE.currentUser.health -= 5;
-                    showToast('괴물에게 공격받았습니다!', 'error');
+            const d = m.position.distanceTo(playerGroup.position);
+            if (d < (m.userData.isGolem ? 20 : 10)) {
+                m.lookAt(playerGroup.position.x, m.position.y, playerGroup.position.z);
+                m.translateZ(m.userData.isGolem ? 0.02 : 0.04);
+                if (d < 1.5 && now % 1000 < 20) {
+                    STATE.currentUser.health -= (m.userData.isGolem ? 20 : 8);
+                    showToast(m.userData.isGolem ? '골렘의 일격! 💥' : '괴물 공격!', 'error');
                     updateUI();
                 }
             }
         });
 
-        // Animal AI (Wandering)
+        // Animals
         scene.userData.animals.forEach(a => {
-            const data = a.userData;
-            if (data.wait > 0) {
-                data.wait--;
+            const d = a.position.distanceTo(playerGroup.position);
+            if (d < 4) {
+                a.userData.targetAngle = Math.atan2(a.position.x - playerGroup.position.x, a.position.z - playerGroup.position.z);
+                a.translateZ(0.08);
             } else {
-                // Move forward
-                a.rotation.y = data.targetAngle;
-                const vx = Math.sin(a.rotation.y) * data.speed;
-                const vz = Math.cos(a.rotation.y) * data.speed;
-                a.position.x += vx;
-                a.position.z += vz;
-
-                // Update height
-                a.position.y = getHeightAt(a.position.x, a.position.z) + 0.6;
-
-                // Randomly change direction or wait
-                if (Math.random() < 0.005) {
-                    data.wait = Math.floor(Math.random() * 100) + 50;
-                    data.targetAngle = Math.random() * Math.PI * 2;
-                }
+                a.rotation.y = a.userData.targetAngle;
+                a.translateZ(0.02);
+                if (Math.random() < 0.005) a.userData.targetAngle = Math.random() * Math.PI * 2;
             }
-
-            // Interaction: Flee from player
-            const distToPlayer = a.position.distanceTo(playerGroup.position);
-            if (distToPlayer < 4) {
-                data.targetAngle = Math.atan2(a.position.x - playerGroup.position.x, a.position.z - playerGroup.position.z);
-                data.speed = 0.08; // Run!
-                data.wait = 0;
-            } else {
-                data.speed = 0.02; // Walk
-            }
+            a.position.y = getHeightAt(a.position.x, a.position.z) + 0.6;
         });
 
-        // Swinging Animation
-        if (isSwinging) {
-            swingProgress += 0.2;
-            rightArmGroup.rotation.x = -Math.sin(swingProgress) * 1.5;
-            if (swingProgress >= Math.PI) {
-                isSwinging = false;
-                rightArmGroup.rotation.x = 0;
-            }
-        }
-
-        // Sea Creatures AI
-        scene.userData.seaCreatures.forEach(c => {
-            if (c.userData.isShark) {
-                // Shark chases player if player is underwater
-                const dist = c.position.distanceTo(playerGroup.position);
-                if (playerGroup.position.y < -1.0 && dist < 30) {
-                    const dir = playerGroup.position.clone().sub(c.position).normalize();
-                    c.position.add(dir.multiplyScalar(c.userData.speed));
-                    c.position.y = -2; // Keep locked to water depth roughly
-                    c.lookAt(playerGroup.position.x, c.position.y, playerGroup.position.z);
-
-                    if (dist < 2.5 && STATE.currentUser.role !== 'admin' && STATE.currentUser.role !== 'creator' && Date.now() % 1000 < 20) {
-                        STATE.currentUser.health -= 15;
-                        showToast('상어에게 강하게 물렸습니다!', 'error');
-                        updateUI();
-                    }
-                } else {
-                    // Wander
-                    c.position.x += Math.cos(c.userData.angle) * c.userData.speed * 0.5;
-                    c.position.z += Math.sin(c.userData.angle) * c.userData.speed * 0.5;
-                    c.rotation.y = -c.userData.angle + Math.PI / 2;
-                    if (Math.random() < 0.01) c.userData.angle += (Math.random() - 0.5) * 2;
-                }
-            } else {
-                // Fish wandering
-                c.position.x += Math.cos(c.userData.angle) * c.userData.speed;
-                c.position.z += Math.sin(c.userData.angle) * c.userData.speed;
-                c.rotation.y = -c.userData.angle + Math.PI / 2;
-
-                // Avoid boundaries
-                const d = Math.sqrt(c.position.x * c.position.x + c.position.z * c.position.z);
-                if (d < 80) c.userData.angle += Math.PI; // Swim away from island
-                if (d > 140) c.userData.angle += Math.PI; // Keep within map
-
-                if (Math.random() < 0.02) c.userData.angle += (Math.random() - 0.5);
-            }
-            // Gentle bobbing
-            c.position.y = -2 + Math.sin(Date.now() * 0.002 + c.position.x) * 0.2;
-        });
-
-        // Animate Collectibles & Auto-collect Meat
+        // Collectibles Loop Optimization
         for (let i = scene.userData.collectibles.length - 1; i >= 0; i--) {
             const item = scene.userData.collectibles[i];
+            item.rotation.y += 0.02;
+            // Simplified bobbing
+            item.position.y = getHeightAt(item.position.x, item.position.z) + 0.5 + Math.sin(now * 0.005) * 0.1;
 
-            // Animation
-            if (item.userData.type === 'thirst') { // Water Drop
-                item.rotation.y += 0.01;
-                const wobble = 1 + Math.sin(Date.now() * 0.005 + item.position.x) * 0.1;
-                item.scale.set(1 / wobble, wobble, 1 / wobble);
-            } else {
-                item.rotation.y += 0.02;
-            }
-            item.position.y = 0.5 + Math.sin(Date.now() * 0.005 + item.position.x) * 0.1;
-
-            // Auto-pickup logic for Meat
-            if (item.userData.symbol === '🍖') {
-                if (item.position.distanceTo(playerGroup.position) < 2.0) {
-                    STATE.currentUser.hunger = Math.min(100, (STATE.currentUser.hunger || 0) + item.userData.amount);
-                    STATE.currentUser.health = Math.min(100, (STATE.currentUser.health || 0) + 10);
-                    app.updateQuestProgress('eat', 1);
-                    showToast(`고기(+${item.userData.amount}🍖) 자동 섭취! 허기와 체력이 회복되었습니다.`, 'success');
-
-                    scene.remove(item);
-                    scene.userData.collectibles.splice(i, 1);
-                    updateUI();
-                    saveData();
-                }
-            }
-        }
-
-        // Survival System: Hunger & Thirst
-        if (STATE.currentUser.role !== 'admin' && STATE.currentUser.role !== 'creator' && Date.now() % 1000 < 20) {
-            if (STATE.currentUser.health === undefined) STATE.currentUser.health = 100;
-            if (STATE.currentUser.hunger === undefined) STATE.currentUser.hunger = 100;
-            if (STATE.currentUser.thirst === undefined) STATE.currentUser.thirst = 100;
-
-            // Decay
-            STATE.currentUser.hunger = Math.max(0, STATE.currentUser.hunger - 0.1);
-            STATE.currentUser.thirst = Math.max(0, STATE.currentUser.thirst - 0.15); // Thirst decays faster
-
-            // Damage if starving or dehydrated
-            if (STATE.currentUser.hunger <= 0) {
-                STATE.currentUser.health = Math.max(0, STATE.currentUser.health - 0.5);
-                if (Date.now() % 5000 < 20) showToast('배고픔으로 체력이 감소합니다!', 'error');
-            }
-            if (STATE.currentUser.thirst <= 0) {
-                STATE.currentUser.health = Math.max(0, STATE.currentUser.health - 0.8);
-                if (Date.now() % 5000 < 20) showToast('목마름으로 체력이 감소합니다!', 'error');
-            }
-            updateUI();
-        }
-
-        // Death Check logic
-        if (STATE.currentUser.health <= 0 && STATE.currentUser.role !== 'admin' && STATE.currentUser.role !== 'creator') {
-            app.exitGame(); // This will clear 3D scene and show menu
-
-            // Override menu and show death screen
-            setTimeout(() => {
-                document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-                const deathScreen = document.getElementById('death-screen');
-                if (deathScreen) {
-                    deathScreen.classList.remove('hidden');
-                    deathScreen.classList.add('active');
-                }
-
-                const reasonEl = document.getElementById('death-reason');
-                if (reasonEl) {
-                    if (STATE.currentUser.hunger <= 0) reasonEl.textContent = "배고픔으로 굶어 죽었습니다.";
-                    else if (STATE.currentUser.thirst <= 0) reasonEl.textContent = "갈증으로 탈수하여 죽었습니다.";
-                    else reasonEl.textContent = "야생에서 살아남지 못하고 죽었습니다.";
-                }
-
-                // Reset stats for next try
-                STATE.currentUser.health = 100;
-                STATE.currentUser.hunger = 100;
-                STATE.currentUser.thirst = 100;
-
-                showToast('생존에 실패했습니다!', 'error');
+            if (item.userData.symbol === '🍖' && item.position.distanceTo(playerGroup.position) < 2) {
+                STATE.currentUser.hunger = Math.min(100, (STATE.currentUser.hunger || 100) + 30);
+                scene.remove(item);
+                scene.userData.collectibles.splice(i, 1);
                 updateUI();
-                saveData();
-            }, 50); // delay to override app.exitGame's showScreen('menu-screen')
-
-            return; // stop execution for this frame
+            }
         }
 
-        // Weather Particle Animation
+        // Survival & Projectiles Throttled
+        if (now % 1000 < 20) {
+            STATE.currentUser.hunger = Math.max(0, (STATE.currentUser.hunger || 100) - 0.1);
+            STATE.currentUser.thirst = Math.max(0, (STATE.currentUser.thirst || 100) - 0.15);
+            if (STATE.currentUser.hunger <= 0 || STATE.currentUser.thirst <= 0) STATE.currentUser.health -= 1;
+            updateUI();
+            if (STATE.currentUser.health <= 0) { app.exitGame(); showToast('생존 실패...', 'error'); }
+        }
+
+        // --- 4. WEATHER & PROJECTILES ---
         if (particles.visible) {
             const pos = particleGeometry.attributes.position.array;
             const pSpeed = currentWeather === 'snow' ? 0.05 : 0.4;
             for (let i = 0; i < particleCount; i++) {
                 pos[i * 3 + 1] -= pSpeed;
-                if (pos[i * 3 + 1] < -5) pos[i * 3 + 1] = 50; // Loop back up
+                if (pos[i * 3 + 1] < -5) pos[i * 3 + 1] = 50;
             }
             particleGeometry.attributes.position.needsUpdate = true;
-            // particles follow player horizontally
             particles.position.set(playerGroup.position.x, 0, playerGroup.position.z);
         }
 
-        // Projectile Animation (Arrows)
+        // Arrows (Projectiles) update
         if (scene.userData.projectiles) {
             scene.userData.projectiles.forEach((p, idx) => {
                 p.position.add(p.userData.velocity);
                 p.userData.life--;
-
-                // Collision with Monsters
-                const monsterHit = scene.userData.monsters.find(m => m.position.distanceTo(p.position) < 2);
-                if (monsterHit) {
-                    monsterHit.userData.health -= 60;
-                    showToast('괴물 명중!', 'success');
-                    p.userData.life = 0; // Terminate arrow
-                    if (monsterHit.userData.health <= 0) {
-                        scene.remove(monsterHit);
-                        scene.userData.monsters = scene.userData.monsters.filter(m => m !== monsterHit);
-                        STATE.currentUser.coins += 50;
-                        app.updateQuestProgress('kill', 1);
-                        app.addXP(50);
-                        showToast('괴물을 처치했습니다! (+50🪙, +50XP)', 'success');
-                        updateUI();
-                    }
-                }
-
-                // Collision with Animals
-                const animalHit = scene.userData.animals.find(a => a.position.distanceTo(p.position) < 2);
-                if (animalHit) {
-                    animalHit.userData.health -= 50;
-                    showToast('동물 명중!', 'success');
-                    p.userData.life = 0;
-
-                    // Flee faster
-                    animalHit.userData.targetAngle = Math.atan2(animalHit.position.x - playerGroup.position.x, animalHit.position.z - playerGroup.position.z);
-                    animalHit.userData.speed = 0.15;
-                    animalHit.userData.wait = 0;
-
-                    if (animalHit.userData.health <= 0) {
-                        spawnWorldItem('meat', animalHit.position.x, animalHit.position.z);
-                        scene.remove(animalHit);
-                        scene.userData.animals = scene.userData.animals.filter(a => a !== animalHit);
-                        app.updateQuestProgress('hunt', 1);
-                        app.addXP(20);
-                        showToast('동물을 사냥했습니다! (+20XP)', 'success');
-                    }
-                }
-
                 if (p.userData.life <= 0) {
                     scene.remove(p);
                     scene.userData.projectiles.splice(idx, 1);
@@ -3183,7 +2931,13 @@ function init3DGame() {
             const item = itemIntersects[0].object;
             const data = item.userData;
 
-            if (data.type === 'hunger') {
+            if (data.type === 'treasure') {
+                const yield = data.yield;
+                STATE.currentUser.coins += yield.coins;
+                STATE.currentUser.diamonds += yield.diamonds;
+                showToast(`💎 전설적인 보물 발견! (🪙 +${yield.coins}, 💎 +${yield.diamonds})`, 'success');
+                playSound('success');
+            } else if (data.type === 'hunger') {
                 STATE.currentUser.hunger = Math.min(100, (STATE.currentUser.hunger || 0) + data.amount);
                 STATE.currentUser.health = Math.min(100, (STATE.currentUser.health || 0) + 5);
                 app.updateQuestProgress('eat', 1);
