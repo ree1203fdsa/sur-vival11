@@ -3909,6 +3909,25 @@ const openAnnouncementDetail = (post) => {
     document.getElementById('ann-detail-date').textContent = `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
     document.getElementById('ann-detail-content').textContent = post.content;
 
+    // --- VOTE AREA ---
+    const voteArea = document.getElementById('ann-vote-area');
+    if (post.voteOptions && post.voteOptions.length > 0) {
+        voteArea.style.display = 'block';
+        renderVotes(post);
+    } else {
+        voteArea.style.display = 'none';
+    }
+
+    // --- MINI GAME AREA ---
+    const gameArea = document.getElementById('ann-event-game-area');
+    if (post.type === 'event') {
+        gameArea.style.display = 'block';
+        const spinBtn = document.getElementById('btn-open-wheel');
+        spinBtn.onclick = () => initWheel(post.id);
+    } else {
+        gameArea.style.display = 'none';
+    }
+
     const isOnline = db; // allow db attempt even if auth is bypassed
     const listEl = document.getElementById('ann-comments-list');
     listEl.innerHTML = '';
@@ -3970,6 +3989,198 @@ const openAnnouncementDetail = (post) => {
     }
 };
 
+let voteListener = null;
+const renderVotes = (post) => {
+    const optionsEl = document.getElementById('ann-vote-options');
+    if (!db) return;
+
+    if (voteListener) db.ref('announcements/' + post.id + '/votes').off('value', voteListener);
+
+    voteListener = db.ref('announcements/' + post.id + '/votes').on('value', snapshot => {
+        const votes = snapshot.val() || {};
+        const totalVotes = Object.keys(votes).length;
+        const myVote = STATE.currentUser ? votes[STATE.currentUser.uid] : null;
+
+        optionsEl.innerHTML = '';
+        post.voteOptions.forEach((opt, idx) => {
+            const count = Object.values(votes).filter(v => v === idx).length;
+            const percent = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+            const isMyVote = myVote === idx;
+
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.style.cssText = `
+                width: 100%;
+                text-align: left;
+                padding: 15px;
+                margin-bottom: 8px;
+                background: ${isMyVote ? 'rgba(0,255,136,0.15)' : 'rgba(255,255,255,0.03)'};
+                border: 2px solid ${isMyVote ? '#00ff88' : 'rgba(255,255,255,0.1)'};
+                color: #fff;
+                border-radius: 12px;
+                position: relative;
+                overflow: hidden;
+                cursor: pointer;
+                transition: transform 0.2s, background 0.2s;
+                font-weight: bold;
+                display: block;
+            `;
+            
+            // Percentage bar
+            const fill = document.createElement('div');
+            fill.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                height: 100%;
+                width: ${percent}%;
+                background: ${isMyVote ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.05)'};
+                z-index: 1;
+                transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            `;
+            btn.appendChild(fill);
+
+            const content = document.createElement('div');
+            content.style.cssText = `position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center;`;
+            content.innerHTML = `
+                <span>${opt} ${isMyVote ? ' ✅' : ''}</span>
+                <span style="font-size: 0.85rem; background: rgba(0,0,0,0.3); padding: 4px 10px; border-radius: 20px;">${count}표 (${percent}%)</span>
+            `;
+            btn.appendChild(content);
+
+            btn.onmouseover = () => { btn.style.transform = 'translateX(5px)'; btn.style.background = 'rgba(255,255,255,0.08)'; };
+            btn.onmouseout = () => { btn.style.transform = 'translateX(0)'; btn.style.background = isMyVote ? 'rgba(0,255,136,0.15)' : 'rgba(255,255,255,0.03)'; };
+            
+            btn.onclick = () => {
+                playSound('click');
+                castVote(post.id, idx);
+            };
+            optionsEl.appendChild(btn);
+        });
+    });
+};
+
+const castVote = (postId, optionIndex) => {
+    if (!STATE.currentUser || STATE.currentUser.isGuest) return showToast("로그인 후 투표가 가능합니다.", "warning");
+    db.ref('announcements/' + postId + '/votes/' + STATE.currentUser.uid).set(optionIndex).then(() => {
+        showToast("투표가 반영되었습니다!", "success");
+    });
+};
+
+// --- LUCKY WHEEL LOGIC ---
+let isSpinning = false;
+const wheelPrizes = [
+    { text: '100🪙', color: '#ff5252', reward: 100 },
+    { text: '꽝', color: '#222', reward: 0 },
+    { text: '500🪙', color: '#ffb142', reward: 500 },
+    { text: '💎 1개', color: '#00e5ff', reward: 0, diamonds: 1 },
+    { text: '300🪙', color: '#ff5252', reward: 300 },
+    { text: '꽝', color: '#222', reward: 0 },
+    { text: '💎 5개', color: '#ff7043', reward: 0, diamonds: 5 },
+    { text: '1000🪙', color: '#ffd700', reward: 1000 }
+];
+
+const initWheel = (eventId) => {
+    const modal = document.getElementById('wheel-modal');
+    modal.classList.remove('hidden');
+    drawWheel();
+    
+    document.getElementById('btn-spin-wheel').onclick = () => spinWheel(eventId);
+};
+
+const drawWheel = (angle = 0) => {
+    const canvas = document.getElementById('wheel-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const radius = canvas.width / 2;
+    const sliceAngle = (Math.PI * 2) / wheelPrizes.length;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    wheelPrizes.forEach((p, i) => {
+        const start = angle + i * sliceAngle;
+        const end = start + sliceAngle;
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius, start, end);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(start + sliceAngle / 2);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px Arial';
+        ctx.fillText(p.text, radius - 20, 5);
+        ctx.restore();
+    });
+};
+
+const spinWheel = (eventId) => {
+    if (isSpinning) return;
+    if (!STATE.currentUser || STATE.currentUser.isGuest) return showToast("로그인 후 참여 가능합니다.", "warning");
+
+    // Check if daily spin is done (just 1 spin per visit for now)
+    const lastSpin = localStorage.getItem('last_spin_' + eventId + '_' + STATE.currentUser.uid);
+    if (lastSpin) {
+        showToast("이 이벤트는 이미 참여하셨습니다!", "info");
+        return;
+    }
+
+    isSpinning = true;
+    let currentRotation = 0;
+    const spins = 5 + Math.random() * 5;
+    const totalRotation = spins * 360;
+    const duration = 4000;
+    const start = performance.now();
+
+    const animate = (time) => {
+        const elapsed = time - start;
+        const t = Math.min(elapsed / duration, 1);
+        const easeOut = 1 - Math.pow(1 - t, 3);
+        const rotation = easeOut * totalRotation;
+        
+        drawWheel((rotation * Math.PI) / 180);
+
+        if (t < 1) {
+            requestAnimationFrame(animate);
+        } else {
+            isSpinning = false;
+            const finalAngle = (rotation % 360);
+            const prizeIdx = Math.floor(((360 - (finalAngle + 90) % 360) % 360) / (360 / wheelPrizes.length));
+            const win = wheelPrizes[prizeIdx];
+            
+            showWinnerModal(win, eventId);
+        }
+    };
+    requestAnimationFrame(animate);
+};
+
+const showWinnerModal = (win, eventId) => {
+    if (win.reward > 0) {
+        STATE.currentUser.coins += win.reward;
+        showToast(`축하합니다! ${win.text}을 획득했습니다! 🎁`, "success");
+    } else if (win.diamonds > 0) {
+        STATE.currentUser.diamonds = (STATE.currentUser.diamonds || 0) + win.diamonds;
+        showToast(`대박! 다이아몬드 ${win.diamonds}개를 획득했습니다! 💎`, "success");
+    } else {
+        showToast("아쉽네요! 다음 기회에... 😢", "info");
+    }
+    
+    saveData();
+    localStorage.setItem('last_spin_' + eventId + '_' + STATE.currentUser.uid, Date.now());
+    setTimeout(() => {
+        document.getElementById('wheel-modal').classList.add('hidden');
+    }, 2000);
+};
+
 const deleteAnnComment = (postId, commentId) => {
     if (confirm('댓글을 삭제하시겠습니까?')) {
         db.ref(`announcements/${postId}/comments/${commentId}`).remove().catch(e => {
@@ -4009,6 +4220,12 @@ if (btnSubmitAnn) {
         const type = document.getElementById('new-ann-type').value;
         const title = document.getElementById('new-ann-title').value.trim();
         const content = document.getElementById('new-ann-content').value.trim();
+        let voteOptions = null;
+        if (type === 'event') {
+            const raw = document.getElementById('new-ann-vote-options').value.trim();
+            if (raw) voteOptions = raw.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        }
+
         if (!title || !content) {
             showToast('제목과 내용을 모두 입력해주세요.', 'error');
             return;
@@ -4017,20 +4234,25 @@ if (btnSubmitAnn) {
         const isOnline = db;
         if (isOnline) {
             const id = 'ann_' + Date.now();
-            db.ref('announcements/' + id).set({
+            const postData = {
                 id: id,
                 type: type,
                 title: title,
                 content: content,
                 author: STATE.currentUser.username,
                 time: Date.now()
-            }).then(() => {
+            };
+            if (voteOptions) postData.voteOptions = voteOptions;
+
+            db.ref('announcements/' + id).set(postData).then(() => {
                 showToast('공지사항이 성공적으로 등록되었습니다.', 'success');
                 const modal = document.getElementById('ann-create-modal');
                 if (modal) {
                     modal.classList.remove('show');
                     setTimeout(() => modal.classList.add('hidden'), 300);
                     modal.style.display = 'none';
+                    // Reset fields
+                    document.getElementById('new-ann-vote-options').value = '';
                 }
             }).catch(e => {
                 showToast('공지 등록 실패: ' + e.message, 'error');
