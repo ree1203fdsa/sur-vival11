@@ -34,11 +34,19 @@ const syncAllUsers = (force = false) => {
         db.ref('users').once('value').then((snapshot) => {
             const allUsers = snapshot.val();
             if (allUsers) {
-                const userArray = Object.keys(allUsers).map(uid => ({
-                    ...allUsers[uid],
-                    uid: uid
-                }));
-                STATE.users = userArray;
+                // Deduplicate by username to prevent showing same account multiple times
+                const uniqueUsers = [];
+                const seenNames = new Set();
+                
+                Object.keys(allUsers).forEach(uid => {
+                    const u = allUsers[uid];
+                    if (u && u.username && !seenNames.has(u.username.toLowerCase())) {
+                        uniqueUsers.push({ ...u, uid: uid });
+                        seenNames.add(u.username.toLowerCase());
+                    }
+                });
+
+                STATE.users = uniqueUsers;
                 forceEssentialAccounts();
                 actualRenderAdminUserList();
             }
