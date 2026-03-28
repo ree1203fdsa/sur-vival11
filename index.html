@@ -244,6 +244,11 @@
                         <h3>멀티플레이</h3>
                         <p>접속 중인 플레이어 확인</p>
                     </button>
+                    <button class="menu-card" id="btn-notif-center">
+                        <div class="card-icon">🔔</div>
+                        <h3>알림 센터</h3>
+                        <p>최근 서버 소식 및 알림</p>
+                    </button>
                 </div>
             </div>
         </section>
@@ -612,6 +617,18 @@
                     <div id="admin-user-list" class="user-list-body">
                         <!-- User rows injected by JS -->
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4.6 NOTIFICATION CENTER SCREEN -->
+        <section id="notif-center-screen" class="screen portrait hidden" style="background: #11141a !important; display: flex; align-items: center; justify-content: center;">
+            <div class="glass-panel" style="width: 90%; max-width: 500px; height: 75vh; display: flex; flex-direction: column; background: #1a1a24; position: relative; padding: 40px 20px 20px; border-radius: 20px;">
+                <button class="btn secondary" onclick="app.showScreen('menu-screen')" style="align-self: flex-start; margin-bottom: 20px; padding: 10px 20px; background-color: #ff5252 !important; color: #fff !important; border: 2px solid #fff; font-size: 1rem; font-weight: 900; border-radius: 10px;">◀ 돌아가기</button>
+                <h2 style="color: #ffd700; margin-bottom: 20px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px;">🔔 서버 알림 센터</h2>
+                
+                <div id="notif-history-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 8px;">
+                    <div style="text-align: center; color: #666; padding: 40px 0;">최근 알림이 없습니다.</div>
                 </div>
             </div>
         </section>
@@ -1307,7 +1324,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=63"></script>
+        <script src="app.js?v=64"></script>
 </body>
 
 </html>

@@ -4444,6 +4444,48 @@ function initGlobalNotifications() {
     });
 }
 
+const renderNotificationHistory = () => {
+    const listEl = document.getElementById('notif-history-list');
+    if (!listEl || !db) return;
+
+    listEl.innerHTML = '<div style="text-align:center; padding: 20px; color: #aaa;">불러오는 중...</div>';
+    
+    db.ref('global_notifications').limitToLast(30).once('value').then(snap => {
+        const data = snap.val();
+        if (!data) {
+            listEl.innerHTML = '<div style="text-align:center; color:#666; padding: 40px 0;">최근 알림이 없습니다.</div>';
+            return;
+        }
+
+        const list = Object.values(data).sort((a,b) => b.timestamp - a.timestamp);
+        listEl.innerHTML = '';
+        
+        list.forEach(n => {
+            const date = new Date(n.timestamp);
+            const timeStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`;
+            const colors = { 'info': '#00e5ff', 'warning': '#ff5252', 'success': '#00ff88' };
+            const borderColor = colors[n.type] || '#444';
+            
+            const div = document.createElement('div');
+            div.style.cssText = `background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border-left: 4px solid ${borderColor};`;
+            div.innerHTML = `
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:0.8rem; color:#aaa;">
+                    <span>📣 ${n.sender || 'System'}</span>
+                    <span>${timeStr}</span>
+                </div>
+                <div style="color:#fff; line-height:1.4; font-size:0.95rem;">${n.message}</div>
+            `;
+            listEl.appendChild(div);
+        });
+    });
+};
+
+document.getElementById('btn-notif-center').addEventListener('click', () => {
+    playSound('click');
+    app.showScreen('notif-center-screen');
+    renderNotificationHistory();
+});
+
 // Initial Setup
 setTimeout(() => {
     // Show login screen by default on load
