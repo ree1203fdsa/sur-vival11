@@ -1116,13 +1116,81 @@ document.getElementById('btn-mypage').addEventListener('click', () => {
 
 let currentMultiTab = 'global';
 
+const ensureFriendCode = () => {
+    if (!STATE.currentUser || STATE.currentUser.isGuest) return;
+    if (STATE.currentUser.friendCode) {
+        const el = document.getElementById('my-friend-code');
+        if (el) el.textContent = STATE.currentUser.friendCode;
+        return;
+    }
+
+    // Generate random 6 digits
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    STATE.currentUser.friendCode = code;
+    saveData();
+
+    if (FIREBASE_ENABLED && db) {
+        db.ref('users/' + STATE.currentUser.uid + '/friendCode').set(code);
+        db.ref('friend_codes/' + code).set({
+            uid: STATE.currentUser.uid,
+            username: STATE.currentUser.username
+        });
+    }
+    const el = document.getElementById('my-friend-code');
+    if (el) el.textContent = code;
+};
+
 const switchTab = (tab) => {
     currentMultiTab = tab;
     const btnGlobal = document.getElementById('btn-tab-global');
     const btnFriends = document.getElementById('btn-tab-friends');
     if (btnGlobal) btnGlobal.classList.toggle('active', tab === 'global');
     if (btnFriends) btnFriends.classList.toggle('active', tab === 'friends');
+    
+    // Toggle friend add UI
+    const addUI = document.getElementById('friend-add-by-code');
+    if (addUI) {
+        if (tab === 'friends') {
+            addUI.classList.remove('hidden');
+            addUI.style.display = 'flex';
+        } else {
+            addUI.classList.add('hidden');
+            addUI.style.display = 'none';
+        }
+    }
+
     renderMultiplayerList();
+};
+
+const addFriendByCode = () => {
+    const input = document.getElementById('input-friend-code');
+    const code = input.value.trim();
+    if (code.length !== 6 || isNaN(code)) {
+        showToast("정확한 6자리 숫자를 입력해 주세요.", "error");
+        return;
+    }
+
+    if (!db) {
+        showToast("서버 연결이 필요합니다.", "error");
+        return;
+    }
+
+    db.ref('friend_codes/' + code).once('value').then(snap => {
+        const target = snap.val();
+        if (!target) {
+            showToast("존재하지 않는 코드입니다.", "error");
+            return;
+        }
+        if (target.uid === STATE.currentUser.uid) {
+            showToast("자신은 친구로 추가할 수 없습니다.", "error");
+            return;
+        }
+        
+        addFriend(target.uid, target.username);
+        input.value = '';
+    }).catch(e => {
+        showToast("코드 확인 중 오류가 발생했습니다.", "error");
+    });
 };
 
 const addFriend = (uid, name) => {
@@ -1267,6 +1335,7 @@ const renderMultiplayerList = () => {
 
 document.getElementById('btn-multiplayer').addEventListener('click', () => {
     showScreen('multiplayer-screen');
+    ensureFriendCode();
     switchTab('global'); // default to global
 });
 
@@ -1887,6 +1956,7 @@ const app = window.app = {
     },
     switchTab,
     addFriend,
+    addFriendByCode,
     removeFriend
 };
 

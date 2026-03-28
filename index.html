@@ -283,12 +283,25 @@
                 <h2 class="screen-title">👥 멀티플레이 & 친구</h2>
             </header>
             <div class="menu-container">
+                <!-- My code display -->
+                <div style="text-align: center; margin-bottom: 1rem; background: rgba(0,229,255,0.1); padding: 10px; border-radius: 8px; border: 1px solid rgba(0,229,255,0.3);">
+                    <span style="color: #aaa; font-size: 0.9rem;">내 친구 코드: </span>
+                    <span id="my-friend-code" style="color: #00e5ff; font-weight: bold; font-size: 1.2rem; letter-spacing: 2px;">------</span>
+                </div>
+
                 <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 1.5rem;">
-                    <button class="btn secondary active" id="btn-tab-global" style="padding: 10px 20px;" onclick="app.switchTab('global')">🌐 글로벌 서바이벌</button>
-                    <button class="btn secondary" id="btn-tab-friends" style="padding: 10px 20px;" onclick="app.switchTab('friends')">⭐ 내 친구 목록</button>
+                    <button class="btn secondary active" id="btn-tab-global" style="padding: 10px 20px;" onclick="app.switchTab('global')">🌐 글로벌</button>
+                    <button class="btn secondary" id="btn-tab-friends" style="padding: 10px 20px;" onclick="app.switchTab('friends')">⭐ 친구 목록</button>
                 </div>
                 
                 <div class="admin-panel glass-panel" style="max-width: 800px; margin: 0 auto; padding: 20px;">
+                    <!-- Friend Code Add UI (only for friends tab) -->
+                    <div id="friend-add-by-code" class="hidden" style="margin-bottom: 1.5rem; display: flex; gap: 10px; justify-content: center;">
+                        <input type="text" id="input-friend-code" placeholder="친구 코드 6자리 입력" maxlength="6" 
+                            style="width: 180px; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #222; color: #fff; text-align: center; letter-spacing: 3px;">
+                        <button class="btn primary" style="padding: 10px 20px;" onclick="app.addFriendByCode()">+ 코드 추가</button>
+                    </div>
+
                     <div id="multiplayer-loading" style="text-align: center; color: #aaa;">불러오는 중...</div>
                     <div id="multiplayer-player-list" class="user-list">
                         <!-- Content depends on selected tab -->
@@ -1215,7 +1228,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=45"></script>
+        <script src="app.js?v=46"></script>
 </body>
 
 </html>
