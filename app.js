@@ -103,6 +103,21 @@ const saveData = () => {
 
 const savedState = loadData();
 
+// --- HELPERS ---
+const syncDataFromStorage = () => {
+    const saved = loadData();
+    if (saved) {
+        STATE.users = saved.users || [];
+        STATE.applications = saved.applications || [];
+
+        // Update currentUser reference if they are in the new users list
+        if (STATE.currentUser) {
+            const updatedUser = STATE.users.find(u => u.username === STATE.currentUser.username);
+            if (updatedUser) STATE.currentUser = updatedUser;
+        }
+    }
+};
+
 // State Management
 const STATE = {
     currentUser: null,
@@ -942,85 +957,93 @@ document.getElementById('btn-goto-register').addEventListener('click', () => {
 // Public register form submit
 document.getElementById('register-form').addEventListener('submit', (e) => {
     e.preventDefault();
-    const errEl = document.getElementById('register-error');
-    errEl.textContent = '';
+    try {
+        const errEl = document.getElementById('register-error');
+        errEl.textContent = '';
 
-    const id = document.getElementById('reg-new-username').value.trim();
-    const pw = document.getElementById('reg-new-password').value.trim();
-    const pw2 = document.getElementById('reg-new-password2').value.trim();
-    const phone = document.getElementById('reg-new-phone').value.trim();
+        const id = document.getElementById('reg-new-username').value.trim();
+        const pw = document.getElementById('reg-new-password').value.trim();
+        const pw2 = document.getElementById('reg-new-password2').value.trim();
+        const phone = document.getElementById('reg-new-phone').value.trim();
 
-    // Validation
-    if (id.length < 4) { errEl.textContent = '❌ 아이디는 4자 이상이어야 합니다.'; return; }
-    if (pw.length < 6) { errEl.textContent = '❌ 비밀번호는 6자 이상이어야 합니다.'; return; }
-    if (pw !== pw2) { errEl.textContent = '❌ 비밀번호가 일치하지 않습니다.'; return; }
+        // Validation
+        if (id.length < 4) { errEl.textContent = '❌ 아이디는 4자 이상이어야 합니다.'; return; }
+        if (pw.length < 6) { errEl.textContent = '❌ 비밀번호는 6자 이상이어야 합니다.'; return; }
+        if (pw !== pw2) { errEl.textContent = '❌ 비밀번호가 일치하지 않습니다.'; return; }
 
-    if (FIREBASE_ENABLED && auth) {
-        const email = getFirebaseEmail(id);
-        auth.createUserWithEmailAndPassword(email, pw)
-            .then((userCredential) => {
-                const user = userCredential.user;
-                const newUser = {
-                    username: id,
-                    phone: phone || '',
-                    coins: 1000,
-                    diamonds: 10,
-                    wood: 0,
-                    stone: 0,
-                    iron: 0,
-                    gold: 0,
-                    health: 100,
-                    hunger: 100,
-                    thirst: 100,
-                    treasures: 0,
-                    role: CREATOR_ACCOUNTS.includes(id) ? 'creator' : 'user',
-                    uid: user.uid
-                };
-                // Initial save to Firebase
-                db.ref('users/' + user.uid).set(newUser).then(() => {
-                    STATE.currentUser = newUser;
-                    showToast(`🎉 환영합니다, ${id}님! 서버에 계정이 생성되었습니다.`, 'success');
-                    updateUI();
-                    showScreen('menu-screen');
+        if (FIREBASE_ENABLED && auth) {
+            const email = getFirebaseEmail(id);
+            auth.createUserWithEmailAndPassword(email, pw)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    const newUser = {
+                        username: id,
+                        phone: phone || '',
+                        coins: 1000,
+                        diamonds: 10,
+                        wood: 0,
+                        stone: 0,
+                        iron: 0,
+                        gold: 0,
+                        health: 100,
+                        hunger: 100,
+                        thirst: 100,
+                        treasures: 0,
+                        role: CREATOR_ACCOUNTS.includes(id) ? 'creator' : 'user',
+                        uid: user.uid
+                    };
+                    // Initial save to Firebase
+                    db.ref('users/' + user.uid).set(newUser).then(() => {
+                        STATE.currentUser = newUser;
+                        showToast(`🎉 환영합니다, ${id}님! 서버에 계정이 생성되었습니다.`, 'success');
+                        updateUI();
+                        showScreen('menu-screen');
+                    });
+                })
+                .catch((error) => {
+                    console.error("Firebase Registration Error:", error);
+                    errEl.textContent = '❌ 가입 실패: ' + error.message;
                 });
-            })
-            .catch((error) => {
-                console.error(error);
-                errEl.textContent = '❌ 가입 실패: ' + error.message;
-            });
-    } else {
-        syncDataFromStorage();
-        if (STATE.users.find(u => u.username === id)) {
-            errEl.textContent = '❌ 이미 사용 중인 아이디입니다.';
-            return;
+        } else {
+            console.log("Starting local registration for:", id);
+            syncDataFromStorage();
+            if (STATE.users.find(u => u.username === id)) {
+                console.warn("User already exists:", id);
+                errEl.textContent = '❌ 이미 사용 중인 아이디입니다.';
+                return;
+            }
+
+            const newUser = {
+                username: id,
+                password: pw,
+                phone: phone || '',
+                coins: 1000,
+                diamonds: 10,
+                wood: 0,
+                stone: 0,
+                iron: 0,
+                gold: 0,
+                health: 100,
+                hunger: 100,
+                thirst: 100,
+                treasures: 0,
+                role: 'user'
+            };
+
+            STATE.users.push(newUser);
+            saveData();
+            console.log("User successfully registered locally:", id);
+
+            // Auto-login after signup
+            STATE.currentUser = newUser;
+            showToast(`🎉 환영합니다, ${id}님! 가입이 완료되었습니다.`, 'success');
+            updateUI();
+            showScreen('menu-screen');
+            setTimeout(() => updateUI(), 50);
         }
-
-        const newUser = {
-            username: id,
-            password: pw,
-            phone: phone || '',
-            coins: 1000,
-            diamonds: 10,
-            wood: 0,
-            stone: 0,
-            iron: 0,
-            gold: 0,
-            health: 100,
-            hunger: 100,
-            thirst: 100,
-            treasures: 0,
-            role: 'user'
-        };
-
-        STATE.users.push(newUser);
-        saveData();
-
-        // Auto-login after signup
-        STATE.currentUser = newUser;
-        showToast(`🎉 환영합니다, ${id}님! 가입이 완료되었습니다.`, 'success');
-        updateUI();
-        showScreen('menu-screen');
-        setTimeout(() => updateUI(), 50);
+    } catch (err) {
+        console.error("Critical Registration Form Error:", err);
+        showToast("회원가입 처리 중 오류가 발생했습니다. 콘솔을 확인하세요.", 'error');
     }
 });
 
@@ -1091,21 +1114,6 @@ if (adminMenuBtn) {
         showScreen('admin-screen');
     });
 }
-
-const syncDataFromStorage = () => {
-    const saved = loadData();
-    if (saved) {
-        STATE.users = saved.users || [];
-        STATE.applications = saved.applications || [];
-
-        // Update currentUser reference if they are in the new users list
-        if (STATE.currentUser) {
-            const updatedUser = STATE.users.find(u => u.username === STATE.currentUser.username);
-            if (updatedUser) STATE.currentUser = updatedUser;
-        }
-    }
-};
-
 // --- CROSS-TAB SYNC ---
 window.addEventListener('storage', (e) => {
     if (e.key === STORAGE_KEY) {
