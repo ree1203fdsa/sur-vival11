@@ -573,9 +573,22 @@
                     </div>
                 </div>
 
+                <div class="admin-panel glass-panel live-monitoring" style="margin-bottom: 25px; border: 1px solid #00e5ff;">
+                    <h3 style="color: #00e5ff; display: flex; align-items: center; gap: 8px;">🌐 실시간 접속 모니터링 <span id="admin-online-count" style="font-size: 0.9rem; background: rgba(0,229,255,0.2); padding: 2px 8px; border-radius: 10px;">0명</span></h3>
+                    <div class="user-list-header" style="grid-template-columns: 1.5fr 1fr 1fr auto !important;">
+                        <span>아이디</span>
+                        <span>현재 위치</span>
+                        <span>상태</span>
+                        <span>활동 시간</span>
+                    </div>
+                    <div id="admin-live-list" class="user-list-body">
+                        <div style="text-align:center; padding: 20px; color: #666;">데이터를 불러오는 중...</div>
+                    </div>
+                </div>
+
                 <div class="admin-panel glass-panel user-management">
                     <h3>유저 계정 관리</h3>
-                    <div class="user-list-header">
+                    <div class="user-list-header" style="grid-template-columns: 1fr 1.2fr 0.8fr 0.8fr 0.8fr 1fr !important;">
                         <span>아이디</span>
                         <span>전화번호</span>
                         <span>코인</span>
@@ -1281,7 +1294,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=60"></script>
+        <script src="app.js?v=62"></script>
 </body>
 
 </html>

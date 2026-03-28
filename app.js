@@ -1395,12 +1395,61 @@ document.getElementById('btn-admin').addEventListener('click', () => {
             else msBtn.classList.add('hidden');
         }
 
-        syncAllUsers(true); // 관리자 버튼 누르면 동기화 강제 재시작
+        syncAllUsers(true); 
         showScreen('admin-screen');
         actualRenderAdminUserList();
         renderAdminApplicationList();
+        renderAdminLiveMonitoring(); // Start real-time monitoring
     }
 });
+
+let adminLiveListener = null;
+function renderAdminLiveMonitoring() {
+    const listEl = document.getElementById('admin-live-list');
+    const countEl = document.getElementById('admin-online-count');
+    if (!listEl || !db) return;
+
+    if (adminLiveListener) {
+        db.ref('presence').off('value', adminLiveListener);
+    }
+
+    adminLiveListener = db.ref('presence').on('value', (presenceSnap) => {
+        db.ref('players').once('value').then(playerSnap => {
+            const presence = presenceSnap.val() || {};
+            const players = playerSnap.val() || {};
+            const allOnlineUids = new Set([...Object.keys(presence), ...Object.keys(players)]);
+            
+            listEl.innerHTML = '';
+            countEl.textContent = `${allOnlineUids.size}명`;
+
+            if (allOnlineUids.size === 0) {
+                listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">현재 실시간 접속자가 없습니다.</div>';
+                return;
+            }
+
+            allOnlineUids.forEach(uid => {
+                const pPres = presence[uid];
+                const pGame = players[uid];
+                const username = pPres?.username || pGame?.username || 'Unknown';
+                const mapNames = { 'classic': '🌲 클래식', 'ocean': '🏝️ 바다', 'snow': '❄️ 설산' };
+                const loc = pGame ? mapNames[pGame.mapId] || pGame.mapId : '🏠 로비/메뉴';
+                const status = pGame ? '🎮 게임 중' : '💤 대기 중';
+                const lastSeen = pPres?.lastSeen ? new Date(pPres.lastSeen).toLocaleTimeString() : '-';
+
+                const row = document.createElement('div');
+                row.className = 'user-list-row';
+                row.style.cssText = 'display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; align-items: center; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);';
+                row.innerHTML = `
+                    <span style="font-weight:bold; color:#00e5ff;">${username}</span>
+                    <span style="font-size:0.9rem; color:#fff;">${loc}</span>
+                    <span style="font-size:0.85rem; color:${pGame ? '#00ff88' : '#ffd700'};">${status}</span>
+                    <span style="font-size:0.8rem; color:#aaa;">${lastSeen}</span>
+                `;
+                listEl.appendChild(row);
+            });
+        });
+    });
+}
 
 // --- APPLICATION LOGIC ---
 document.getElementById('apply-form').addEventListener('submit', (e) => {
@@ -3925,7 +3974,11 @@ const openAnnouncementDetail = (post) => {
     if (post.type === 'event' || post.hasWheel) {
         gameArea.style.display = 'block';
         const spinBtn = document.getElementById('btn-open-wheel');
-        spinBtn.onclick = () => initWheel(post.id);
+        // Using onclick for simple override
+        spinBtn.onclick = (e) => {
+            e.stopPropagation();
+            initWheel(post.id);
+        };
     } else {
         gameArea.style.display = 'none';
     }
@@ -4086,14 +4139,24 @@ function initWheel(eventId) {
     const modal = document.getElementById('wheel-modal');
     if (!modal) return;
     
+    isSpinning = false; // Reset state just in case
     modal.classList.remove('hidden');
-    modal.style.display = 'flex'; // Ensure display is flex
+    modal.style.display = 'flex'; 
+    modal.style.setProperty('display', 'flex', 'important');
     
     // Draw initial wheel
-    setTimeout(() => drawWheel(), 50);
+    setTimeout(() => {
+        const canvas = document.getElementById('wheel-canvas');
+        if (canvas) {
+            canvas.width = 300; // Force size
+            canvas.height = 300;
+            drawWheel(0);
+        }
+    }, 100);
     
     const spinBtn = document.getElementById('btn-spin-wheel');
-    spinBtn.onclick = () => {
+    spinBtn.onclick = (e) => {
+        e.stopPropagation();
         playSound('click');
         spinWheel(eventId);
     };
