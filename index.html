@@ -239,6 +239,11 @@
                         <h3>공지사항</h3>
                         <p>가장 빠른 업데이트 소식</p>
                     </button>
+                    <button class="menu-card" id="btn-multiplayer">
+                        <div class="card-icon">🌐</div>
+                        <h3>멀티플레이</h3>
+                        <p>접속 중인 플레이어 확인</p>
+                    </button>
                 </div>
             </div>
         </section>
@@ -267,6 +272,27 @@
                         <h3>얼어붙은 설산</h3>
                         <p>극심한 추위와 눈 덮인 산맥</p>
                     </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2.4-B MULTIPLAYER SCREEN -->
+        <section id="multiplayer-screen" class="screen landscape hidden">
+            <header class="top-bar glass-bar">
+                <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
+                <h2 class="screen-title">👥 멀티플레이 & 친구</h2>
+            </header>
+            <div class="menu-container">
+                <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 1.5rem;">
+                    <button class="btn secondary active" id="btn-tab-global" style="padding: 10px 20px;" onclick="app.switchTab('global')">🌐 글로벌 서바이벌</button>
+                    <button class="btn secondary" id="btn-tab-friends" style="padding: 10px 20px;" onclick="app.switchTab('friends')">⭐ 내 친구 목록</button>
+                </div>
+                
+                <div class="admin-panel glass-panel" style="max-width: 800px; margin: 0 auto; padding: 20px;">
+                    <div id="multiplayer-loading" style="text-align: center; color: #aaa;">불러오는 중...</div>
+                    <div id="multiplayer-player-list" class="user-list">
+                        <!-- Content depends on selected tab -->
+                    </div>
                 </div>
             </div>
         </section>
@@ -1189,7 +1215,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=41"></script>
+        <script src="app.js?v=45"></script>
 </body>
 
 </html>

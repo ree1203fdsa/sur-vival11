@@ -1114,6 +1114,162 @@ document.getElementById('btn-mypage').addEventListener('click', () => {
     showScreen('mypage-screen');
 });
 
+let currentMultiTab = 'global';
+
+const switchTab = (tab) => {
+    currentMultiTab = tab;
+    const btnGlobal = document.getElementById('btn-tab-global');
+    const btnFriends = document.getElementById('btn-tab-friends');
+    if (btnGlobal) btnGlobal.classList.toggle('active', tab === 'global');
+    if (btnFriends) btnFriends.classList.toggle('active', tab === 'friends');
+    renderMultiplayerList();
+};
+
+const addFriend = (uid, name) => {
+    if (!STATE.currentUser || STATE.currentUser.isGuest) {
+        showToast("회원가입 계정만 친구 추가가 가능합니다.", "error");
+        return;
+    }
+    if (uid === STATE.currentUser.uid) return;
+    
+    if (!STATE.currentUser.friends) STATE.currentUser.friends = {};
+    if (STATE.currentUser.friends[uid]) {
+        showToast("이미 친구인 플레이어입니다.", "info");
+        return;
+    }
+
+    const friendData = { username: name, addedAt: Date.now() };
+    STATE.currentUser.friends[uid] = friendData;
+    saveData();
+    if (FIREBASE_ENABLED && db) {
+        db.ref('users/' + STATE.currentUser.uid + '/friends/' + uid).set(friendData);
+    }
+    showToast(`⭐ ${name}님을 친구 목록에 추가했습니다!`, "success");
+    renderMultiplayerList();
+};
+
+const removeFriend = (uid) => {
+    if (!STATE.currentUser || !STATE.currentUser.friends) return;
+    const name = STATE.currentUser.friends[uid]?.username || "플레이어";
+    delete STATE.currentUser.friends[uid];
+    saveData();
+    if (FIREBASE_ENABLED && db) {
+        db.ref('users/' + STATE.currentUser.uid + '/friends/' + uid).remove();
+    }
+    showToast(`🗑️ ${name}님을 친구 목록에서 삭제했습니다.`, "info");
+    renderMultiplayerList();
+};
+
+// --- MULTIPLAYER LOBBY LOGIC ---
+const renderMultiplayerList = () => {
+    const listEl = document.getElementById('multiplayer-player-list');
+    const loadingEl = document.getElementById('multiplayer-loading');
+    if (!listEl) return;
+
+    if (!db || !FIREBASE_ENABLED) {
+        loadingEl.textContent = '❌ 서버에 연결할 수 없습니다. (오프라인 모드)';
+        loadingEl.style.display = 'block';
+        listEl.innerHTML = '';
+        return;
+    }
+
+    loadingEl.style.display = 'block';
+    loadingEl.textContent = currentMultiTab === 'global' ? '플레이어 목록 불러오는 중...' : '친구 목록 불러오는 중...';
+    listEl.innerHTML = '';
+
+    // Fetch BOTH players (online) and user data (for friend names)
+    Promise.all([
+        db.ref('players').once('value'),
+        db.ref('users/' + (STATE.currentUser?.uid || 'none') + '/friends').once('value')
+    ]).then(([playerSnap, friendSnap]) => {
+        const onlinePlayers = playerSnap.val() || {};
+        const friends = friendSnap.val() || {};
+        loadingEl.style.display = 'none';
+        
+        if (currentMultiTab === 'global') {
+            const playerUids = Object.keys(onlinePlayers);
+            if (playerUids.length === 0) {
+                listEl.innerHTML = '<div style="text-align:center; color:#aaa; margin: 30px 0;">현재 접속 중인 플레이어가 없습니다. 🏜️</div>';
+                return;
+            }
+
+            playerUids.forEach(uid => {
+                const p = onlinePlayers[uid];
+                const isSelf = STATE.currentUser && uid === STATE.currentUser.uid;
+                const isFriend = friends[uid];
+                
+                const mapNames = { 'classic': '🌲 클래식', 'ocean': '🏝️ 바다', 'snow': '❄️ 설산' };
+                const mapLabel = p.mapId ? (mapNames[p.mapId] || p.mapId) : '메뉴';
+
+                const row = document.createElement('div');
+                row.className = 'user-list-row';
+                row.style.display = 'grid';
+                row.style.gridTemplateColumns = '1.2fr 1fr auto';
+                row.style.alignItems = 'center';
+                row.style.padding = '12px';
+                row.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                
+                row.innerHTML = `
+                    <div style="font-weight: bold; color: #fff;">
+                        ${p.username || 'Unknown'} 
+                        ${isSelf ? '<span class="badge admin">나</span>' : ''}
+                        ${isFriend ? '<span style="color:#ffd700; font-size:0.8rem; margin-left:5px;">⭐</span>' : ''}
+                    </div>
+                    <span style="font-size: 0.8rem; color: #00e5ff;">📍 ${mapLabel}</span>
+                    <div style="display: flex; gap: 5px;">
+                        ${(!isSelf && !isFriend) ? `<button class="btn secondary" style="padding: 6px; font-size: 0.75rem;" onclick="app.addFriend('${uid}', '${p.username}')">⭐ 친구추가</button>` : ''}
+                        <button class="btn primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="app.showScreen('map-selection-screen')">참여하기</button>
+                    </div>
+                `;
+                listEl.appendChild(row);
+            });
+        } else {
+            // FRIENDS TAB
+            const friendUids = Object.keys(friends);
+            if (friendUids.length === 0) {
+                listEl.innerHTML = '<div style="text-align:center; color:#aaa; margin: 30px 0;">아직 친구가 없습니다. <br>글로벌 탭에서 친구를 추가해보세요! 🤝</div>';
+                return;
+            }
+
+            friendUids.forEach(uid => {
+                const f = friends[uid];
+                const onlineData = onlinePlayers[uid];
+                const isOnline = !!onlineData;
+                
+                const mapNames = { 'classic': '🌲 클래식', 'ocean': '🏝️ 바다', 'snow': '❄️ 설산' };
+                const mapLabel = isOnline ? (onlineData.mapId ? (mapNames[onlineData.mapId] || onlineData.mapId) : '메뉴') : '오프라인';
+
+                const row = document.createElement('div');
+                row.className = 'user-list-row';
+                row.style.display = 'grid';
+                row.style.gridTemplateColumns = '1.2fr 1fr auto';
+                row.style.alignItems = 'center';
+                row.style.padding = '12px';
+                row.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                row.style.opacity = isOnline ? '1' : '0.6';
+                
+                row.innerHTML = `
+                    <span style="font-weight: bold; color: ${isOnline ? '#ffd700' : '#aaa'};">${f.username || 'Unknown'}</span>
+                    <span style="font-size: 0.8rem; color: ${isOnline ? '#00e5ff' : '#666'};">${isOnline ? '📍 ' + mapLabel : '💤 오프라인'}</span>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="btn secondary" style="padding: 6px; font-size: 0.75rem; border-color: rgba(255,82,82,0.3); color: #ff5252;" onclick="app.removeFriend('${uid}')">삭제</button>
+                        ${isOnline ? `<button class="btn primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="app.showScreen('map-selection-screen')">참여하기</button>` : ''}
+                    </div>
+                `;
+                listEl.appendChild(row);
+            });
+        }
+    }).catch(err => {
+        console.error("Multiplayer/Friend list error:", err);
+        loadingEl.textContent = '⚠️ 목록을 불러오는 중 오류가 발생했습니다.';
+    });
+};
+
+document.getElementById('btn-multiplayer').addEventListener('click', () => {
+    showScreen('multiplayer-screen');
+    switchTab('global'); // default to global
+});
+
 const adminMenuBtn = document.getElementById('btn-admin');
 if (adminMenuBtn) {
     adminMenuBtn.addEventListener('click', () => {
@@ -1728,7 +1884,10 @@ const app = window.app = {
             updateUI();
             saveData();
         }
-    }
+    },
+    switchTab,
+    addFriend,
+    removeFriend
 };
 
 const defaultQuests = [
@@ -2051,6 +2210,89 @@ function init3DGame() {
     rightArmGroup.add(head);
 
     scene.add(playerGroup);
+    
+    // --- MULTIPLAYER SETUP ---
+    const ghostPlayers = new Map();
+    const createGhostPlayer = (id, data) => {
+        const group = new THREE.Group();
+        const gBody = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3, 0.3, 1.6, 8),
+            new THREE.MeshPhongMaterial({ color: 0xcccccc, transparent: true, opacity: 0.8 })
+        );
+        gBody.position.y = 0.8;
+        group.add(gBody);
+
+        // Name tag
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 256; canvas.height = 64;
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(0,0,256,64);
+        ctx.font = 'bold 32px Arial';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.fillText(data.username || 'Player', 128, 45);
+        
+        const tex = new THREE.CanvasTexture(canvas);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex }));
+        sprite.position.y = 2.0;
+        sprite.scale.set(2, 0.5, 1);
+        group.add(sprite);
+
+        scene.add(group);
+        return group;
+    };
+
+    let multiplayerListener = null;
+    if (FIREBASE_ENABLED && db && STATE.currentUser && !STATE.currentUser.isGuest) {
+        const playerRef = db.ref('players/' + STATE.currentUser.uid);
+        // Remove on disconnect
+        playerRef.onDisconnect().remove();
+
+        multiplayerListener = db.ref('players').on('value', (snapshot) => {
+            const allPlayers = snapshot.val() || {};
+            
+            // Remove players who left
+            for (const [id, ghost] of ghostPlayers) {
+                if (!allPlayers[id]) {
+                    scene.remove(ghost);
+                    ghostPlayers.delete(id);
+                }
+            }
+
+            // Update/Add players
+            Object.keys(allPlayers).forEach(id => {
+                if (id === STATE.currentUser.uid) return;
+                const data = allPlayers[id];
+                let ghost = ghostPlayers.get(id);
+                if (!ghost) {
+                    ghost = createGhostPlayer(id, data);
+                    ghostPlayers.set(id, ghost);
+                }
+                // Update position (soft interpolation can be added later)
+                ghost.position.set(data.x || 0, data.y || 0, data.z || 0);
+                ghost.rotation.y = data.ry || 0;
+            });
+        });
+    }
+
+    let lastSyncTime = 0;
+    const syncMyPosition = () => {
+        if (!FIREBASE_ENABLED || !db || !STATE.currentUser || STATE.currentUser.isGuest) return;
+        const now = Date.now();
+        if (now - lastSyncTime < 100) return; // 10 FPS sync
+        lastSyncTime = now;
+
+        db.ref('players/' + STATE.currentUser.uid).set({
+            username: STATE.currentUser.username,
+            x: playerGroup.position.x,
+            y: playerGroup.position.y,
+            z: playerGroup.position.z,
+            ry: playerGroup.rotation.y,
+            mapId: mapType,
+            time: now
+        }).catch(e => console.warn("Multiplayer sync error:", e));
+    };
 
     let isThirdPerson = false;
     let isSwinging = false;
@@ -2844,6 +3086,9 @@ function init3DGame() {
                 }
             });
         }
+
+        // --- 3. MULTIPLAYER SYNC ---
+        syncMyPosition();
 
         renderer.render(scene, camera);
     }
