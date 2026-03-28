@@ -586,6 +586,19 @@
                     </div>
                 </div>
 
+                <div class="admin-panel glass-panel global-notif" style="margin-bottom: 25px; border: 1px solid #ffd700;">
+                    <h3 style="color: #ffd700;">📣 전체 서버 알림 발송</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="admin-notif-type" style="padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
+                            <option value="info">일반 (Normal)</option>
+                            <option value="warning">긴급 (Urgent)</option>
+                            <option value="success">이벤트 (Event)</option>
+                        </select>
+                        <input type="text" id="admin-notif-msg" placeholder="모든 유저에게 즉시 보낼 메시지를 입력하세요" style="flex:1; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
+                        <button class="btn primary" onclick="app.sendGlobalNotification()" style="padding: 10px 20px; font-weight: bold;">전송하기</button>
+                    </div>
+                </div>
+
                 <div class="admin-panel glass-panel user-management">
                     <h3>유저 계정 관리</h3>
                     <div class="user-list-header" style="grid-template-columns: 1fr 1.2fr 0.8fr 0.8fr 0.8fr 1fr !important;">
@@ -1294,7 +1307,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=62"></script>
+        <script src="app.js?v=63"></script>
 </body>
 
 </html>

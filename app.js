@@ -2027,7 +2027,23 @@ const app = window.app = {
     addFriendByCode,
     removeFriend,
     addVoteOptionField,
-    applyVoteTemplate
+    applyVoteTemplate,
+    sendGlobalNotification: () => {
+        const type = document.getElementById('admin-notif-type').value;
+        const msg = document.getElementById('admin-notif-msg').value.trim();
+        if (!msg) return showToast("메시지를 입력하세요.", "error");
+        if (!db) return;
+
+        db.ref('global_notifications').push({
+            type: type,
+            message: msg,
+            sender: STATE.currentUser.username,
+            timestamp: Date.now()
+        }).then(() => {
+            showToast("서버 알림을 발송했습니다!", "success");
+            document.getElementById('admin-notif-msg').value = '';
+        });
+    }
 };
 
 const defaultQuests = [
@@ -4413,9 +4429,25 @@ if (annForm) {
     });
 }
 
+// --- GLOBAL NOTIFICATIONS ---
+let lastNotifTime = Date.now();
+function initGlobalNotifications() {
+    if (!db) return;
+    db.ref('global_notifications').limitToLast(1).on('child_added', (snap) => {
+        const data = snap.val();
+        if (!data) return;
+        // Only show if it's new (not old history on load)
+        if (data.timestamp > lastNotifTime) {
+            showToast(`📣 [서버 공지] ${data.message}`, data.type || 'info');
+            playSound('level-up'); // Notification sound
+        }
+    });
+}
+
 // Initial Setup
 setTimeout(() => {
     // Show login screen by default on load
     document.getElementById('login-screen').classList.add('active');
     document.getElementById('login-screen').classList.remove('hidden');
+    initGlobalNotifications();
 }, 100);
