@@ -19,10 +19,43 @@ let db = null;
 let auth = null;
 let isSyncingUsers = false;
 let isFirebaseChatAttached = false;
+
+// Pre-define showScreen to avoid circular dependencies
+window.showScreen = (id) => { console.warn("Actual showScreen not yet defined"); };
+
+// Helper for server logging
+window.addServerLog = (message) => {
+    if (db && window.STATE && STATE.currentUser) {
+        db.ref('server_logs').push({
+            msg: `[${STATE.currentUser.username}] ${message}`,
+            time: Date.now()
+        }).catch(e => console.warn("Log failed", e));
+    }
+};
+
+const app = window.app = {
+    addServerLog: window.addServerLog,
+    updateQuestProgress: (type, amount) => {
+        if (!window.STATE || !STATE.currentUser || !STATE.currentUser.quests) return;
+        STATE.currentUser.quests.forEach(q => {
+            if (q.type === type && !q.completed) {
+                q.progress = (q.progress || 0) + amount;
+                if (q.progress >= q.goal) {
+                    q.progress = q.goal;
+                    q.completed = true;
+                    if (typeof window.showToast === 'function') showToast(`🏆 퀘스트 완료: ${q.title}`, 'success');
+                    STATE.currentUser.coins += q.reward;
+                }
+            }
+        });
+        if (typeof window.updateUI === 'function') updateUI();
+        if (typeof window.saveData === 'function') saveData();
+    }
+};
 const syncAllUsers = (force = false) => {
     if (isSyncingUsers && !force) return;
 
-    if (db && STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
+    if (db && window.STATE && STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
         isSyncingUsers = true;
 
         // Init Chat for Admin
@@ -366,9 +399,8 @@ const showScreen = (screenId) => {
         if (screenId === 'menu-screen' && STATE.currentUser) updateUI();
     }, 10);
 
-    // Toggle aurora background based on screen
     const bgWrapper = document.querySelector('.bg-wrapper');
-    if (bgWrapper) {
+    if (bgWrapper && screenId) {
         if (screenId.includes('ann-')) {
             bgWrapper.style.display = 'none'; // Hide completely for announcements
         } else {
@@ -380,17 +412,19 @@ const showScreen = (screenId) => {
     const warning = document.getElementById('orientation-warning');
     const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
-    if (screenId === 'game-screen' && isTouch) {
+    if (screenId === 'game-screen' && isTouch && warning) {
         if (window.innerHeight > window.innerWidth) {
             warning.classList.remove('hidden');
         }
         if (screen.orientation && screen.orientation.lock) {
             screen.orientation.lock('landscape').catch(() => { });
         }
-    } else {
+    } else if (warning) {
         warning.classList.add('hidden');
     }
 };
+window.showScreen = showScreen;
+app.showScreen = showScreen;
 
 const updateUI = () => {
     if (!STATE.currentUser) return;
@@ -537,6 +571,7 @@ const updateUI = () => {
     }
 };
 
+const FORCE_LOGIN_FOR_MASTER = true; // Always require login for security
 const CREATOR_ACCOUNTS = ['ree1203fdsa'];
 const getFirebaseEmail = (username) => {
     return username.indexOf('@') > -1 ? username : `${username}@survival-3d.com`;
@@ -598,9 +633,9 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
 
             // Try to sync with offline storage as a fallback
             saveData();
-
             updateUI();
-            showScreen('menu-screen');
+            app.showScreen('menu-screen');
+            addServerLog('로그인 성공 (우회)');
             return;
         }
 
@@ -628,6 +663,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
                         if (STATE.currentUser.role === 'creator') syncAllUsers();
                         updateUI();
                         showScreen('menu-screen');
+                        addServerLog('로그인 성공 (Firebase)');
                     } else if (isCreator) {
                         const masterData = { username: userIn, role: 'creator', coins: 99999, uid: user.uid };
                         db.ref('users/' + user.uid).set(masterData);
@@ -678,6 +714,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
             showToast(`환영합니다, ${foundUser.username}님!`, 'success');
             updateUI();
             showScreen('menu-screen');
+            addServerLog('로그인 성공 (로컬)');
         } else {
             showToast('아이디 또는 비밀번호가 잘못되었습니다.', 'error');
         }
@@ -1056,17 +1093,20 @@ document.getElementById('register-form').addEventListener('submit', (e) => {
 });
 
 // Toggle password visibility
-document.getElementById('toggle-password').addEventListener('click', () => {
-    const pwdInput = document.getElementById('password');
-    const toggleBtn = document.getElementById('toggle-password');
-    if (pwdInput.type === 'password') {
-        pwdInput.type = 'text';
-        toggleBtn.textContent = '🔒';
-    } else {
-        pwdInput.type = 'password';
-        toggleBtn.textContent = '👁️';
-    }
-});
+const toggleBtn = document.getElementById('btn-toggle-password');
+if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+        const pwdInput = document.getElementById('password');
+        if (!pwdInput) return;
+        if (pwdInput.type === 'password') {
+            pwdInput.type = 'text';
+            toggleBtn.textContent = '🔒';
+        } else {
+            pwdInput.type = 'password';
+            toggleBtn.textContent = '👁️';
+        }
+    });
+}
 
 document.getElementById('btn-start-game').addEventListener('click', () => {
     // Check for Ban
@@ -1305,6 +1345,7 @@ const renderMultiplayerList = () => {
                     <span style="font-size: 0.8rem; color: #00e5ff;">📍 ${mapLabel}</span>
                     <div style="display: flex; gap: 5px;">
                         ${(!isSelf && !isFriend) ? `<button class="btn secondary" style="padding: 6px; font-size: 0.75rem;" onclick="app.addFriend('${uid}', '${username}')">⭐ 친구추가</button>` : ''}
+                        ${!isSelf ? `<button class="btn info" style="padding: 6px; font-size: 0.75rem; background:#ff5252; color:#fff;" onclick="app.openReportModal('${uid}', '${username}')">🚨 신고</button>` : ''}
                         ${!isSelf ? `<button class="btn primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="app.showScreen('map-selection-screen')">${pGame ? '참여하기' : '멀티플레이'}</button>` : ''}
                     </div>
                 `;
@@ -1475,14 +1516,14 @@ document.getElementById('apply-form').addEventListener('submit', (e) => {
 });
 
 // --- SHOP LOGIC ---
-const app = window.app = {
-    showScreen,
+const extendApp = {
     startWithMap: (mapId) => {
         console.log("startWithMap called with:", mapId);
         // alert("맵을 생성합니다: " + mapId);
         try {
             STATE.selectedMap = mapId;
             showScreen('loading-screen');
+            app.addServerLog(`🌲 맵 입장 시도: ${mapId}`);
             const loadingBar = document.getElementById('loading-bar');
             const loadingText = document.getElementById('loading-text');
             let progress = 0;
@@ -2042,9 +2083,129 @@ const app = window.app = {
         }).then(() => {
             showToast("서버 알림을 발송했습니다!", "success");
             document.getElementById('admin-notif-msg').value = '';
+            app.addServerLog(`📣 전체 공지 발송: ${msg}`);
+        });
+    },
+    switchAdminTab: (tabId, btn) => {
+        // Handle Tab buttons
+        const btns = btn.parentElement.querySelectorAll('.btn');
+        btns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Handle content
+        const contents = document.querySelectorAll('.admin-tab-content');
+        contents.forEach(c => c.classList.add('hidden'));
+        document.getElementById('admin-tab-' + tabId).classList.remove('hidden');
+
+        // Special handlers for specific tabs
+        if (tabId === 'status') renderAdminLiveMonitoring();
+        if (tabId === 'apply') renderAdminApplicationList();
+        if (tabId === 'users') actualRenderAdminUserList();
+        if (tabId === 'reports') renderAdminReports();
+        if (tabId === 'logs') renderAdminLogs();
+    },
+    addServerLog: (message) => {
+        if (!db || !STATE.currentUser) return;
+        db.ref('server_logs').push({
+            msg: `[${STATE.currentUser.username}] ${message}`,
+            time: Date.now()
+        });
+    },
+    openReportModal: (uid, username) => {
+        document.getElementById('report-target-name').textContent = username;
+        document.getElementById('report-modal').style.display = 'flex';
+        document.getElementById('btn-submit-report').onclick = () => app.submitReport(uid, username);
+    },
+    submitReport: (uid, username) => {
+        const reason = document.getElementById('report-reason').value.trim();
+        if (!reason) return showToast("신고 사유를 작성해주세요.", "error");
+        
+        db.ref('reports').push({
+            targetUid: uid,
+            targetName: username,
+            reason: reason,
+            reporter: STATE.currentUser.username,
+            time: Date.now(),
+            status: 'pending'
+        }).then(() => {
+            showToast(`${username}님을 신고했습니다.`, "success");
+            document.getElementById('report-modal').style.display = 'none';
+            document.getElementById('report-reason').value = '';
+            app.addServerLog(`🚨 플레이어 신고: ${username} (사유: ${reason})`);
+        });
+    },
+    openRewardModal: (userIndex) => {
+        console.log("Opening reward modal for index:", userIndex);
+        const user = STATE.users[userIndex];
+        if (!user) {
+            console.error("User not found at index:", userIndex);
+            return;
+        }
+        
+        const modal = document.getElementById('reward-modal');
+        const targetEl = document.getElementById('reward-target-user');
+        const amountEl = document.getElementById('reward-amount');
+        
+        if (!modal || !targetEl || !amountEl) {
+            console.error("Reward modal elements missing:", { modal, targetEl, amountEl });
+            showToast("시스템 오류: 선물 창을 열 수 없습니다.", "error");
+            return;
+        }
+
+        targetEl.textContent = `대상 유저: ${user.username}`;
+        amountEl.value = '';
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex'; // Force display just in case
+        
+        document.getElementById('btn-submit-reward').onclick = () => {
+            const type = document.getElementById('reward-type').value; // 'coins' or 'diamonds'
+            const amount = parseInt(document.getElementById('reward-amount').value);
+            
+            if (isNaN(amount) || amount <= 0) {
+                showToast("올바른 수량을 입력해주세요.", "error");
+                return;
+            }
+            
+            app.rewardUser(userIndex, type, amount);
+        };
+    },
+    rewardUser: (userIndex, type, amount) => {
+        const user = STATE.users[userIndex];
+        if (!user || !db) return;
+        
+        const label = type === 'coins' ? '코인' : '다이아몬드';
+        const icon = type === 'coins' ? '🪙' : '💎';
+        
+        // Update local state
+        user[type] = (user[type] || 0) + amount;
+        
+        // Push to Firebase
+        db.ref('users/' + user.uid).update({
+            [type]: user[type]
+        }).then(() => {
+            showToast(`${user.username}님께 ${icon}${amount} ${label}을 선물했습니다!`, "success");
+            document.getElementById('reward-modal').classList.add('hidden');
+            
+            // Add server log
+            app.addServerLog(`🎁 보상 지급: ${user.username} (${label} ${amount}개)`);
+            
+            // Optional: Send global notification
+            db.ref('global_notifications').push({
+                message: `${user.username}님이 관리자로부터 ${icon}${amount} ${label}을 선물 받았습니다! 🎉`,
+                type: 'success',
+                timestamp: Date.now()
+            });
+            
+            actualRenderAdminUserList();
+        }).catch(err => {
+            showToast("보상 지급 오류: " + err.message, "error");
         });
     }
 };
+
+// Merge extended functionality into main app object
+Object.assign(app, extendApp);
+
 
 const defaultQuests = [
     { id: 'gather_wood', title: '나무꾼', desc: '나무 10개를 채집하세요', type: 'wood', target: 10, reward: 50, icon: '🌲' },
@@ -2227,6 +2388,9 @@ const actualRenderAdminUserList = () => {
                 ${isSelf ?
                 '<span class="badge admin">본인</span>' :
                 `
+                    <button class="btn primary" 
+                        style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background: #ffd700 !important; color: #000 !important; border:none; box-shadow: none; ${(!isMaster && user.role === 'admin') ? 'opacity: 0.5; cursor: not-allowed;' : ''}" 
+                        onclick="app.openRewardModal(${index})">🎁 선물</button>
                     <button class="btn primary" 
                         style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background: var(--secondary-color); color: var(--bg-dark); box-shadow: none; ${(!isMaster && user.role === 'admin') ? 'opacity: 0.5; cursor: not-allowed;' : ''}" 
                         onclick="app.openPwModal(${index})">PW 변경</button>
@@ -3216,7 +3380,11 @@ function init3DGame() {
             STATE.currentUser.thirst = Math.max(0, (STATE.currentUser.thirst || 100) - 0.15);
             if (STATE.currentUser.hunger <= 0 || STATE.currentUser.thirst <= 0) STATE.currentUser.health -= 1;
             updateUI();
-            if (STATE.currentUser.health <= 0) { app.exitGame(); showToast('생존 실패...', 'error'); }
+            if (STATE.currentUser.health <= 0) { 
+                app.exitGame(); 
+                showToast('생존 실패...', 'error'); 
+                app.addServerLog('💀 생존 실패 (사망)');
+            }
         }
 
         // --- 4. WEATHER & PROJECTILES ---
@@ -4444,6 +4612,54 @@ function initGlobalNotifications() {
     });
 }
 
+function renderAdminReports() {
+    const listEl = document.getElementById('admin-report-list');
+    if (!listEl || !db) return;
+
+    db.ref('reports').on('value', snap => {
+        const data = snap.val();
+        listEl.innerHTML = '';
+        if (!data) {
+            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">신고 내역이 없습니다.</div>';
+            return;
+        }
+
+        Object.entries(data).reverse().forEach(([rid, r]) => {
+            const row = document.createElement('div');
+            row.className = 'user-list-row';
+            row.style.cssText = 'display: grid; grid-template-columns: 1.2fr 2fr 1.2fr auto; align-items: center; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);';
+            row.innerHTML = `
+                <span style="color:#ffd700; font-weight:bold;">${r.targetName}</span>
+                <span style="color:#fff; font-size:0.9rem;">${r.reason}</span>
+                <span style="color:#aaa; font-size:0.85rem;">by ${r.reporter}</span>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn primary" style="padding:4px 8px; font-size:0.7rem;" onclick="app.addServerLog('⚠️ 신고 확인완료: ${r.targetName}'); db.ref('reports/${rid}').remove(); showToast('신고를 처리했습니다.', 'info');">처리</button>
+                </div>
+            `;
+            listEl.appendChild(row);
+        });
+    });
+}
+
+function renderAdminLogs() {
+    const listEl = document.getElementById('admin-log-list');
+    if (!listEl || !db) return;
+
+    db.ref('server_logs').limitToLast(50).on('value', snap => {
+        const data = snap.val();
+        listEl.innerHTML = '';
+        if (!data) return;
+        
+        Object.values(data).reverse().forEach(log => {
+            const time = new Date(log.time).toLocaleTimeString();
+            const div = document.createElement('div');
+            div.style.color = log.msg.includes('🚨') ? '#ff5252' : log.msg.includes('📣') ? '#ffd700' : '#aaa';
+            div.textContent = `[${time}] ${log.msg}`;
+            listEl.appendChild(div);
+        });
+    });
+}
+
 const renderNotificationHistory = () => {
     const listEl = document.getElementById('notif-history-list');
     if (!listEl || !db) return;
@@ -4489,7 +4705,10 @@ document.getElementById('btn-notif-center').addEventListener('click', () => {
 // Initial Setup
 setTimeout(() => {
     // Show login screen by default on load
-    document.getElementById('login-screen').classList.add('active');
-    document.getElementById('login-screen').classList.remove('hidden');
+    const login = document.getElementById('login-screen');
+    if (login) {
+        login.classList.add('active');
+        login.classList.remove('hidden');
+    }
     initGlobalNotifications();
 }, 100);
