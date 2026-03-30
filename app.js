@@ -2694,14 +2694,16 @@ function init3DGame() {
              if (d < 15) return BIOME.OAK; // Center island
              return { color: 0x1976d2, name: 'Ocean' };
         }
-        if (x < -30) return BIOME.SNOW;
-        if (x > 30) return BIOME.MOUNTAIN;
+        // Infinite Perlin-ish noise approximation
+        const b = Math.sin(x * 0.005) * Math.cos(z * 0.005) + Math.sin(x * 0.01 + 2) * 0.5;
+        if (b > 0.4) return BIOME.SNOW;
+        if (b < -0.4) return BIOME.MOUNTAIN;
         return BIOME.OAK;
     }
 
-    // Flat Ground -> Multi-Biome Terrain
-    const terrainSize = 300;
-    const segments = 64;
+    // Huge Ground for Infinite Feel
+    const terrainSize = 20000;
+    const segments = 250;
     const groundGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, segments, segments);
     groundGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array((segments + 1) * (segments + 1) * 3), 3));
 
@@ -2709,24 +2711,39 @@ function init3DGame() {
     const colorAttr = groundGeo.attributes.color;
     const tempColor = new THREE.Color();
 
+    function getHeightAt(x, z) {
+        const dist = Math.sqrt(x * x + z * z);
+        if (mapType === 'ocean') {
+            if (dist < 15) return Math.sin(x*0.5)*0.5 + 0.5;
+            return -3 - (dist-15)*0.2;
+        }
+        if (mapType === 'snow') return Math.sin(x*0.1)*Math.cos(z*0.1)*3;
+        
+        let h = Math.sin(x * 0.02) * Math.cos(z * 0.02) * 2;
+        const b = Math.sin(x * 0.005) * Math.cos(z * 0.005) + Math.sin(x * 0.01 + 2) * 0.5;
+        
+        if (b < -0.4) {
+             // Mountains
+             h += 5 + Math.sin(x * 0.08) * Math.cos(z * 0.08) * 8;
+        } else if (b > 0.4) {
+             // Snow Plains
+             h += 1 + Math.sin(x * 0.05) * Math.cos(z * 0.05) * 1.5;
+        } else {
+             // Normal Oak Forest (Hills)
+             h += Math.sin(x * 0.05) * 1.5;
+        }
+        return h;
+    }
+
     for (let i = 0; i < posAttr.count; i++) {
         const vx = posAttr.getX(i);
         const vy = posAttr.getY(i);
         const dist = Math.sqrt(vx * vx + vy * vy);
-        let h = 0;
+        
+        let h = getHeightAt(vx, vy);
+        // Ensure starting center is somewhat flat/safe
+        if (dist < 20) h *= (dist / 20); 
 
-        if (mapType === 'ocean') {
-            if (dist < 15) h = Math.sin(vx*0.5)*0.5 + 0.5;
-            else h = -3 - (dist-15)*0.2;
-        } else if (mapType === 'snow') {
-            h = Math.sin(vx*0.1)*Math.cos(vy*0.1)*3 + Math.random()*0.5;
-        } else {
-            if (vx > 30 && dist <= 80) {
-                h = Math.sin(vx * 0.2) * Math.cos(vy * 0.2) * 5 + 3;
-                h += Math.sin(vx * 0.5) * 1.5;
-            }
-            if (dist > 80) h -= Math.min(5, (dist - 80) * 0.4);
-        }
         posAttr.setZ(i, h);
 
         const biome = getBiomeAt(vx, vy);
@@ -2738,23 +2755,6 @@ function init3DGame() {
         colorAttr.setXYZ(i, tempColor.r, tempColor.g, tempColor.b);
     }
     groundGeo.computeVertexNormals();
-
-    function getHeightAt(x, z) {
-        const dist = Math.sqrt(x * x + z * z);
-        if (mapType === 'ocean') {
-            if (dist < 15) return Math.sin(x*0.5)*0.5 + 0.5;
-            return -3 - (dist-15)*0.2;
-        }
-        if (mapType === 'snow') return Math.sin(x*0.1)*Math.cos(z*0.1)*3;
-        
-        let h = 0;
-        if (x > 30 && dist <= 80) {
-            h = Math.sin(x * 0.2) * Math.cos(z * 0.2) * 5 + 3;
-            h += Math.sin(x * 0.5) * 1.5;
-        }
-        if (dist > 80) h -= Math.min(5, (dist - 80) * 0.4);
-        return h;
-    }
 
     const groundMat = new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 10 });
     const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -3017,16 +3017,16 @@ function init3DGame() {
         scene.userData.mineables.push(trunk, leaves);
     }
 
-    for (let i = 0; i < 120; i++) {
-        const x = (Math.random() - 0.5) * 150;
-        const z = (Math.random() - 0.5) * 150;
-        spawnTree(x, z);
+    for (let i = 0; i < 40; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const rad = 10 + Math.random() * 40;
+        spawnTree(Math.cos(angle) * rad, Math.sin(angle) * rad);
     }
 
-    // Spawn Initial Animals
-    for (let i = 0; i < 15; i++) {
-        const x = (Math.random() - 0.5) * 100;
-        const z = (Math.random() - 0.5) * 100;
+    // Initial Animals
+    for (let i = 0; i < 8; i++) {
+        const x = (Math.random() - 0.5) * 60;
+        const z = (Math.random() - 0.5) * 60;
         const b = getBiomeAt(x, z);
         let type = 'pig';
         if (b === BIOME.SNOW) type = 'sheep';
@@ -3075,18 +3075,10 @@ function init3DGame() {
         scene.userData.mineables.push(rock);
     }
 
-    for (let i = 0; i < 60; i++) {
-        const x = (Math.random() - 0.5) * 150;
-        const z = (Math.random() - 0.5) * 150;
-        const biome = getBiomeAt(x, z);
-
-        // Increase rock density in mountains
-        if (biome === BIOME.MOUNTAIN) {
-            spawnRock(x, z);
-            if (Math.random() > 0.5) spawnRock(x + 2, z + 2);
-        } else if (Math.random() > 0.5) {
-            spawnRock(x, z);
-        }
+    for (let i = 0; i < 30; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const rad = 10 + Math.random() * 50;
+        spawnRock(Math.cos(angle) * rad, Math.sin(angle) * rad);
     }
 
     // --- ITEM SPAWNING SYSTEM ---
@@ -3204,25 +3196,18 @@ function init3DGame() {
     }
 
     // Spawn initial items
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 20; i++) {
         const rand = Math.random();
         let type = 'coin';
         if (rand > 0.9) type = 'diamond';
         else if (rand > 0.75) type = 'food';
         else if (rand > 0.6) type = 'water';
 
-        const x = (Math.random() - 0.5) * 150;
-        const z = (Math.random() - 0.5) * 150;
-        if (Math.abs(x) < 3 && Math.abs(z) < 3) continue;
-        spawnWorldItem(type, x, z);
-        
-        // Very rare chance for Golem Dungeon (0.5%)
-        if (Math.random() < 0.005) {
-             const dx = (Math.random() - 0.5) * 200;
-             const dz = (Math.random() - 0.5) * 200;
-             if (Math.abs(dx) > 30 || Math.abs(dz) > 30) spawnGolemDungeon(dx, dz);
-        }
+        const angle = Math.random() * Math.PI * 2;
+        const rad = 5 + Math.random() * 40;
+        spawnWorldItem(type, Math.cos(angle) * rad, Math.sin(angle) * rad);
     }
+
 
     // Basic Movement Logic
     const keys = {};
@@ -3374,7 +3359,7 @@ function init3DGame() {
             }
         }
 
-        // Survival & Projectiles Throttled
+        // Survival & Dynamic Infinite Object Culling & Spawning
         if (now % 1000 < 20) {
             STATE.currentUser.hunger = Math.max(0, (STATE.currentUser.hunger || 100) - 0.1);
             STATE.currentUser.thirst = Math.max(0, (STATE.currentUser.thirst || 100) - 0.15);
@@ -3385,6 +3370,74 @@ function init3DGame() {
                 showToast('생존 실패...', 'error'); 
                 app.addServerLog('💀 생존 실패 (사망)');
             }
+
+            // Infinite World Spawning Logic
+            const px = playerGroup.position.x;
+            const pz = playerGroup.position.z;
+            const spawnRadius = 80;
+
+            // Maintain around 150 mineables (trees/rocks) in the vicinity
+            if (scene.userData.mineables.length < 250 && Math.random() > 0.2) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = 20 + Math.random() * spawnRadius;
+                if (Math.random() > 0.6) spawnRock(px + Math.cos(angle)*r, pz + Math.sin(angle)*r);
+                else spawnTree(px + Math.cos(angle)*r, pz + Math.sin(angle)*r);
+            }
+
+            // Maintain items
+            if (scene.userData.collectibles.length < 30 && Math.random() > 0.5) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = 10 + Math.random() * (spawnRadius - 20);
+                const rand = Math.random();
+                let type = 'coin';
+                if (rand > 0.95) type = 'diamond';
+                else if (rand > 0.7) type = 'food';
+                else if (rand > 0.5) type = 'water';
+                spawnWorldItem(type, px + Math.cos(angle)*r, pz + Math.sin(angle)*r);
+            }
+
+            // Ensure animals
+            if (scene.userData.animals.length < 12 && Math.random() > 0.7) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.random() * spawnRadius;
+                const nx = px + Math.cos(angle)*r;
+                const nz = pz + Math.sin(angle)*r;
+                const b = getBiomeAt(nx, nz);
+                spawnAnimal((b === BIOME.SNOW) ? 'sheep' : ((b === BIOME.MOUNTAIN) ? 'cow' : (Math.random() > 0.5 ? 'pig' : 'sheep')), nx, nz);
+            }
+
+            // Monsters & Dungeon
+            if (scene.userData.monsters.length < 6 && Math.random() > 0.8) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = 40 + Math.random() * 40;
+                spawnMonster(px + Math.cos(angle)*r, pz + Math.sin(angle)*r);
+            }
+            if (Math.random() < 0.002) { // Extremely rare chance to dynamically spawn a Golem Dungeon
+                 const angle = Math.random() * Math.PI * 2;
+                 spawnGolemDungeon(px + Math.cos(angle)*100, pz + Math.sin(angle)*100);
+            }
+
+            // Clear objects too far away to maintain performance
+            const cullObj = (list, thresholdSq) => {
+                for (let i = list.length - 1; i >= 0; i--) {
+                    const obj = list[i];
+                    const p = (obj.parent && obj.parent.type !== 'Scene') ? obj.parent : obj;
+                    
+                    // Don't cull structures (base building) unless extremely far
+                    if (scene.userData.structures.includes(p) && p.position.distanceToSquared(playerGroup.position) < 500*500) continue;
+
+                    if (p.position.distanceToSquared(playerGroup.position) > thresholdSq) {
+                        scene.remove(p);
+                        list.splice(i, 1);
+                    }
+                }
+            };
+
+            const cullLimit = 120 * 120; // ~120 units away
+            cullObj(scene.userData.mineables, cullLimit);
+            cullObj(scene.userData.collectibles, cullLimit);
+            cullObj(scene.userData.animals, cullLimit);
+            cullObj(scene.userData.monsters, cullLimit);
         }
 
         // --- 4. WEATHER & PROJECTILES ---
@@ -3444,6 +3497,11 @@ function init3DGame() {
 
     window.addEventListener('mousedown', (e) => {
         if (!STATE.threeScene || document.getElementById('game-screen').classList.contains('hidden')) return;
+
+        // Prevent accidental actions when using touch controls to look/move
+        if (e.target && (e.target.id === 'touch-look-area' || e.target.id === 'joystick-area' || e.target.id === 'joystick-knob')) {
+            return;
+        }
 
         if (isBuildMode) {
             // Priority: Place Campfire if held, else Workbench if held, else Wall
@@ -3598,6 +3656,7 @@ function init3DGame() {
                 } else {
                     showToast(`나무 타격! (남은 횟수: ${Math.max(0, target.userData.hits)})`, 'info');
                 }
+                return; // Stop raycast from also hitting the ground
             } else if (hitObj.userData.isStone) {
                 const rock = hitObj;
                 const dmg = (STATE.currentUser.steel_axe > 0) ? 2 : 1;
@@ -3632,6 +3691,7 @@ function init3DGame() {
                 } else {
                     showToast(`돌 타격! (남은 횟수: ${Math.max(0, rock.userData.hits)})`, 'info');
                 }
+                return; // Stop raycast from also hitting the ground
             }
         }
 
@@ -3719,6 +3779,8 @@ function init3DGame() {
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     if (isTouchDevice) {
         document.getElementById('mobile-controls').style.display = 'block';
+        const mouseHint = document.getElementById('mouse-hint');
+        if (mouseHint) mouseHint.style.display = 'none';
         // document.querySelector('.crosshair').style.display = 'none'; // Keep crosshair even on mobile per user request
 
         // 1. Joystick Logic
@@ -4701,6 +4763,59 @@ document.getElementById('btn-notif-center').addEventListener('click', () => {
     app.showScreen('notif-center-screen');
     renderNotificationHistory();
 });
+
+// --- FEEDBACK SYSTEM ---
+const btnFeedback = document.getElementById('btn-feedback');
+if (btnFeedback) {
+    btnFeedback.addEventListener('click', () => {
+        playSound('click');
+        if (!STATE.currentUser || STATE.currentUser.isGuest) {
+            showToast("피드백 기능은 로그인 후 이용 가능합니다.", "warning");
+            return;
+        }
+        document.getElementById('feedback-textarea').value = '';
+        document.getElementById('feedback-modal').classList.remove('hidden');
+    });
+}
+
+const btnSubmitFeedback = document.getElementById('btn-submit-feedback');
+if (btnSubmitFeedback) {
+    btnSubmitFeedback.addEventListener('click', () => {
+        const text = document.getElementById('feedback-textarea').value.trim();
+        if (!text) {
+            showToast('건의 내용을 입력해주세요.', 'warning');
+            return;
+        }
+        if (!db) {
+            showToast('현재 오프라인 모드입니다. 피드백을 보낼 수 없습니다.', 'error');
+            return;
+        }
+
+        const btn = btnSubmitFeedback;
+        btn.disabled = true;
+        btn.textContent = '전송 중...';
+
+        const id = 'fb_' + Date.now();
+        db.ref('feedbacks/' + id).set({
+            id: id,
+            author: STATE.currentUser.username,
+            content: text,
+            time: Date.now(),
+            status: 'pending'
+        }).then(() => {
+            playSound('success');
+            showToast('피드백이 성공적으로 전송되었습니다! 감사합니다. 💖', 'success');
+            document.getElementById('feedback-modal').classList.add('hidden');
+            app.addServerLog(`💡 [피드백 제출] ${STATE.currentUser.username}님이 건의사항을 보냈습니다.`);
+            btn.disabled = false;
+            btn.textContent = '보내기 🚀';
+        }).catch(err => {
+            showToast('전송 실패: ' + err.message, 'error');
+            btn.disabled = false;
+            btn.textContent = '보내기 🚀';
+        });
+    });
+}
 
 // Initial Setup
 setTimeout(() => {
