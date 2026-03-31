@@ -3893,7 +3893,8 @@ const renderChat = () => {
     const chatMsgs = document.getElementById('chat-messages');
     if (!chatMsgs) return;
 
-    const isOnline = db && auth && auth.currentUser;
+    // Use db + STATE.currentUser (not auth.currentUser) so bypass-login also gets online chat
+    const isOnline = db && STATE.currentUser && !STATE.currentUser.isGuest;
 
     if (isOnline) {
         if (!isFirebaseChatAttached) {
@@ -3954,7 +3955,7 @@ const addChatMsgUI = (sender, text, type = 'other', id = null) => {
 
 const deleteChatMessage = (id) => {
     if (confirm('이 메시지를 삭제하시겠습니까?')) {
-        const isOnline = db && auth && auth.currentUser;
+        const isOnline = db && STATE.currentUser && !STATE.currentUser.isGuest;
         if (isOnline) {
             db.ref('chats/' + id).remove().catch(err => {
                 // If it fails on server, try local offline deletion
@@ -3980,7 +3981,7 @@ const addChatMsg = (sender, text, type = 'other', isInternal = false) => {
 
     // If bypass is used, auth.currentUser will be null. 
     // We should fallback to local UI gracefully if Firebase throws permission denied.
-    const isOnline = db && auth && auth.currentUser;
+    const isOnline = db && STATE.currentUser && !STATE.currentUser.isGuest;
 
     if (isOnline && !isInternal) {
         db.ref('chats/' + msgId).set({
