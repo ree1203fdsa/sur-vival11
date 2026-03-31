@@ -2134,11 +2134,10 @@ const extendApp = {
             app.addServerLog(`🚨 플레이어 신고: ${username} (사유: ${reason})`);
         });
     },
-    openRewardModal: (userIndex) => {
-        console.log("Opening reward modal for index:", userIndex);
-        const user = STATE.users[userIndex];
+    openRewardModal: (username) => {
+        const user = STATE.users.find(u => u.username === username);
         if (!user) {
-            console.error("User not found at index:", userIndex);
+            showToast("유저를 찾을 수 없습니다.", "error");
             return;
         }
         
@@ -2147,7 +2146,6 @@ const extendApp = {
         const amountEl = document.getElementById('reward-amount');
         
         if (!modal || !targetEl || !amountEl) {
-            console.error("Reward modal elements missing:", { modal, targetEl, amountEl });
             showToast("시스템 오류: 선물 창을 열 수 없습니다.", "error");
             return;
         }
@@ -2155,10 +2153,10 @@ const extendApp = {
         targetEl.textContent = `대상 유저: ${user.username}`;
         amountEl.value = '';
         modal.classList.remove('hidden');
-        modal.style.display = 'flex'; // Force display just in case
+        modal.style.display = 'flex';
         
         document.getElementById('btn-submit-reward').onclick = () => {
-            const type = document.getElementById('reward-type').value; // 'coins' or 'diamonds'
+            const type = document.getElementById('reward-type').value;
             const amount = parseInt(document.getElementById('reward-amount').value);
             
             if (isNaN(amount) || amount <= 0) {
@@ -2166,11 +2164,11 @@ const extendApp = {
                 return;
             }
             
-            app.rewardUser(userIndex, type, amount);
+            app.rewardUser(username, type, amount);
         };
     },
-    rewardUser: (userIndex, type, amount) => {
-        const user = STATE.users[userIndex];
+    rewardUser: (username, type, amount) => {
+        const user = STATE.users.find(u => u.username === username);
         if (!user) return;
         
         const label = type === 'coins' ? '코인' : '다이아몬드';
@@ -2206,7 +2204,6 @@ const extendApp = {
                 onSuccess();
             });
         } else {
-            console.warn("User has no UID or offline. Applying locally only.", user);
             onSuccess();
         }
     }
@@ -2399,7 +2396,7 @@ const actualRenderAdminUserList = () => {
                 `
                     <button class="btn primary" 
                         style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background: #ffd700 !important; color: #000 !important; border:none; box-shadow: none; ${(!isMaster && user.role === 'admin') ? 'opacity: 0.5; cursor: not-allowed;' : ''}" 
-                        onclick="app.openRewardModal(${index})">🎁 선물</button>
+                        onclick="app.openRewardModal('${user.username}')">🎁 선물</button>
                     <button class="btn primary" 
                         style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background: var(--secondary-color); color: var(--bg-dark); box-shadow: none; ${(!isMaster && user.role === 'admin') ? 'opacity: 0.5; cursor: not-allowed;' : ''}" 
                         onclick="app.openPwModal(${index})">PW 변경</button>
