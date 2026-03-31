@@ -2171,35 +2171,44 @@ const extendApp = {
     },
     rewardUser: (userIndex, type, amount) => {
         const user = STATE.users[userIndex];
-        if (!user || !db) return;
+        if (!user) return;
         
         const label = type === 'coins' ? '코인' : '다이아몬드';
         const icon = type === 'coins' ? '🪙' : '💎';
         
         // Update local state
         user[type] = (user[type] || 0) + amount;
+        saveData();
         
-        // Push to Firebase
-        db.ref('users/' + user.uid).update({
-            [type]: user[type]
-        }).then(() => {
+        const onSuccess = () => {
             showToast(`${user.username}님께 ${icon}${amount} ${label}을 선물했습니다!`, "success");
-            document.getElementById('reward-modal').classList.add('hidden');
-            
-            // Add server log
+            const modal = document.getElementById('reward-modal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
             app.addServerLog(`🎁 보상 지급: ${user.username} (${label} ${amount}개)`);
-            
-            // Optional: Send global notification
-            db.ref('global_notifications').push({
-                message: `${user.username}님이 관리자로부터 ${icon}${amount} ${label}을 선물 받았습니다! 🎉`,
-                type: 'success',
-                timestamp: Date.now()
-            });
-            
             actualRenderAdminUserList();
-        }).catch(err => {
-            showToast("보상 지급 오류: " + err.message, "error");
-        });
+            updateUI();
+        };
+
+        // Push to Firebase
+        if (db && user.uid) {
+            db.ref('users/' + user.uid).update({
+                [type]: user[type]
+            }).then(() => {
+                db.ref('global_notifications').push({
+                    message: `${user.username}님이 관리자로부터 ${icon}${amount} ${label}을 선물 받았습니다! 🎉`,
+                    type: 'success',
+                    timestamp: Date.now()
+                });
+                onSuccess();
+            }).catch(err => {
+                showToast("DB 동기화 오류가 발생했지만 로컬에는 저장되었습니다.", "warning");
+                onSuccess();
+            });
+        } else {
+            console.warn("User has no UID or offline. Applying locally only.", user);
+            onSuccess();
+        }
     }
 };
 
@@ -4765,35 +4774,37 @@ document.getElementById('btn-notif-center').addEventListener('click', () => {
 });
 
 // --- FEEDBACK SYSTEM ---
-const btnFeedback = document.getElementById('btn-feedback');
-if (btnFeedback) {
-    btnFeedback.addEventListener('click', () => {
+document.addEventListener('click', (e) => {
+    const feedbackBtn = e.target.closest('#btn-feedback');
+    if (feedbackBtn) {
         playSound('click');
         if (!STATE.currentUser || STATE.currentUser.isGuest) {
             showToast("피드백 기능은 로그인 후 이용 가능합니다.", "warning");
             return;
         }
         document.getElementById('feedback-textarea').value = '';
-        document.getElementById('feedback-modal').classList.remove('hidden');
-    });
-}
+        const modal = document.getElementById('feedback-modal');
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        return;
+    }
 
-const btnSubmitFeedback = document.getElementById('btn-submit-feedback');
-if (btnSubmitFeedback) {
-    btnSubmitFeedback.addEventListener('click', () => {
-        const text = document.getElementById('feedback-textarea').value.trim();
+    const submitFeedbackBtn = e.target.closest('#btn-submit-feedback');
+    if (submitFeedbackBtn) {
+        const textArea = document.getElementById('feedback-textarea');
+        if (!textArea) return;
+        const text = textArea.value.trim();
         if (!text) {
             showToast('건의 내용을 입력해주세요.', 'warning');
             return;
         }
-        if (!db) {
+        if (!FIREBASE_ENABLED || !db) {
             showToast('현재 오프라인 모드입니다. 피드백을 보낼 수 없습니다.', 'error');
             return;
         }
 
-        const btn = btnSubmitFeedback;
-        btn.disabled = true;
-        btn.textContent = '전송 중...';
+        submitFeedbackBtn.disabled = true;
+        submitFeedbackBtn.textContent = '전송 중...';
 
         const id = 'fb_' + Date.now();
         db.ref('feedbacks/' + id).set({
@@ -4805,17 +4816,20 @@ if (btnSubmitFeedback) {
         }).then(() => {
             playSound('success');
             showToast('피드백이 성공적으로 전송되었습니다! 감사합니다. 💖', 'success');
-            document.getElementById('feedback-modal').classList.add('hidden');
+            const modal = document.getElementById('feedback-modal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
             app.addServerLog(`💡 [피드백 제출] ${STATE.currentUser.username}님이 건의사항을 보냈습니다.`);
-            btn.disabled = false;
-            btn.textContent = '보내기 🚀';
+            submitFeedbackBtn.disabled = false;
+            submitFeedbackBtn.textContent = '보내기 🚀';
         }).catch(err => {
             showToast('전송 실패: ' + err.message, 'error');
-            btn.disabled = false;
-            btn.textContent = '보내기 🚀';
+            submitFeedbackBtn.disabled = false;
+            submitFeedbackBtn.textContent = '보내기 🚀';
         });
-    });
-}
+        return;
+    }
+});
 
 // Initial Setup
 setTimeout(() => {

@@ -257,7 +257,7 @@
                     <button class="menu-card" id="btn-feedback">
                         <div class="card-icon">💡</div>
                         <h3>피드백 고고</h3>
-                        <p>건의사항을 보내주세요</p>
+                        <p>건의사항을 보내주세요<br><span style="color:#ff5252; font-size: 0.8rem;">(미완성입니다)</span></p>
                     </button>
                 </div>
             </div>
@@ -1126,7 +1126,7 @@
 
                 <div style="display: flex; gap: 10px;">
                     <button class="btn primary" id="btn-submit-reward" style="flex: 1; padding: 12px; font-weight: bold; background: #ffd700 !important; color: #000 !important;">지급하기</button>
-                    <button class="btn secondary" onclick="document.getElementById('reward-modal').classList.add('hidden')" style="padding: 12px 20px;">취소</button>
+                    <button class="btn secondary" onclick="document.getElementById('reward-modal').classList.add('hidden'); document.getElementById('reward-modal').style.display = 'none';" style="padding: 12px 20px;">취소</button>
                 </div>
             </div>
         </div>
@@ -1374,7 +1374,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=76"></script>
+        <script src="app.js?v=80"></script>
 </body>
 
 </html>
