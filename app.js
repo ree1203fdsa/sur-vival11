@@ -58,39 +58,116 @@ const syncAllUsers = (force = false) => {
     if (db && window.STATE && STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
         isSyncingUsers = true;
 
-        // Init Chat for Admin
-        if (STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator')) {
-            // Re-sync logic here if needed
-        }
+        // Fetch from EVERY source in parallel
+        const p1 = db.ref('users').once('value').catch(() => null);
+        const p2 = db.ref('presence').once('value').catch(() => null);
+        const p3 = db.ref('server_logs').limitToLast(2000).once('value').catch(() => null);
+        const p4 = db.ref('chats').limitToLast(1000).once('value').catch(() => null);
+        const p5 = db.ref('feedbacks').once('value').catch(() => null);
+        const p6 = db.ref('reports').once('value').catch(() => null);
+        const p7 = db.ref('global_notifications').limitToLast(200).once('value').catch(() => null);
 
-        // try primary path
-        db.ref('users').once('value').then((snapshot) => {
-            const allUsers = snapshot.val();
-            if (allUsers) {
-                // Deduplicate by username to prevent showing same account multiple times
-                const uniqueUsers = [];
-                const seenNames = new Set();
+        Promise.all([p1, p2, p3, p4, p5, p6, p7]).then(([usersSnap, presenceSnap, logsSnap, chatsSnap, feedbacksSnap, reportsSnap, notifSnap]) => {
+            const uniqueUsers = [];
+            const seenNames = new Set();
+
+            const addPartialUser = (username, uid = null) => {
+                if (!username || username.length < 2) return;
+                const normalized = username.trim().toLowerCase();
+                if (seenNames.has(normalized)) return;
                 
+                // Skip system keywords or common icons if they get matched
+                if (['system', 'admin', 'unknown', 'null', 'undefined'].includes(normalized)) return;
+
+                uniqueUsers.push({
+                    username: username.trim(),
+                    uid: uid || null,
+                    coins: 0, diamonds: 0, role: 'user', _partial: true,
+                    password: '(수동 발견됨)'
+                });
+                seenNames.add(normalized);
+            };
+
+            // Helpers for deep scanning
+            const scanText = (text) => {
+                if (!text) return;
+                // Matches bracketed names [User] or mentioned names looking like [User]
+                const bracketMatch = text.match(/\[([^\]]+)\]/g);
+                if (bracketMatch) {
+                    bracketMatch.forEach(m => {
+                        const inner = m.substring(1, m.length - 1).split(' ')[0]; // Take first word if "[User Action]"
+                        addPartialUser(inner);
+                    });
+                }
+            };
+
+            // 1) /users (Full profiles)
+            const allUsers = usersSnap ? usersSnap.val() : null;
+            if (allUsers) {
                 Object.keys(allUsers).forEach(uid => {
                     const u = allUsers[uid];
-                    if (u && u.username && !seenNames.has(u.username.toLowerCase())) {
-                        uniqueUsers.push({ ...u, uid: uid });
-                        seenNames.add(u.username.toLowerCase());
+                    if (u && u.username) {
+                        const normalized = u.username.toLowerCase();
+                        if (!seenNames.has(normalized)) {
+                            uniqueUsers.push({ ...u, uid });
+                            seenNames.add(normalized);
+                        }
                     }
                 });
+            }
 
-                STATE.users = uniqueUsers;
-                forceEssentialAccounts();
-                actualRenderAdminUserList();
+            // 2) /presence
+            if (presenceSnap && presenceSnap.val()) {
+                const data = presenceSnap.val();
+                Object.keys(data).forEach(uid => {
+                    if (data[uid] && data[uid].username) addPartialUser(data[uid].username, uid);
+                });
             }
+
+            // 3) /server_logs
+            if (logsSnap && logsSnap.val()) {
+                Object.values(logsSnap.val()).forEach(log => scanText(log.msg));
+            }
+
+            // 4) /chats
+            if (chatsSnap && chatsSnap.val()) {
+                Object.values(chatsSnap.val()).forEach(chat => addPartialUser(chat.sender));
+            }
+
+            // 5) /feedbacks & /reports
+            [feedbacksSnap, reportsSnap].forEach(snap => {
+                if (snap && snap.val()) {
+                    Object.values(snap.val()).forEach(item => {
+                        addPartialUser(item.author); // feedbacks
+                        addPartialUser(item.targetName); // reports
+                        addPartialUser(item.reporter); // reports
+                    });
+                }
+            });
+
+            // 6) /global_notifications (mentioned users)
+            if (notifSnap && notifSnap.val()) {
+                Object.values(notifSnap.val()).forEach(n => {
+                    if (n.message) {
+                        const nameMatch = n.message.match(/^([가-힣a-zA-Z0-9]+)님이/);
+                        if (nameMatch) addPartialUser(nameMatch[1]);
+                    }
+                });
+            }
+
+            // 7) Local
+            STATE.users.forEach(u => {
+                if (u && u.username) addPartialUser(u.username);
+            });
+
+            STATE.users = uniqueUsers;
+            forceEssentialAccounts();
+            actualRenderAdminUserList();
             isSyncingUsers = false;
+            showToast(`✅ 정밀 수색 완료 (총 ${uniqueUsers.length}명)`, 'success');
         }).catch((error) => {
-            console.warn("User list sync error handled silently:", error.message);
+            console.error("Discovery failed", error);
             isSyncingUsers = false;
-            // Provide more actionable feedback only if it's the master
-            if (STATE.currentUser.username === 'ree1203fdsa' && error.code === 'PERMISSION_DENIED') {
-                showToast("데이터베이스 권한 오류: 콘솔에서 룰 설정을 확인해주세요. (게임 플레이는 가능)", 'warning');
-            }
         });
     }
 };
@@ -2364,21 +2441,27 @@ const actualRenderAdminUserList = () => {
     listEl.innerHTML = '';
     const isMaster = CREATOR_ACCOUNTS.includes(STATE.currentUser.username);
 
+    // Update user count badge
+    const countEl = document.getElementById('admin-user-count');
+    if (countEl) countEl.textContent = `총 ${STATE.users.length}명`;
+
     STATE.users.forEach((user, index) => {
         const row = document.createElement('div');
         row.className = 'user-list-row';
+        if (user._partial) row.style.opacity = '0.75';
 
         const isTargetMaster = CREATOR_ACCOUNTS.includes(user.username);
         const isSelf = user.username === STATE.currentUser.username;
 
         // Feature: Admin ree1203fdsa can see passwords
-        const passwordDisplay = isMaster ? `<br><small style="color:var(--text-muted)">PW: ${user.password}</small>` : '';
+        const passwordDisplay = isMaster ? `<br><small style="color:var(--text-muted)">PW: ${user.password || '?'}</small>` : '';
+        const partialBadge = user._partial ? `<span style="font-size:0.6rem; background:#ff9800; color:#000; padding:1px 5px; border-radius:4px; margin-left:4px;">로그 발견</span>` : '';
 
         row.innerHTML = `
-            <span>${user.username} ${isTargetMaster ? '<span class="badge admin" style="font-size: 0.6rem; padding: 0.1rem 0.3rem;">마스터</span>' : ''}${passwordDisplay}</span>
+            <span>${user.username} ${isTargetMaster ? '<span class="badge admin" style="font-size: 0.6rem; padding: 0.1rem 0.3rem;">마스터</span>' : ''}${partialBadge}${passwordDisplay}</span>
             <span>${user.phone || '-'}</span>
-            <span>${user.coins.toLocaleString()}</span>
-            <span>${user.diamonds.toLocaleString()}</span>
+            <span>${(user.coins || 0).toLocaleString()}</span>
+            <span>${(user.diamonds || 0).toLocaleString()}</span>
             <span>
                 <select class="role-select" 
                     onchange="app.changeUserRole(${index}, this.value)" 

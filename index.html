@@ -38,6 +38,9 @@
         <!-- 1. LOGIN SCREEN (Portrait) -->
         <section id="login-screen" class="screen portrait active">
             <div class="glass-panel login-panel">
+                <div style="text-align: center; margin-bottom: 10px;">
+                    <span style="background: linear-gradient(135deg, #00e5ff, #00ff88); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-size: 0.75rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;">🌐 멀티플레이어 3D 서바이벌 게임</span>
+                </div>
                 <h1 class="logo">SURVIVAL <span class="highlight">3D</span></h1>
                 <p class="subtitle">생존의 법칙을 증명하세요</p>
                 
@@ -627,7 +630,10 @@
                     <!-- Users Tab -->
                     <div id="admin-tab-users" class="admin-tab-content hidden">
                         <div class="admin-panel glass-panel user-management">
-                            <h3>유저 계정 관리</h3>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h3 style="margin: 0;">유저 계정 관리 <span id="admin-user-count" style="font-size: 0.8rem; color: #00e5ff; background: rgba(0,229,255,0.1); padding: 3px 10px; border-radius: 20px; margin-left: 8px;"></span></h3>
+                                <button class="btn primary" onclick="syncAllUsers(true); showToast('유저 목록 새로고침 중...','info');" style="padding: 6px 14px; font-size: 0.8rem;">🔄 새로고침</button>
+                            </div>
                             <div class="user-list-header" style="grid-template-columns: 1fr 1.2fr 0.8fr 0.8fr 0.8fr 1fr !important;">
                                 <span>아이디</span>
                                 <span>전화번호</span>
@@ -1374,7 +1380,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=82"></script>
+        <script src="app.js?v=87"></script>
 </body>
 
 </html>
