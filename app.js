@@ -18,6 +18,7 @@ const firebaseConfig = {
 let db = null;
 let auth = null;
 let isSyncingUsers = false;
+let isAdminUserListenerAttached = false;
 let isFirebaseChatAttached = false;
 
 // Pre-define showScreen to avoid circular dependencies
@@ -165,6 +166,22 @@ const syncAllUsers = (force = false) => {
             actualRenderAdminUserList();
             isSyncingUsers = false;
             showToast(`✅ 정밀 수색 완료 (총 ${uniqueUsers.length}명)`, 'success');
+
+            // --- Real-time Listener for NEW users (once deep sync is done) ---
+            if (!isAdminUserListenerAttached && db) {
+                isAdminUserListenerAttached = true;
+                db.ref('users').on('child_added', (snap) => {
+                    const newUser = snap.val();
+                    if (newUser && newUser.username) {
+                        const normalized = newUser.username.toLowerCase();
+                        if (!seenNames.has(normalized)) {
+                            uniqueUsers.push({ ...newUser, uid: snap.key });
+                            seenNames.add(normalized);
+                            actualRenderAdminUserList(); // Update UI in real-time
+                        }
+                    }
+                });
+            }
         }).catch((error) => {
             console.error("Discovery failed", error);
             isSyncingUsers = false;
