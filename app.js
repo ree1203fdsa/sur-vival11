@@ -281,6 +281,7 @@ const STATE = {
         dist: 100
     },
     selectedMap: 'classic',
+    currentServerId: null, // null means default global server
     threeScene: null
 };
 
@@ -1231,7 +1232,7 @@ document.getElementById('btn-mypage').addEventListener('click', () => {
     showScreen('mypage-screen');
 });
 
-let currentMultiTab = 'global';
+let currentMultiTab = 'servers';
 
 const ensureFriendCode = () => {
     if (!STATE.currentUser || STATE.currentUser.isGuest) return;
@@ -1270,8 +1271,10 @@ const ensureFriendCode = () => {
 
 const switchTab = (tab) => {
     currentMultiTab = tab;
+    const btnServers = document.getElementById('btn-tab-servers');
     const btnGlobal = document.getElementById('btn-tab-global');
     const btnFriends = document.getElementById('btn-tab-friends');
+    if (btnServers) btnServers.classList.toggle('active', tab === 'servers');
     if (btnGlobal) btnGlobal.classList.toggle('active', tab === 'global');
     if (btnFriends) btnFriends.classList.toggle('active', tab === 'friends');
     
@@ -1373,21 +1376,41 @@ const renderMultiplayerList = () => {
     loadingEl.textContent = currentMultiTab === 'global' ? '플레이어 목록 불러오는 중...' : '친구 목록 불러오는 중...';
     listEl.innerHTML = '';
 
-    // Fetch players (ingame), presence (global online), and friends
     Promise.all([
         db.ref('players').once('value'),
         db.ref('presence').once('value'),
-        db.ref('users/' + (STATE.currentUser?.uid || 'none') + '/friends').once('value')
-    ]).then(([playerSnap, presenceSnap, friendSnap]) => {
+        db.ref('users/' + (STATE.currentUser?.uid || 'none') + '/friends').once('value'),
+        db.ref('official_servers').once('value')
+    ]).then(([playerSnap, presenceSnap, friendSnap, serverSnap]) => {
         const inGamePlayers = playerSnap.val() || {};
         const presence = presenceSnap.val() || {};
         const friends = friendSnap.val() || {};
+        const servers = serverSnap.val() || {};
         loadingEl.style.display = 'none';
         
         // Merge in-game and presence for a total online list
         const onlineUids = new Set([...Object.keys(inGamePlayers), ...Object.keys(presence)]);
 
-        if (currentMultiTab === 'global') {
+        if (currentMultiTab === 'servers') {
+            const serverList = Object.entries(servers);
+            if (serverList.length === 0) {
+                listEl.innerHTML = '<div style="text-align:center; color:#aaa; margin: 30px 0;">활성화된 서버가 없습니다. <br>관리자가 서버를 열어주기를 기다리세요! 🖥️</div>';
+                return;
+            }
+
+            serverList.forEach(([sid, s]) => {
+                const mapNames = { 'classic': '🌲 클래식', 'ocean': '🏝️ 바다', 'snow': '❄️ 설산' };
+                const row = document.createElement('div');
+                row.className = 'user-list-row';
+                row.style.cssText = 'display: grid; grid-template-columns: 1.2fr 1fr auto; align-items: center; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);';
+                row.innerHTML = `
+                    <div style="font-weight: bold; color: #00e5ff;">🖥️ ${s.name}</div>
+                    <span style="font-size: 0.8rem; color: #aaa;">🗺️ ${mapNames[s.mapId] || s.mapId || '기타'}</span>
+                    <button class="btn primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="app.joinOfficialServer('${sid}', '${s.mapId}')">서버 접속</button>
+                `;
+                listEl.appendChild(row);
+            });
+        } else if (currentMultiTab === 'global') {
             if (onlineUids.size === 0) {
                 listEl.innerHTML = '<div style="text-align:center; color:#aaa; margin: 30px 0;">현재 접속 중인 플레이어가 없습니다. 🏜️</div>';
                 return;
@@ -2141,6 +2164,59 @@ const extendApp = {
         }
     },
     switchTab,
+    createOfficialServer: () => {
+        const name = document.getElementById('admin-server-name').value.trim();
+        const mapId = document.getElementById('admin-server-map').value;
+        if (!name) return showToast("서버 이름을 입력하세요.", "error");
+
+        const sid = 'sv_' + Date.now();
+        db.ref('official_servers/' + sid).set({
+            name: name,
+            mapId: mapId,
+            creator: STATE.currentUser.username,
+            status: 'online',
+            createdAt: Date.now()
+        }).then(() => {
+            showToast("서버가 구축되었습니다!", "success");
+            document.getElementById('admin-server-name').value = '';
+            app.renderAdminServerList();
+            app.addServerLog(`🖥️ 새 서버 개설: ${name} (${mapId})`);
+        });
+    },
+    deleteOfficialServer: (sid) => {
+        if (!confirm('이 서버를 영구적으로 파기하시겠습니까?')) return;
+        db.ref('official_servers/' + sid).remove().then(() => {
+            showToast("서버를 파기했습니다.", "info");
+            app.renderAdminServerList();
+        });
+    },
+    renderAdminServerList: () => {
+        const listEl = document.getElementById('admin-server-list');
+        if (!listEl || !db) return;
+        
+        db.ref('official_servers').once('value').then(snap => {
+            const data = snap.val();
+            listEl.innerHTML = '';
+            if (!data) return;
+            Object.entries(data).forEach(([sid, s]) => {
+                const div = document.createElement('div');
+                div.className = 'user-list-row';
+                div.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 0.8fr 0.8fr; align-items: center; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);';
+                div.innerHTML = `
+                    <span style="color:#00e5ff;">${s.name}</span>
+                    <span>${s.mapId === 'classic' ? '🌲 클래식' : s.mapId === 'ocean' ? '🏝️ 바다' : '❄️ 설산'}</span>
+                    <span><span class="badge online">ONLINE</span></span>
+                    <button class="btn secondary" style="padding:4px 8px; font-size:0.7rem;" onclick="app.deleteOfficialServer('${sid}')">서버 파기</button>
+                `;
+                listEl.appendChild(div);
+            });
+        });
+    },
+    joinOfficialServer: (sid, mapId) => {
+        STATE.currentServerId = sid;
+        app.startWithMap(mapId);
+        showToast(`${sid} 서버에 접속합니다...`, 'success');
+    },
     addFriend,
     addFriendByCode,
     removeFriend,
@@ -2179,6 +2255,7 @@ const extendApp = {
         if (tabId === 'apply') renderAdminApplicationList();
         if (tabId === 'users') actualRenderAdminUserList();
         if (tabId === 'reports') renderAdminReports();
+        if (tabId === 'servers') app.renderAdminServerList();
         if (tabId === 'logs') renderAdminLogs();
     },
     addServerLog: (message) => {
@@ -2654,11 +2731,12 @@ function init3DGame() {
 
     let multiplayerListener = null;
     if (FIREBASE_ENABLED && db && STATE.currentUser && !STATE.currentUser.isGuest) {
-        const playerRef = db.ref('players/' + STATE.currentUser.uid);
+        const rootPath = STATE.currentServerId ? `servers/${STATE.currentServerId}` : 'players';
+        const playerRef = db.ref(rootPath + '/' + STATE.currentUser.uid);
         // Remove on disconnect
         playerRef.onDisconnect().remove();
 
-        multiplayerListener = db.ref('players').on('value', (snapshot) => {
+        multiplayerListener = db.ref(rootPath).on('value', (snapshot) => {
             const allPlayers = snapshot.val() || {};
             
             // Remove players who left
@@ -2692,7 +2770,8 @@ function init3DGame() {
         if (now - lastSyncTime < 100) return; // 10 FPS sync
         lastSyncTime = now;
 
-        db.ref('players/' + STATE.currentUser.uid).set({
+        const rootPath = STATE.currentServerId ? `servers/${STATE.currentServerId}` : 'players';
+        db.ref(rootPath + '/' + STATE.currentUser.uid).set({
             username: STATE.currentUser.username,
             x: playerGroup.position.x,
             y: playerGroup.position.y,
@@ -2812,14 +2891,14 @@ function init3DGame() {
         const b = Math.sin(x * 0.005) * Math.cos(z * 0.005) + Math.sin(x * 0.01 + 2) * 0.5;
         
         if (b < -0.4) {
-             // Mountains
-             h += 5 + Math.sin(x * 0.08) * Math.cos(z * 0.08) * 8;
+             // Mountains - Higher base
+             h += 6 + Math.sin(x * 0.08) * Math.cos(z * 0.08) * 8;
         } else if (b > 0.4) {
-             // Snow Plains
-             h += 1 + Math.sin(x * 0.05) * Math.cos(z * 0.05) * 1.5;
+             // Snow Plains - Stays relatively high
+             h += 2 + Math.sin(x * 0.05) * Math.cos(z * 0.05) * 1.5;
         } else {
-             // Normal Oak Forest (Hills)
-             h += Math.sin(x * 0.05) * 1.5;
+             // Normal Oak Forest - Increased base to stay above water (-1.5)
+             h += 1.5 + Math.sin(x * 0.05) * 1.5;
         }
         return h;
     }
@@ -2830,8 +2909,13 @@ function init3DGame() {
         const dist = Math.sqrt(vx * vx + vy * vy);
         
         let h = getHeightAt(vx, vy);
-        // Ensure starting center is somewhat flat/safe
-        if (dist < 20) h *= (dist / 20); 
+        // Ensure starting center is exactly flat and safe (to prevent pits at spawn)
+        const safeRadius = 30;
+        const targetFlatHeight = 3.0;
+        if (dist < safeRadius) {
+            const factor = dist / safeRadius; // 0 at center, 1 at edge
+            h = targetFlatHeight * (1 - factor) + h * factor;
+        }
 
         posAttr.setZ(i, h);
 

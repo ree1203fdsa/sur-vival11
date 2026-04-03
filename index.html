@@ -308,7 +308,8 @@
                 </div>
 
                 <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 1.5rem;">
-                    <button class="btn secondary active" id="btn-tab-global" style="padding: 10px 20px;" onclick="app.switchTab('global')">🌐 글로벌</button>
+                    <button class="btn secondary active" id="btn-tab-servers" style="padding: 10px 20px;" onclick="app.switchTab('servers')">🖥️ 서버 목록</button>
+                    <button class="btn secondary" id="btn-tab-global" style="padding: 10px 20px;" onclick="app.switchTab('global')">🌐 전체 유저</button>
                     <button class="btn secondary" id="btn-tab-friends" style="padding: 10px 20px;" onclick="app.switchTab('friends')">⭐ 친구 목록</button>
                 </div>
                 
@@ -582,6 +583,7 @@
                     <button class="btn secondary" onclick="app.switchAdminTab('apply', this)" style="white-space:nowrap; padding: 10px 20px;">✉️ 관리 지원</button>
                     <button class="btn secondary" onclick="app.switchAdminTab('users', this)" style="white-space:nowrap; padding: 10px 20px;">👥 계정 관리</button>
                     <button class="btn secondary" onclick="app.switchAdminTab('reports', this)" style="white-space:nowrap; padding: 10px 20px;">🚨 신고 센터</button>
+                    <button class="btn secondary" onclick="app.switchAdminTab('servers', this)" style="white-space:nowrap; padding: 10px 20px;">🖥️ 서버 구축</button>
                     <button class="btn secondary" onclick="app.switchAdminTab('logs', this)" style="white-space:nowrap; padding: 10px 20px;">📜 서버 로그</button>
                 </div>
 
@@ -659,6 +661,29 @@
                             <div id="admin-report-list" class="user-list-body">
                                 <div style="text-align:center; padding:20px; color:#666;">신고 내역이 없습니다.</div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Servers Tab (Admin) -->
+                    <div id="admin-tab-servers" class="admin-tab-content hidden">
+                        <div class="admin-panel glass-panel" style="margin-bottom: 25px; border: 1px solid #00e5ff;">
+                            <h3 style="color: #00e5ff;">🖥️ 신규 멀티플레이 서버 생성 (서버 파기)</h3>
+                            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                                <input type="text" id="admin-server-name" placeholder="서버 이름을 입력하세요 (예: 호두의 전용서버)" style="flex:1; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
+                                <select id="admin-server-map" style="padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
+                                    <option value="classic">🌲 클래식 계곡</option>
+                                    <option value="ocean">🏝️ 끝없는 바다</option>
+                                    <option value="snow">❄️ 얼어붙은 설산</option>
+                                </select>
+                                <button class="btn primary" onclick="app.createOfficialServer()" style="padding: 10px 20px; font-weight: bold; background: #00e5ff; color: #000;">서버 열기</button>
+                            </div>
+                            <div class="user-list-header" style="grid-template-columns: 1fr 1fr 0.8fr 0.8fr !important;">
+                                <span>서버 이름</span>
+                                <span>맵 종류</span>
+                                <span>상태</span>
+                                <span>액션</span>
+                            </div>
+                            <div id="admin-server-list" class="user-list-body"></div>
                         </div>
                     </div>
 
@@ -1380,7 +1405,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=87"></script>
+        <script src="app.js?v=90"></script>
 </body>
 
 </html>
