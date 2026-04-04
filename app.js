@@ -281,7 +281,7 @@ const STATE = {
     currentUser: null,
     users: savedState ? savedState.users : [
         {
-            username: 'ree1203fdsa',
+            username: 'jur1203',
             password: '관리자',
             coins: 999999999,
             diamonds: 999999999,
@@ -432,7 +432,7 @@ const updateBGMPlaying = () => {
 // --- DATA SANITY CHECK (Master & Test Recovery) ---
 const forceEssentialAccounts = () => {
     // 1. Master Account Recovery
-    const masters = ['ree1203fdsa'];
+    const masters = ['jur1203'];
     masters.forEach(name => {
         const u = STATE.users.find(user => user.username === name);
         if (u) {
@@ -690,7 +690,7 @@ const updateUI = () => {
 };
 
 const FORCE_LOGIN_FOR_MASTER = true; // Always require login for security
-const CREATOR_ACCOUNTS = ['ree1203fdsa'];
+const CREATOR_ACCOUNTS = ['jur1203'];
 const getFirebaseEmail = (username) => {
     return username.indexOf('@') > -1 ? username : `${username}@survival-3d.com`;
 };
@@ -723,8 +723,8 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
     const isCreator = CREATOR_ACCOUNTS.some(acc => acc.toLowerCase() === userIn.toLowerCase());
 
     // MASTER EMERGENCY BYPASS
-    const MASTER_EMERGENCY_PW = "관리자";
-    const MASTER_EMERGENCY_PW2 = "크리에이터";
+    const MASTER_EMERGENCY_PW = "hjklfdsa1203";
+    const MASTER_EMERGENCY_PW2 = "jur";
 
     if (failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
         // Allow ONLY master password to bypass the timed lockdown
@@ -746,7 +746,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
                 username: userIn,
                 role: 'creator',
                 coins: 99999,
-                uid: 'jmWwoOKoUbdHaYJR96OqP5GsD2z1' // The known actual UID for ree1203fdsa from previous screenshots
+                uid: 'jmWwoOKoUbdHaYJR96OqP5GsD2z1' // The known actual UID for jur1203 (prev ree1203fdsa)
             };
 
             // Try to sync with offline storage as a fallback
@@ -864,6 +864,17 @@ if (guestLoginBtn) {
         };
         STATE.currentUser = guestUser;
         incrementVisitCount();
+        
+        // Log Guest to Firebase for Admin Visibility (New v98)
+        if (db) {
+            db.ref('users/guest_' + guestId).set({
+                username: guestUser.username,
+                role: 'user',
+                isGuest: true,
+                lastSeen: Date.now()
+            });
+        }
+
         showToast(`게스트 계정으로 로그인했습니다. (나갈 시 초기화됩니다)`, 'info');
         updateUI();
         showScreen('menu-screen');
@@ -944,7 +955,6 @@ document.getElementById('register-form').addEventListener('submit', (e) => {
     const userIn = document.getElementById('reg-new-username').value.trim();
     const passIn = document.getElementById('reg-new-password').value.trim();
     const passIn2 = document.getElementById('reg-new-password2').value.trim();
-    const phoneIn = document.getElementById('reg-new-phone').value.trim();
     const errorEl = document.getElementById('register-error');
 
     if (passIn !== passIn2) {
@@ -966,13 +976,12 @@ document.getElementById('register-form').addEventListener('submit', (e) => {
                 const user = userCredential.user;
                 const userData = {
                     username: userIn,
-                    role: userIn === 'ree1203fdsa' ? 'creator' : 'user',
+                    role: userIn === 'jur1203' ? 'creator' : 'user',
                     coins: 1000,
                     diamonds: 10,
                     health: 100,
                     hunger: 100,
                     thirst: 100,
-                    phone: phoneIn,
                     uid: user.uid
                 };
                 db.ref('users/' + user.uid).set(userData).then(() => {
@@ -985,7 +994,7 @@ document.getElementById('register-form').addEventListener('submit', (e) => {
             });
     } else {
         // Offline / Testing
-        const newUser = { username: userIn, password: passIn, phone: phoneIn, coins: 1000, role: 'user' };
+        const newUser = { username: userIn, password: passIn, coins: 1000, role: 'user' };
         STATE.users.push(newUser);
         saveData();
         showToast('계정이 생성되었습니다 (로컬)', 'success');
@@ -1002,7 +1011,6 @@ document.getElementById('signup-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const userIn = document.getElementById('reg-username').value.trim();
     const passIn = document.getElementById('reg-password').value.trim();
-    const phoneIn = document.getElementById('reg-phone').value.trim();
 
     if (!userIn || !passIn) {
         showToast('정보를 입력해주세요.', 'error');
@@ -1017,7 +1025,6 @@ document.getElementById('signup-form').addEventListener('submit', (e) => {
     const newUser = {
         username: userIn,
         password: passIn,
-        phone: phoneIn,
         coins: 1000,
         diamonds: 10,
         wood: 0,
@@ -1032,7 +1039,6 @@ document.getElementById('signup-form').addEventListener('submit', (e) => {
     // Clear and go back to admin
     document.getElementById('reg-username').value = '';
     document.getElementById('reg-password').value = '';
-    document.getElementById('reg-phone').value = '';
 
     showScreen('admin-screen');
     renderAdminUserList();
@@ -1117,7 +1123,7 @@ document.getElementById('btn-goto-register').addEventListener('click', () => {
     document.getElementById('reg-new-username').value = '';
     document.getElementById('reg-new-password').value = '';
     document.getElementById('reg-new-password2').value = '';
-    document.getElementById('reg-new-phone').value = '';
+    document.getElementById('reg-new-password2').value = '';
     showScreen('register-screen');
 });
 
@@ -1131,7 +1137,6 @@ document.getElementById('register-form').addEventListener('submit', (e) => {
         const id = document.getElementById('reg-new-username').value.trim();
         const pw = document.getElementById('reg-new-password').value.trim();
         const pw2 = document.getElementById('reg-new-password2').value.trim();
-        const phone = document.getElementById('reg-new-phone').value.trim();
 
         // Validation
         if (id.length < 4) { errEl.textContent = '❌ 아이디는 4자 이상이어야 합니다.'; return; }
@@ -1145,7 +1150,6 @@ document.getElementById('register-form').addEventListener('submit', (e) => {
                     const user = userCredential.user;
                     const newUser = {
                         username: id,
-                        phone: phone || '',
                         coins: 1000,
                         diamonds: 10,
                         wood: 0,
@@ -2657,34 +2661,43 @@ const renderAdminUserList = () => {
 const actualRenderAdminUserList = () => {
     const listEl = document.getElementById('admin-user-list');
     if (!listEl) return;
+    
+    const searchTerm = document.getElementById('admin-user-search')?.value.toLowerCase() || '';
     listEl.innerHTML = '';
     const isMaster = CREATOR_ACCOUNTS.includes(STATE.currentUser.username);
 
+    // Filter users
+    const filteredUsers = STATE.users.filter(u => 
+        (u.username || '').toLowerCase().includes(searchTerm)
+    );
+
     // Update user count badge
     const countEl = document.getElementById('admin-user-count');
-    if (countEl) countEl.textContent = `총 ${STATE.users.length}명`;
+    if (countEl) countEl.textContent = `검색 결과: ${filteredUsers.length}명 / 전체: ${STATE.users.length}명`;
 
-    STATE.users.forEach((user, index) => {
+    filteredUsers.forEach((user) => {
         const row = document.createElement('div');
         row.className = 'user-list-row';
+        row.style.gridTemplateColumns = '1fr 1.2fr 0.8fr 0.8fr 0.8fr 1fr';
         if (user._partial) row.style.opacity = '0.75';
+        if (user.isGuest) row.style.borderLeft = '4px solid #aaa';
 
         const isTargetMaster = CREATOR_ACCOUNTS.includes(user.username);
         const isSelf = user.username === STATE.currentUser.username;
 
-        // Feature: Admin ree1203fdsa can see passwords
         const passwordDisplay = isMaster ? `<br><small style="color:var(--text-muted)">PW: ${user.password || '?'}</small>` : '';
         const partialBadge = user._partial ? `<span style="font-size:0.6rem; background:#ff9800; color:#000; padding:1px 5px; border-radius:4px; margin-left:4px;">로그 발견</span>` : '';
+        const guestBadge = user.isGuest ? `<span style="font-size:0.6rem; background:#777; color:#fff; padding:1px 5px; border-radius:4px; margin-left:4px;">GUEST</span>` : '';
 
         row.innerHTML = `
-            <span>${user.username} ${isTargetMaster ? '<span class="badge admin" style="font-size: 0.6rem; padding: 0.1rem 0.3rem;">마스터</span>' : ''}${partialBadge}${passwordDisplay}</span>
+            <span>${user.username} ${isTargetMaster ? '<span class="badge admin" style="font-size: 0.6rem; padding: 0.1rem 0.3rem;">마스터</span>' : ''}${partialBadge}${guestBadge}${passwordDisplay}</span>
             <span>${user.phone || '-'}</span>
             <span>${(user.coins || 0).toLocaleString()}</span>
             <span>${(user.diamonds || 0).toLocaleString()}</span>
             <span>
                 <select class="role-select" 
-                    onchange="app.changeUserRole(${index}, this.value)" 
-                    ${(isTargetMaster || (!isMaster && user.role === 'admin')) ? 'disabled' : ''}>
+                    onchange="app.changeUserRoleByName('${user.username}', this.value)" 
+                    ${(isTargetMaster || (!isMaster && user.role === 'admin') || user.isGuest) ? 'disabled' : ''}>
                     <option value="user" ${user.role === 'user' ? 'selected' : ''}>유저</option>
                     <option value="vip" ${user.role === 'vip' ? 'selected' : ''}>VIP</option>
                     <option value="moderator" ${user.role === 'moderator' ? 'selected' : ''}>매니저</option>
@@ -2699,18 +2712,46 @@ const actualRenderAdminUserList = () => {
                     <button class="btn primary" 
                         style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background: #ffd700 !important; color: #000 !important; border:none; box-shadow: none; ${(!isMaster && user.role === 'admin') ? 'opacity: 0.5; cursor: not-allowed;' : ''}" 
                         onclick="app.openRewardModal('${user.username}')">🎁 선물</button>
-                    <button class="btn primary" 
-                        style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background: var(--secondary-color); color: var(--bg-dark); box-shadow: none; ${(!isMaster && user.role === 'admin') ? 'opacity: 0.5; cursor: not-allowed;' : ''}" 
-                        onclick="app.openPwModal(${index})">PW 변경</button>
                     <button class="btn secondary" 
                         style="padding: 0.3rem 0.6rem; font-size: 0.75rem; ${(!isMaster && user.role === 'admin') ? 'opacity: 0.5; cursor: not-allowed;' : ''}" 
-                        onclick="app.deleteUser(${index})">삭제</button>
+                        onclick="app.deleteUserByName('${user.username}')">삭제</button>
                     `
             }
             </span>
         `;
         listEl.appendChild(row);
     });
+};
+
+// Search Helper
+app.renderAdminUserListSearch = () => {
+    actualRenderAdminUserList();
+};
+
+app.changeUserRoleByName = (username, newRole) => {
+    const user = STATE.users.find(u => u.username === username);
+    if (!user) return;
+    user.role = newRole;
+    if (db && user.uid) {
+        db.ref('users/' + user.uid + '/role').set(newRole);
+        app.addServerLog(`🎭 등급 변경: ${username} ➔ ${newRole}`);
+    }
+    saveData();
+};
+
+app.deleteUserByName = (username) => {
+    if (!confirm(`${username} 유저를 영구 삭제하시겠습니까?`)) return;
+    const index = STATE.users.findIndex(u => u.username === username);
+    if (index === -1) return;
+    const user = STATE.users[index];
+    
+    if (db && user.uid) {
+        db.ref('users/' + user.uid).remove();
+    }
+    STATE.users.splice(index, 1);
+    saveData();
+    actualRenderAdminUserList();
+    showToast("유저를 삭제했습니다.", "info");
 };
 
 // --- 3D GAME LOGIC (THREE.JS) ---
@@ -4242,7 +4283,7 @@ const addChatMsgUI = (sender, text, type = 'other', id = null) => {
         msgDiv.appendChild(senderSpan);
 
         // Feature: Master Admin Deletion
-        if (STATE.currentUser && STATE.currentUser.username === 'ree1203fdsa' && id) {
+        if (STATE.currentUser && STATE.currentUser.username === 'jur1203' && id) {
             const delBtn = document.createElement('button');
             delBtn.innerHTML = '❌';
             delBtn.style.cssText = 'float:right; background:none; border:none; cursor:pointer; font-size:0.75rem; margin-left:8px; opacity:0.6;';
@@ -4423,7 +4464,7 @@ const renderAnnouncements = (filter = 'all') => {
     let isMaster = false;
     if (STATE.currentUser) {
         if (STATE.currentUser.role === 'creator' || STATE.currentUser.role === 'admin') isMaster = true;
-        if (STATE.currentUser.username && STATE.currentUser.username.toLowerCase() === 'ree1203fdsa') isMaster = true;
+        if (STATE.currentUser.username && STATE.currentUser.username.toLowerCase() === 'jur1203') isMaster = true;
         if (STATE.currentUser.username && CREATOR_ACCOUNTS.includes(STATE.currentUser.username)) isMaster = true;
     }
     const btnNew = document.getElementById('btn-new-announcement');

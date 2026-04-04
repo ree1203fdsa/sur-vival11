@@ -106,11 +106,7 @@
                         <label for="reg-new-password2">비밀번호 확인</label>
                         <input type="password" id="reg-new-password2" placeholder="비밀번호 다시 입력" required>
                     </div>
-                    <div class="input-group">
-                        <label for="reg-new-phone">전화번호 <span
-                                style="color:var(--text-muted); font-weight:400;">(선택)</span></label>
-                        <input type="tel" id="reg-new-phone" placeholder="010-0000-0000">
-                    </div>
+
                     <div id="register-error"
                         style="color: var(--accent-red); font-size: 0.85rem; text-align: center; min-height: 1.2em;">
                     </div>
@@ -138,10 +134,7 @@
                         <label for="reg-password">비밀번호</label>
                         <input type="password" id="reg-password" placeholder="사용할 비밀번호" required>
                     </div>
-                    <div class="input-group">
-                        <label for="reg-phone">전화번호</label>
-                        <input type="tel" id="reg-phone" placeholder="전화번호를 입력하세요 (예: 010-0000-0000)" required>
-                    </div>
+
 
                     <div class="btn-group">
                         <button type="submit" class="btn primary">가입하기</button>
@@ -674,10 +667,16 @@
                     <!-- Users Tab -->
                     <div id="admin-tab-users" class="admin-tab-content hidden">
                         <div class="admin-panel glass-panel user-management">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <h3 style="margin: 0;">유저 계정 관리 <span id="admin-user-count" style="font-size: 0.8rem; color: #00e5ff; background: rgba(0,229,255,0.1); padding: 3px 10px; border-radius: 20px; margin-left: 8px;"></span></h3>
-                                <button class="btn primary" onclick="syncAllUsers(true); showToast('유저 목록 새로고침 중...','info');" style="padding: 6px 14px; font-size: 0.8rem;">🔄 새로고침</button>
+                            <div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center;">
+                                <div style="position: relative; flex: 1;">
+                                    <input type="text" id="admin-user-search" placeholder="아이디 검색..." oninput="app.renderAdminUserListSearch()" 
+                                        style="width: 100%; padding: 12px 15px 12px 40px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 10px;">
+                                    <span style="position: absolute; left: 15px; top: 12px;">🔍</span>
+                                </div>
+                                <button class="btn primary" onclick="syncAllUsers(true); showToast('심층 수색 시작...','info');" 
+                                    style="padding: 10px 20px; font-weight: bold; background: linear-gradient(135deg, #00e5ff, #00ff88); color: #000; border: none; height: 46px;">⚡ 초정밀 수색 (Deep Sync)</button>
                             </div>
+
                             <div class="user-list-header" style="grid-template-columns: 1fr 1.2fr 0.8fr 0.8fr 0.8fr 1fr !important;">
                                 <span>아이디</span>
                                 <span>전화번호</span>
@@ -1449,7 +1448,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=97"></script>
+        <script src="app.js?v=100"></script>
 </body>
 
 </html>
