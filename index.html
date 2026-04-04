@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Survival 3D</title>
+    <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="style.css?v=6">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -686,6 +687,47 @@
                                 <span>액션</span>
                             </div>
                             <div id="admin-user-list" class="user-list-body"></div>
+                        </div>
+
+                        <!-- Role Permission Guide (New v101) -->
+                        <div class="admin-panel glass-panel" style="margin-top: 20px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02);">
+                            <h3 style="color: #fff; margin-bottom: 15px; font-size: 1rem;">🛡️ 등급별 권한 가이드</h3>
+                            <table style="width: 100%; border-collapse: collapse; color: #ccc; font-size: 0.8rem; text-align: left;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid #444; color: #aaa;">
+                                        <th style="padding: 8px;">등급</th>
+                                        <th style="padding: 8px;">주요 특징 및 권한</th>
+                                        <th style="padding: 8px;">설명</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #333;">
+                                        <td style="padding: 8px; color: #fff;">👤 유저</td>
+                                        <td style="padding: 8px;">일반 플레이어</td>
+                                        <td style="padding: 8px;">기본 서바이벌 및 상점 이용 (서버 개설 시 구축권 소모)</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #333;">
+                                        <td style="padding: 8px; color: #00e5ff;">💎 VIP</td>
+                                        <td style="padding: 8px;">특별 회원</td>
+                                        <td style="padding: 8px;">이벤트 보상/전용 등급 (현재 관리 권한 없음)</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #333;">
+                                        <td style="padding: 8px; color: #00ff88;">🛡️ 매니저</td>
+                                        <td style="padding: 8px;">준관리자</td>
+                                        <td style="padding: 8px;">채팅 관리 및 신고 센터 모니터링 담당</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #333;">
+                                        <td style="padding: 8px; color: #ffd700;">⚙️ 관리자</td>
+                                        <td style="padding: 8px;">시스템 운영자</td>
+                                        <td style="padding: 8px;">관리자 기능 전체 사용, 유저 선물 지급, 서버 파기 가능</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px; color: #ff5252;">👑 크리에이터</td>
+                                        <td style="padding: 8px;">최상위 마스터</td>
+                                        <td style="padding: 8px;"><b>jur1203</b> 전용. 모든 유저 비밀번호 열람 및 관리자 삭제 가능</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -1448,7 +1490,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=100"></script>
+        <script src="app.js?v=102"></script>
 </body>
 
 </html>
