@@ -201,7 +201,30 @@ if (FIREBASE_ENABLED && typeof firebase !== 'undefined') {
             auth.signOut().catch(e => console.error("Sign out error", e));
         }
     });
+
+    // Global Online Counter Listener (New v93)
+    db.ref('presence').on('value', (snap) => {
+        const data = snap.val();
+        const count = data ? Object.keys(data).length : 0;
+        const el = document.getElementById('lobby-online-badge');
+        if (el) {
+            el.textContent = `🟢 접속자: ${count}명`;
+            el.style.transform = 'scale(1.1)';
+            setTimeout(() => el.style.transform = 'scale(1.0)', 200);
+        }
+    });
+
+    // Cumulative Visit Counter Listener (New v95/v97)
+    db.ref('stats/visitCount').on('value', (snap) => {
+        const count = (snap.val() || 0) + 946;
+        const el = document.getElementById('lobby-visit-badge');
+        if (el) el.textContent = `📊 누적 방문: ${count.toLocaleString()}명`;
+    });
 }
+
+const incrementVisitCount = () => {
+    if (db) db.ref('stats/visitCount').transaction((c) => (c || 0) + 1);
+};
 
 const loadData = () => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -729,6 +752,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
             // Try to sync with offline storage as a fallback
             saveData();
             updateUI();
+            incrementVisitCount();
             app.showScreen('menu-screen');
             addServerLog('로그인 성공 (우회)');
             return;
@@ -754,6 +778,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
                             db.ref('users/' + user.uid + '/role').set('creator');
                         }
                         showToast(`환영합니다, ${STATE.currentUser.username}님!`, 'success');
+                        incrementVisitCount();
                         initFirebaseChatListener();
                         if (STATE.currentUser.role === 'creator') syncAllUsers();
                         updateUI();
@@ -838,6 +863,7 @@ if (guestLoginBtn) {
             isGuest: true
         };
         STATE.currentUser = guestUser;
+        incrementVisitCount();
         showToast(`게스트 계정으로 로그인했습니다. (나갈 시 초기화됩니다)`, 'info');
         updateUI();
         showScreen('menu-screen');
@@ -895,6 +921,7 @@ if (googleLoginBtn) {
                 }
 
                 initFirebaseChatListener();
+                incrementVisitCount();
                 if (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator') syncAllUsers();
                 updateUI();
                 showScreen('menu-screen');
@@ -1130,11 +1157,13 @@ document.getElementById('register-form').addEventListener('submit', (e) => {
                         thirst: 100,
                         treasures: 0,
                         role: CREATOR_ACCOUNTS.includes(id) ? 'creator' : 'user',
+                        serverSlots: 15,
                         uid: user.uid
                     };
                     // Initial save to Firebase
                     db.ref('users/' + user.uid).set(newUser).then(() => {
                         STATE.currentUser = newUser;
+                        incrementVisitCount();
                         showToast(`🎉 환영합니다, ${id}님! 서버에 계정이 생성되었습니다.`, 'success');
                         updateUI();
                         showScreen('menu-screen');
@@ -1167,7 +1196,8 @@ document.getElementById('register-form').addEventListener('submit', (e) => {
                 hunger: 100,
                 thirst: 100,
                 treasures: 0,
-                role: 'user'
+                role: 'user',
+                serverSlots: 15
             };
 
             STATE.users.push(newUser);
@@ -1295,6 +1325,20 @@ const switchTab = (tab) => {
     if (btnGlobal) btnGlobal.classList.toggle('active', tab === 'global');
     if (btnFriends) btnFriends.classList.toggle('active', tab === 'friends');
     
+    // Toggle server creation UI for current user
+    const serverUI = document.getElementById('user-server-create-ui');
+    if (serverUI) {
+        if (tab === 'servers' && STATE.currentUser && !STATE.currentUser.isGuest) {
+            serverUI.classList.remove('hidden');
+            serverUI.style.display = 'block';
+            const slotBadge = document.getElementById('user-server-slots-badge');
+            if (slotBadge) slotBadge.textContent = `보유 구축권: ${STATE.currentUser.serverSlots ?? 15}개`;
+        } else {
+            serverUI.classList.add('hidden');
+            serverUI.style.display = 'none';
+        }
+    }
+
     // Toggle friend add UI
     const addUI = document.getElementById('friend-add-by-code');
     if (addUI) {
@@ -1792,6 +1836,52 @@ const extendApp = {
         }
     },
 
+    buyServerSlots: (count, cost) => {
+        if (!STATE.currentUser || STATE.currentUser.isGuest) return showToast("게스트는 구매할 수 없습니다.", "error");
+
+        if (STATE.currentUser.coins >= cost) {
+            STATE.currentUser.coins -= cost;
+            STATE.currentUser.serverSlots = (STATE.currentUser.serverSlots ?? 15) + count;
+            showToast(`서버 구축권 ${count}개를 구매했습니다! (현재: ${STATE.currentUser.serverSlots})`, 'success');
+            updateUI();
+            saveData();
+        } else {
+            showToast('코인이 부족합니다.', 'error');
+        }
+    },
+
+    createUserOfficialServer: () => {
+        if (!STATE.currentUser || STATE.currentUser.isGuest) return showToast("게스트는 서버를 개설할 수 없습니다.", "error");
+        
+        const currentSlots = STATE.currentUser.serverSlots ?? 15;
+        if (currentSlots <= 0) return showToast("서버 구축권이 부족합니다. 상점에서 구매하세요!", "error");
+
+        const name = document.getElementById('user-server-name').value.trim();
+        const mapId = document.getElementById('user-server-map').value;
+        const capacity = parseInt(document.getElementById('user-server-capacity').value) || 10;
+
+        if (!name) return showToast("서버 이름을 입력하세요.", "error");
+
+        const sid = 'usr_' + STATE.currentUser.username + '_' + Date.now();
+        db.ref('official_servers/' + sid).set({
+            name: name,
+            mapId: mapId,
+            capacity: capacity,
+            creator: STATE.currentUser.username,
+            status: 'online',
+            createdAt: Date.now(),
+            lastActivity: Date.now(),
+            isUserServer: true
+        }).then(() => {
+            STATE.currentUser.serverSlots = currentSlots - 1;
+            showToast(`서버를 개설했습니다! (최대 ${capacity}명)`, "success");
+            document.getElementById('user-server-name').value = '';
+            app.switchTab('servers'); // Refresh list
+            saveData();
+            app.addServerLog(`🖥️ 유저 서버 개설: ${name} (정원: ${capacity})`);
+        });
+    },
+
     // --- ADMIN LOGIC ---
     deleteUser: (index) => {
         const role = STATE.currentUser.role;
@@ -2184,25 +2274,29 @@ const extendApp = {
     createOfficialServer: () => {
         const name = document.getElementById('admin-server-name').value.trim();
         const mapId = document.getElementById('admin-server-map').value;
+        const capacity = parseInt(document.getElementById('admin-server-capacity').value) || 50;
         if (!name) return showToast("서버 이름을 입력하세요.", "error");
 
         const sid = 'sv_' + Date.now();
         db.ref('official_servers/' + sid).set({
             name: name,
             mapId: mapId,
+            capacity: capacity,
             creator: STATE.currentUser.username,
             status: 'online',
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            lastActivity: Date.now()
         }).then(() => {
-            showToast("서버가 구축되었습니다!", "success");
+            showToast("공식 서버가 구축되었습니다!", "success");
             document.getElementById('admin-server-name').value = '';
             app.renderAdminServerList();
-            app.addServerLog(`🖥️ 새 서버 개설: ${name} (${mapId})`);
+            app.addServerLog(`🛡️ 새 공식 서버 개설: ${name} (정원: ${capacity})`);
         });
     },
     deleteOfficialServer: (sid) => {
         if (!confirm('이 서버를 영구적으로 파기하시겠습니까?')) return;
         db.ref('official_servers/' + sid).remove().then(() => {
+            db.ref('servers/' + sid).remove(); // Clear player data too
             showToast("서버를 파기했습니다.", "info");
             app.renderAdminServerList();
         });
@@ -2215,24 +2309,55 @@ const extendApp = {
             const data = snap.val();
             listEl.innerHTML = '';
             if (!data) return;
+
+            const now = Date.now();
+            const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
+
             Object.entries(data).forEach(([sid, s]) => {
+                // Auto-cleanup logic (Admin triggered)
+                if (s.lastActivity && (now - s.lastActivity > FIVE_DAYS)) {
+                    db.ref('official_servers/' + sid).remove();
+                    db.ref('servers/' + sid).remove();
+                    return; 
+                }
+
                 const div = document.createElement('div');
                 div.className = 'user-list-row';
-                div.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 0.8fr 0.8fr; align-items: center; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);';
+                div.style.cssText = 'display: grid; grid-template-columns: 1.2fr 1.2fr 0.8fr 1.2fr auto; align-items: center; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);';
+                
+                const lastActiveStr = s.lastActivity ? new Date(s.lastActivity).toLocaleDateString() : '기록 없음';
+
                 div.innerHTML = `
                     <span style="color:#00e5ff;">${s.name}</span>
                     <span>${s.mapId === 'classic' ? '🌲 클래식' : s.mapId === 'ocean' ? '🏝️ 바다' : '❄️ 설산'}</span>
-                    <span><span class="badge online">ONLINE</span></span>
-                    <button class="btn secondary" style="padding:4px 8px; font-size:0.7rem;" onclick="app.deleteOfficialServer('${sid}')">서버 파기</button>
+                    <span><b>${s.capacity || '?'}명</b></span>
+                    <span style="font-size:0.75rem; color:#aaa;">${lastActiveStr}</span>
+                    <button class="btn secondary" style="padding:4px 8px; font-size:0.7rem;" onclick="app.deleteOfficialServer('${sid}')">파기</button>
                 `;
                 listEl.appendChild(div);
             });
         });
     },
     joinOfficialServer: (sid, mapId) => {
-        STATE.currentServerId = sid;
-        app.startWithMap(mapId);
-        showToast(`${sid} 서버에 접속합니다...`, 'success');
+        // Check Capacity & Update Activity
+        db.ref('official_servers/' + sid).once('value').then(snap => {
+            const s = snap.val();
+            if (!s) return showToast("존재하지 않는 서버입니다.", "error");
+
+            // Check how many players currently in this server node
+            db.ref('servers/' + sid).once('value').then(pSnap => {
+                const count = pSnap.val() ? Object.keys(pSnap.val()).length : 0;
+                if (count >= (s.capacity || 50)) {
+                    return showToast(`⚠️ 서버가 꽉 찼습니다! (${count}/${s.capacity})`, "error");
+                }
+
+                // Proceed to Join
+                db.ref('official_servers/' + sid).update({ lastActivity: Date.now() });
+                STATE.currentServerId = sid;
+                app.startWithMap(mapId);
+                showToast(`[${s.name}] 서버에 접속합니다...`, 'success');
+            });
+        });
     },
     addFriend,
     addFriendByCode,

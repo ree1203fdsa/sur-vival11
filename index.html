@@ -44,9 +44,7 @@
                 <h1 class="logo">SURVIVAL <span class="highlight">3D</span></h1>
                 <p class="subtitle">생존의 법칙을 증명하세요</p>
                 
-                <div style="background: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.5); color: #ffd54f; padding: 0.8rem; border-radius: 8px; font-weight: 600; text-align: center; margin-bottom: 1.5rem; font-size: 0.9rem; line-height: 1.4;">
-                    🧪 현재 실험 중입니다.<br>원활한 플레이를 위해 <span style="color: #fff; text-decoration: underline;">회원가입</span>을 꼭 진행해 주세요!
-                </div>
+
 
                 <form id="login-form">
                     <div class="input-group">
@@ -192,6 +190,14 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 15px; align-items: center; z-index: 100;">
+                    <!-- Online Counter Badge (New v93) -->
+                    <div id="lobby-online-badge" class="badge online" style="padding: 6px 12px; border-radius: 20px; background: rgba(0,255,136,0.15); border: 1px solid #00ff88; color: #00ff88; font-weight: bold; font-size: 0.85rem;">
+                        🟢 접속자: -명
+                    </div>
+                    <!-- Visit Counter Badge (New v95) -->
+                    <div id="lobby-visit-badge" class="badge" style="padding: 6px 12px; border-radius: 20px; background: rgba(255,215,0,0.1); border: 1px solid #ffd700; color: #ffd700; font-weight: bold; font-size: 0.85rem;">
+                        📊 누적 방문: -명
+                    </div>
                     <button id="btn-settings" class="btn primary" onclick="app.openSettings()"
                         style="padding: 8px 15px; font-weight: bold; border-radius: 8px;">⚙️ 환경설정</button>
                     <button id="btn-logout" class="btn secondary"
@@ -314,11 +320,31 @@
                 </div>
                 
                 <div class="admin-panel glass-panel" style="max-width: 800px; margin: 0 auto; padding: 20px;">
-                    <!-- Friend Code Add UI (only for friends tab) -->
+                    <!-- Friend Code Add UI -->
                     <div id="friend-add-by-code" class="hidden" style="margin-bottom: 1.5rem; display: flex; gap: 10px; justify-content: center;">
                         <input type="text" id="input-friend-code" placeholder="친구 코드 6자리 입력" maxlength="6" 
                             style="width: 180px; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #222; color: #fff; text-align: center; letter-spacing: 3px;">
                         <button class="btn primary" style="padding: 10px 20px;" onclick="app.addFriendByCode()">+ 코드 추가</button>
+                    </div>
+
+                    <!-- User Server Create UI (New v92) -->
+                    <div id="user-server-create-ui" class="hidden" style="margin-bottom: 1.5rem; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(0,229,255,0.2);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="color: #00e5ff; font-weight: bold;">🖥️ 내 서버 개설하기</span>
+                            <span id="user-server-slots-badge" class="badge" style="background: #444;">보유 구축권: 15개</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px;">
+                            <input type="text" id="user-server-name" placeholder="서버 이름을 입력하세요" style="padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
+                            <select id="user-server-map" style="padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
+                                <option value="classic">🌲 클래식</option>
+                                <option value="ocean">🏝️ 바다</option>
+                                <option value="snow">❄️ 설산</option>
+                            </select>
+                            <input type="number" id="user-server-capacity" value="10" min="1" max="50" style="width: 70px; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;" title="최대 인원">
+                            <button class="btn primary" onclick="app.createUserOfficialServer()" style="padding: 10px 20px; font-weight: bold; background: #00e5ff; color: #000;">개설</button>
+                        </div>
+                        <p style="font-size: 0.75rem; color: #888; margin-top: 8px; margin-left: 2px;">⚠️ 5일 동안 아무도 접속하지 않은 서버는 자동으로 사라집니다.</p>
+                    </div>
                     </div>
 
                     <div id="multiplayer-loading" style="text-align: center; color: #aaa;">불러오는 중...</div>
@@ -549,12 +575,28 @@
                             1,000 <span class="icon">🪙</span>
                         </button>
                     </div>
-                    <!-- Item 5 -->
-                    <div class="shop-item">
-                        <div class="item-visual luck-visual diamond">🍀</div>
-                        <h4>행운 돈상자 (대)</h4>
-                        <p class="desc">엄청난 행운이 기다립니다!</p>
-                        <button class="btn buy-btn" onclick="app.buyLuckyBox('large', 10000)">
+                    <!-- Server Slots Items -->
+                    <div class="shop-item" style="border-color: #00e5ff;">
+                        <div class="item-visual">🖥️</div>
+                        <h4>서버 구축권 (+1)</h4>
+                        <p class="desc">멀티플레이 서버를 1회 더 개설할 수 있습니다.</p>
+                        <button class="btn buy-btn" onclick="app.buyServerSlots(1, 5000)">
+                            5,000 <span class="icon">🪙</span>
+                        </button>
+                    </div>
+                    <div class="shop-item" style="border-color: #00e5ff;">
+                        <div class="item-visual">🖥️</div>
+                        <h4>서버 구축권 (+2)</h4>
+                        <p class="desc">서버 구축권을 2개 추가합니다. (할인!)</p>
+                        <button class="btn buy-btn" onclick="app.buyServerSlots(2, 8000)">
+                            8,000 <span class="icon">🪙</span>
+                        </button>
+                    </div>
+                    <div class="shop-item" style="border-color: #00e5ff;">
+                        <div class="item-visual">🖥️</div>
+                        <h4>서버 구축권 (+3)</h4>
+                        <p class="desc">서버 구축권을 3개 추가합니다. (최대 할인!)</p>
+                        <button class="btn buy-btn" onclick="app.buyServerSlots(3, 10000)">
                             10,000 <span class="icon">🪙</span>
                         </button>
                     </div>
@@ -669,18 +711,20 @@
                         <div class="admin-panel glass-panel" style="margin-bottom: 25px; border: 1px solid #00e5ff;">
                             <h3 style="color: #00e5ff;">🖥️ 신규 멀티플레이 서버 생성 (서버 파기)</h3>
                             <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                                <input type="text" id="admin-server-name" placeholder="서버 이름을 입력하세요 (예: 호두의 전용서버)" style="flex:1; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
+                                <input type="text" id="admin-server-name" placeholder="서버 이름을 입력하세요" style="flex:1; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
                                 <select id="admin-server-map" style="padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
                                     <option value="classic">🌲 클래식 계곡</option>
                                     <option value="ocean">🏝️ 끝없는 바다</option>
                                     <option value="snow">❄️ 얼어붙은 설산</option>
                                 </select>
+                                <input type="number" id="admin-server-capacity" value="50" min="1" max="100" style="width: 80px; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;" title="최대 인원">
                                 <button class="btn primary" onclick="app.createOfficialServer()" style="padding: 10px 20px; font-weight: bold; background: #00e5ff; color: #000;">서버 열기</button>
                             </div>
-                            <div class="user-list-header" style="grid-template-columns: 1fr 1fr 0.8fr 0.8fr !important;">
+                            <div class="user-list-header" style="grid-template-columns: 1fr 1fr 0.8fr 1fr auto !important;">
                                 <span>서버 이름</span>
                                 <span>맵 종류</span>
-                                <span>상태</span>
+                                <span>인원 제한</span>
+                                <span>최근 활동</span>
                                 <span>액션</span>
                             </div>
                             <div id="admin-server-list" class="user-list-body"></div>
@@ -1405,7 +1449,7 @@
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=91"></script>
+        <script src="app.js?v=97"></script>
 </body>
 
 </html>
