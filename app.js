@@ -36,6 +36,149 @@ window.addServerLog = (message) => {
 
 const app = window.app = {
     addServerLog: window.addServerLog,
+    // --- JURAM OS LOGIC (v103) ---
+    activeWindows: new Set(),
+    windowConfigs: {
+        'win-play': { title: '생존 시작', icon: '⛺', screenId: 'menu-screen' },
+        'win-shop': { title: '상점', icon: '💰', screenId: 'shop-screen' },
+        'win-chat': { title: '전체 채팅', icon: 'chat-screen', screenId: 'chat-screen' }, // Handles both
+        'win-quests': { title: '퀘스트', icon: '📜', screenId: 'quest-screen' },
+        'win-admin': { title: '관리자 모드', icon: '🛡️', screenId: 'admin-screen' },
+        'win-mypage': { title: '내 정보', icon: '👤', screenId: 'mypage-screen' },
+        'win-settings': { title: '설정', icon: '⚙️', screenId: 'settings-screen' }
+    },
+    openWindow: (winId) => {
+        if (app.activeWindows.has(winId)) {
+            app.focusWindow(winId);
+            return;
+        }
+        const config = app.windowConfigs[winId];
+        if (!config) return;
+
+        const winEl = document.createElement('div');
+        winEl.id = winId;
+        winEl.className = 'window';
+        if (winId === 'win-play') winEl.classList.add('game-window');
+        
+        winEl.innerHTML = `
+            <div class="window-header" onmousedown="app.startDragWindow(event, '${winId}')">
+                <div class="window-title">${config.icon} ${config.title}</div>
+                <div class="window-controls">
+                    <div class="window-ctrl min" onclick="app.minimizeWindow('${winId}')">_</div>
+                    <div class="window-ctrl max">□</div>
+                    <div class="window-ctrl close" onclick="app.closeWindow('${winId}')">×</div>
+                </div>
+            </div>
+            <div class="window-content" id="${winId}-content"></div>
+        `;
+        
+        document.getElementById('window-layer').appendChild(winEl);
+        app.activeWindows.add(winId);
+        app.focusWindow(winId);
+        app.updateTaskbar();
+
+        // Move screen content into window
+        const screenEl = document.getElementById(config.screenId);
+        if (screenEl) {
+            document.getElementById(`${winId}-content`).appendChild(screenEl);
+            screenEl.classList.remove('hidden');
+            screenEl.classList.add('active');
+        }
+        
+        // Trigger specific renders if needed
+        if (winId === 'win-shop') renderShop();
+        if (winId === 'win-admin') renderAdminPanel();
+        if (winId === 'win-admin') syncAllUsers();
+        if (winId === 'win-quests') renderQuests();
+    },
+    closeWindow: (winId) => {
+        const winEl = document.getElementById(winId);
+        if (winEl) {
+            const config = app.windowConfigs[winId];
+            const screenEl = document.getElementById(config.screenId);
+            if (screenEl) {
+                document.body.appendChild(screenEl); // Move back out
+                screenEl.classList.add('hidden');
+            }
+            winEl.remove();
+            app.activeWindows.delete(winId);
+            app.updateTaskbar();
+        }
+    },
+    focusWindow: (winId) => {
+        document.querySelectorAll('.window').forEach(w => w.classList.remove('focused'));
+        const winEl = document.getElementById(winId);
+        if (winEl) winEl.classList.add('focused');
+        app.updateTaskbar();
+    },
+    minimizeWindow: (winId) => {
+        const winEl = document.getElementById(winId);
+        if (winEl) winEl.style.display = 'none';
+        app.updateTaskbar();
+    },
+    updateTaskbar: () => {
+        const container = document.getElementById('taskbar-items');
+        if (!container) return;
+        container.innerHTML = '';
+        app.activeWindows.forEach(winId => {
+            const config = app.windowConfigs[winId];
+            const item = document.createElement('div');
+            item.className = `taskbar-item ${document.getElementById(winId)?.classList.contains('focused') ? 'active' : ''}`;
+            item.innerHTML = `<span>${config.icon}</span> <span>${config.title}</span>`;
+            item.onclick = () => {
+                const winEl = document.getElementById(winId);
+                if (winEl.style.display === 'none') {
+                    winEl.style.display = 'flex';
+                }
+                app.focusWindow(winId);
+            };
+            container.appendChild(item);
+        });
+    },
+    toggleStartMenu: () => {
+        document.getElementById('start-menu').classList.toggle('active');
+    },
+    toggleFullScreen: () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                showToast("전체화면 전환에 실패했습니다.", "error");
+                console.warn(`Error attempting to enable full-screen mode: ${err.message}`);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    },
+    switchSettingsTab: (tabId) => {
+        document.querySelectorAll('.settings-tab').forEach(t => t.classList.add('hidden'));
+        const target = document.getElementById(`set-tab-${tabId}`);
+        if (target) target.classList.remove('hidden');
+        
+        // Sync profile data if needed
+        if (STATE.currentUser) {
+            const sideName = document.getElementById('side-user-name');
+            if (sideName) sideName.textContent = STATE.currentUser.username;
+            
+            if (tabId === 'prof') {
+                const accName = document.getElementById('set-acc-name');
+                if (accName) accName.textContent = STATE.currentUser.username;
+            }
+        }
+    },
+    startDragWindow: (e, winId) => {
+        // Basic drag logic (simplified)
+        const win = document.getElementById(winId);
+        app.focusWindow(winId);
+        // ... (draggable logic omitted for brevity, can add later)
+    },
+    logout: () => {
+        if (confirm("로그아웃 하시겠습니까?")) {
+            if (auth) auth.signOut();
+            STATE.currentUser = null;
+            location.reload();
+        }
+    },
     updateQuestProgress: (type, amount) => {
         if (!window.STATE || !STATE.currentUser || !STATE.currentUser.quests) return;
         STATE.currentUser.quests.forEach(q => {
@@ -493,29 +636,60 @@ const showToast = (message, type = 'info') => {
     }, 3000);
 };
 
+
 const showScreen = (screenId) => {
+    // OS Redirection Logic (v103)
+    if (screenId === 'menu-screen' || screenId === 'os-layer') {
+        document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+        const osLayer = document.getElementById('os-layer');
+        if (osLayer) {
+            osLayer.classList.remove('hidden');
+            osLayer.classList.add('active');
+        }
+        
+        // Update Start Menu
+        if (STATE.currentUser) {
+            const startUserEl = document.getElementById('start-username');
+            if (startUserEl) startUserEl.textContent = STATE.currentUser.username;
+            const isAdmin = STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator';
+            const adminIcon = document.getElementById('icon-admin');
+            if (adminIcon) adminIcon.style.display = isAdmin ? 'flex' : 'none';
+            updateUI();
+        }
+
+        // Start OS Clock
+        if (!window.osClockInterval) {
+            window.osClockInterval = setInterval(() => {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const dateStr = now.toLocaleDateString();
+                const clockEl = document.getElementById('os-clock');
+                if (clockEl) clockEl.innerHTML = `${timeStr}<br><small>${dateStr}</small>`;
+            }, 1000);
+        }
+        return;
+    }
+
     playSound('open');
     // Hide all screens except the target
     document.querySelectorAll('.screen').forEach(el => {
         if (el.id !== screenId) {
             el.classList.remove('active');
-            setTimeout(() => {
-                if (!el.classList.contains('active')) {
-                    el.classList.add('hidden'); // Wait for fade out
-                }
-            }, 500);
+            el.classList.add('hidden');
         }
     });
 
     // Show target screen
     const target = document.getElementById(screenId);
-    target.classList.remove('hidden');
-    // small delay to allow display:block to apply before animating opacity
-    setTimeout(() => {
-        target.classList.add('active');
-        // Re-sync admin button when returning to menu
-        if (screenId === 'menu-screen' && STATE.currentUser) updateUI();
-    }, 10);
+    if (target) {
+        target.classList.remove('hidden');
+        // small delay to allow display:block to apply before animating opacity
+        setTimeout(() => {
+            target.classList.add('active');
+            // Re-sync admin button when returning to menu
+            if (screenId === 'menu-screen' && STATE.currentUser) updateUI();
+        }, 10);
+    }
 
     const bgWrapper = document.querySelector('.bg-wrapper');
     if (bgWrapper && screenId) {
@@ -541,6 +715,7 @@ const showScreen = (screenId) => {
         warning.classList.add('hidden');
     }
 };
+
 window.showScreen = showScreen;
 app.showScreen = showScreen;
 
