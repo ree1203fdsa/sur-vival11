@@ -45,7 +45,8 @@ const app = window.app = {
         'win-quests': { title: '퀘스트', icon: '📜', screenId: 'quest-screen' },
         'win-admin': { title: '관리자 모드', icon: '🛡️', screenId: 'admin-screen' },
         'win-mypage': { title: '내 정보', icon: '👤', screenId: 'mypage-screen' },
-        'win-settings': { title: '설정', icon: '⚙️', screenId: 'settings-screen' }
+        'win-settings': { title: '설정', icon: '⚙️', screenId: 'settings-screen' },
+        'win-store': { title: '주람 스토어', icon: '🛍️', screenId: 'store-screen' }
     },
     openWindow: (winId) => {
         if (app.activeWindows.has(winId)) {
@@ -165,6 +166,128 @@ const app = window.app = {
                 if (accName) accName.textContent = STATE.currentUser.username;
             }
         }
+    },
+    // --- JURAM STORE LOGIC (v110) ---
+    buyPromotePerk: async () => {
+        if (!STATE.currentUser) return;
+        if (STATE.currentUser.coins < 300) {
+            showToast("코인이 부족합니다! (필요: 300 코인)", "error");
+            return;
+        }
+        if (confirm("300 코인을 사용하여 게임 자랑(스토어 등록) 기능을 구매하시겠습니까?")) {
+            try {
+                await firebase.database().ref(`users/${STATE.currentUser.id}/perks/promote_game`).set(true);
+                await firebase.database().ref(`users/${STATE.currentUser.id}/coins`).set(STATE.currentUser.coins - 300);
+                
+                // Update local state immediately (v111 fix)
+                if (!STATE.currentUser.perks) STATE.currentUser.perks = {};
+                STATE.currentUser.perks.promote_game = true;
+                STATE.currentUser.coins -= 300;
+                
+                showToast("이제 자신의 게임을 스토어에 등록할 수 있습니다!", "success");
+                app.renderStore();
+            } catch (e) {
+                showToast("구매 중 오류가 발생했습니다.", "error");
+            }
+        }
+    },
+    openStoreRegister: () => {
+        document.getElementById('store-register-form').classList.remove('hidden');
+        document.getElementById('store-list-view').classList.add('hidden');
+    },
+    cancelStoreRegister: () => {
+        document.getElementById('store-register-form').classList.add('hidden');
+        document.getElementById('store-list-view').classList.remove('hidden');
+    },
+    registerApp: async () => {
+        const title = document.getElementById('store-app-title').value;
+        const url = document.getElementById('store-app-url').value;
+        const category = document.getElementById('store-app-category').value;
+        
+        if (!title || !url || !category) {
+            showToast("모든 정보를 입력해주세요!", "error");
+            return;
+        }
+
+        try {
+            const newAppRef = firebase.database().ref('store_apps').push();
+            await newAppRef.set({
+                id: newAppRef.key,
+                title,
+                url,
+                category,
+                author: STATE.currentUser.username,
+                authorId: STATE.currentUser.id,
+                time: Date.now()
+            });
+            showToast("구름 서버에 성공적으로 저장되었습니다!", "success");
+            app.cancelStoreRegister();
+            document.getElementById('store-app-title').value = '';
+            document.getElementById('store-app-url').value = '';
+        } catch (e) {
+            showToast("서버 저장 실패!", "error");
+        }
+    },
+    deleteApp: async (appId) => {
+        if (confirm("정말로 이 앱을 스토어에서 삭제하시겠습니까? (관리자 전용)")) {
+            try {
+                await firebase.database().ref(`store_apps/${appId}`).remove();
+                showToast("앱이 삭제되었습니다.", "success");
+            } catch (e) {
+                showToast("삭제 중 오류가 발생했습니다.", "error");
+            }
+        }
+    },
+    renderStore: () => {
+        const listEl = document.getElementById('store-app-list');
+        const buyPanel = document.getElementById('store-buy-perk-panel');
+        const plusBtn = document.getElementById('store-btn-add-app');
+        
+        if (!listEl) return;
+        
+        // Show/hide perk interaction (v114: Added creator/admin bypass)
+        const isMaster = STATE.currentUser?.username === 'jur1203';
+        const hasPerk = STATE.currentUser?.perks?.promote_game === true || 
+                        STATE.currentUser?.role === 'admin' || 
+                        STATE.currentUser?.role === 'creator' || isMaster;
+
+        if (hasPerk) {
+            buyPanel.classList.add('hidden');
+            plusBtn.classList.remove('hidden');
+        } else {
+            buyPanel.classList.remove('hidden');
+            plusBtn.classList.add('hidden');
+        }
+
+        firebase.database().ref('store_apps').on('value', (snap) => {
+            const apps = snap.val() || {};
+            listEl.innerHTML = '';
+            const isAdmin = STATE.currentUser?.role === 'admin';
+
+            Object.values(apps).reverse().forEach(app => {
+                const item = document.createElement('div');
+                item.className = 'glass-panel';
+                item.style.padding = '15px';
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.style.alignItems = 'center';
+                item.innerHTML = `
+                    <div style="flex: 1;">
+                        <div style="font-weight: 800; color: #fff; font-size: 1.1rem;">${app.title}</div>
+                        <div style="font-size: 0.75rem; color: #aaa;">[${app.category}] - by ${app.author}</div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn primary" onclick="window.open('${app.url}', '_blank')" style="font-size: 0.8rem; padding: 6px 15px; background: #00e5ff !important;">방문하기</button>
+                        ${isAdmin ? `<button class="btn" onclick="app.deleteApp('${app.id}')" style="background: rgba(255,0,0,0.2); color: #ff5252; padding: 6px 10px; font-size: 0.8rem; border: 1px solid #ff5252;">삭제</button>` : ''}
+                    </div>
+                `;
+                listEl.appendChild(item);
+            });
+            
+            if (Object.keys(apps).length === 0) {
+                listEl.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">클라우드에 등록된 앱이 아직 없습니다.</div>';
+            }
+        });
     },
     startDragWindow: (e, winId) => {
         // Basic drag logic (simplified)
@@ -912,24 +1035,17 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
     if (FIREBASE_ENABLED && auth) {
         // PRE-FIREBASE BYPASS: Prevent 'too-many-requests' by skipping standard auth if using emergency password
         if (isCreator && (passIn === MASTER_EMERGENCY_PW || passIn === MASTER_EMERGENCY_PW2)) {
-            failedLoginAttempts = 0; // Reset attempts on successful master bypass
-
-            showToast('파이어베이스를 완전히 우회하여 마스터로 즉시 진입합니다! 👑', 'success');
-
-            // Bypass Firebase Auth entirely to avoid ANY errors (too-many-requests, operation-not-allowed)
-            STATE.currentUser = {
-                username: userIn,
-                role: 'creator',
-                coins: 99999,
-                uid: 'jmWwoOKoUbdHaYJR96OqP5GsD2z1' // The known actual UID for jur1203 (prev ree1203fdsa)
-            };
-
-            // Try to sync with offline storage as a fallback
-            saveData();
-            updateUI();
-            incrementVisitCount();
-            app.showScreen('menu-screen');
-            addServerLog('로그인 성공 (우회)');
+            failedLoginAttempts = 0;
+            showToast('데이터 동기화 중... 👑', 'info');
+            const mUid = 'jmWwoOKoUbdHaYJR96OqP5GsD2z1';
+            db.ref('users/' + mUid).once('value').then((sn) => {
+                const ex = sn.val() || {};
+                STATE.currentUser = { ...ex, username: userIn, role: 'creator', uid: mUid };
+                saveData(); updateUI(); incrementVisitCount(); 
+                app.showScreen('menu-screen');
+                addServerLog('로그인 완료 (동기화)');
+                showToast(`마스터 계정 데이터 로드 완료!`, 'success');
+            });
             return;
         }
 

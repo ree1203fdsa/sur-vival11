@@ -73,7 +73,7 @@ body {
 
 .screen.active {
     opacity: 1;
-    pointer-events: all;
+    pointer-events: auto;
 }
 
 .hidden {
@@ -146,7 +146,7 @@ body {
     -webkit-backdrop-filter: blur(5px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 50%;
-    pointer-events: all;
+    pointer-events: auto;
     box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
@@ -170,7 +170,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    pointer-events: all;
+    pointer-events: auto;
     align-items: flex-end;
 }
 
@@ -227,7 +227,7 @@ body {
     width: 60%;
     /* Right 60% of screen for looking */
     height: 100%;
-    pointer-events: all;
+    pointer-events: auto;
     z-index: 50;
 }
 
@@ -881,7 +881,7 @@ h4 {
 
 .btn-claim.ready {
     opacity: 1;
-    pointer-events: all;
+    pointer-events: auto;
     box-shadow: 0 0 15px var(--primary-glow);
 }
 
@@ -1082,7 +1082,7 @@ h4 {
     position: absolute;
     top: 1rem;
     left: 1rem;
-    pointer-events: all;
+    pointer-events: auto;
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -1344,7 +1344,7 @@ canvas {
 }
 
 .skin-btn.active::after {
-    content: '✓';
+    content: '??;
     position: absolute;
     top: 50%;
     left: 50%;
@@ -1374,7 +1374,7 @@ canvas {
 
 .modal-overlay.show {
     opacity: 1;
-    pointer-events: all;
+    pointer-events: auto;
 }
 
 .modal-content {
@@ -1774,11 +1774,11 @@ canvas {
 }
 
 /* ============================================================
-   📱 MOBILE-ONLY GAME OPTIMIZATIONS (max-width: 768px)
+   ?�� MOBILE-ONLY GAME OPTIMIZATIONS (max-width: 768px)
    ============================================================ */
 @media (max-width: 768px) {
 
-    /* ── 로그인 / 회원가입 화면 ── */
+    /* ?�?� 로그??/ ?�원가???�면 ?�?� */
     .login-panel {
         padding: 1.8rem 1.2rem;
         width: 95%;
@@ -1807,7 +1807,7 @@ canvas {
         height: 180px;
     }
 
-    /* ── 메인 메뉴 그리드 ── */
+    /* ?�?� 메인 메뉴 그리???�?� */
     .menu-grid {
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 0.75rem !important;
@@ -1832,7 +1832,7 @@ canvas {
         display: none;
     }
 
-    /* ── 게임 HUD ── */
+    /* ?�?� 게임 HUD ?�?� */
     .game-hud {
         top: 0.5rem !important;
         left: 0.5rem !important;
@@ -1845,7 +1845,7 @@ canvas {
         font-size: 0.72rem !important;
     }
 
-    /* HP / 허기 / 목마름 바 */
+    /* HP / ?�기 / 목마�?�?*/
     .health-bar-container {
         width: 110px !important;
         height: 10px !important;
@@ -1867,7 +1867,7 @@ canvas {
         line-height: 10px !important;
     }
 
-    /* ── 시간 / 온도 표시 ── */
+    /* ?�?� ?�간 / ?�도 ?�시 ?�?� */
     #game-time,
     #game-temp {
         font-size: 0.78rem !important;
@@ -1879,12 +1879,12 @@ canvas {
         gap: 2px !important;
     }
 
-    /* ── 크로스헤어 ── */
+    /* ?�?� ?�로?�헤???�?� */
     .crosshair {
         font-size: 1.4rem !important;
     }
 
-    /* ── 인벤토리 오버레이 ── */
+    /* ?�?� ?�벤?�리 ?�버?�이 ?�?� */
     .inventory-hud {
         padding: 1.2rem !important;
         min-width: unset !important;
@@ -1911,7 +1911,7 @@ canvas {
         border-radius: 10px !important;
     }
 
-    /* ── 제작 모달 ── */
+    /* ?�?� ?�작 모달 ?�?� */
     #craft-modal .modal-content {
         max-width: 92vw !important;
         padding: 1rem !important;
@@ -1926,7 +1926,7 @@ canvas {
         font-size: 1.5rem !important;
     }
 
-    /* ── 조이스틱 ── */
+    /* ?�?� 조이?�틱 ?�?� */
     .mobile-joystick-area {
         width: 110px !important;
         height: 110px !important;
@@ -1961,7 +1961,7 @@ canvas {
         gap: 12px !important;
     }
 
-    /* ── 상점 화면 ── */
+    /* ?�?� ?�점 ?�면 ?�?� */
     .shop-grid {
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 0.6rem !important;
@@ -1984,7 +1984,7 @@ canvas {
         font-size: 0.78rem !important;
     }
 
-    /* ── 관리자 화면 ── */
+    /* ?�?� 관리자 ?�면 ?�?� */
     .admin-container {
         flex-direction: column !important;
         gap: 0.8rem !important;
@@ -2001,7 +2001,7 @@ canvas {
         gap: 0.3rem !important;
     }
 
-    /* ── 내 정보 (마이페이지) ── */
+    /* ?�?� ???�보 (마이?�이지) ?�?� */
     .mypage-container {
         padding: 0.6rem !important;
         gap: 0.6rem !important;
@@ -2022,7 +2022,7 @@ canvas {
         font-size: 1.2rem !important;
     }
 
-    /* ── 채팅 ── */
+    /* ?�?� 채팅 ?�?� */
     .chat-messages {
         font-size: 0.82rem !important;
     }
@@ -2032,7 +2032,7 @@ canvas {
         padding: 0.6rem !important;
     }
 
-    /* ── 상단 바 자원 ── */
+    /* ?�?� ?�단 �??�원 ?�?� */
     .top-bar .resources {
         gap: 6px !important;
         font-size: 0.78rem !important;
@@ -2052,7 +2052,7 @@ canvas {
     }
 }
 
-/* 아주 작은 화면 (iPhone SE 등) */
+/* ?�주 ?��? ?�면 (iPhone SE ?? */
 @media (max-width: 390px) {
     .health-bar-container {
         width: 90px !important;
@@ -2125,7 +2125,7 @@ canvas {
 
 .os-container.active {
     opacity: 1;
-    pointer-events: all;
+    pointer-events: auto;
 }
 
 .desktop {
