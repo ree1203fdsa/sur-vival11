@@ -239,6 +239,84 @@ const app = window.app = {
             }
         }
     },
+    installApp: async (appData) => {
+        if (!STATE.currentUser) return;
+        if (!STATE.currentUser.installedApps) STATE.currentUser.installedApps = [];
+        
+        const alreadyInstalled = STATE.currentUser.installedApps.some(a => a.url === appData.url);
+        if (alreadyInstalled) {
+            showToast("이미 설치된 앱입니다!", "info");
+            return;
+        }
+
+        try {
+            const res = confirm(`'${appData.title}' 앱을 바탕화면에 설치하시겠습니까?`);
+            if (!res) return;
+
+            STATE.currentUser.installedApps.push({
+                id: appData.id || Date.now().toString(),
+                title: appData.title,
+                url: appData.url,
+                category: appData.category,
+                icon: appData.category === '게임' ? '🎮' : '🧩'
+            });
+            
+            await firebase.database().ref(`users/${STATE.currentUser.uid || STATE.currentUser.id}/installedApps`).set(STATE.currentUser.installedApps);
+            showToast("설치가 완료되었습니다! 바탕화면을 확인하세요.", "success");
+            app.updateDesktop();
+        } catch (e) {
+            showToast("설치 중 오류가 발생했습니다.", "error");
+        }
+    },
+    updateDesktop: () => {
+        const desktopEl = document.getElementById('desktop');
+        if (!desktopEl) return;
+
+        // Keep core icons (this is a simplified refresh)
+        const coreIcons = `
+            <div class="desktop-icon" onclick="app.openWindow('win-play')">
+                <div class="icon">⛺</div>
+                <div class="label">생존 시작</div>
+            </div>
+            <div class="desktop-icon" onclick="app.openWindow('win-shop')">
+                <div class="icon">💰</div>
+                <div class="label">상점</div>
+            </div>
+            <div class="desktop-icon" onclick="app.openWindow('win-chat')">
+                <div class="icon">💬</div>
+                <div class="label">전체 채팅</div>
+            </div>
+            <div class="desktop-icon" onclick="app.openWindow('win-quests')">
+                <div class="icon">📜</div>
+                <div class="label">퀘스트</div>
+            </div>
+            <div class="desktop-icon" id="icon-admin" onclick="app.openWindow('win-admin')" style="${STATE.currentUser?.role === 'admin' || STATE.currentUser?.role === 'creator' ? '' : 'display:none;'}">
+                <div class="icon">🛡️</div>
+                <div class="label">관리자 모드</div>
+            </div>
+            <div class="desktop-icon" onclick="app.openWindow('win-mypage')">
+                <div class="icon">👤</div>
+                <div class="label">내 정보</div>
+            </div>
+            <div class="desktop-icon" onclick="app.openWindow('win-store'); app.renderStore();">
+                <div class="icon">🛍️</div>
+                <div class="label">주람 스토어</div>
+            </div>
+        `;
+
+        let installedIcons = '';
+        if (STATE.currentUser?.installedApps) {
+            STATE.currentUser.installedApps.forEach(ia => {
+                installedIcons += `
+                    <div class="desktop-icon" onclick="window.open('${ia.url}', '_blank')">
+                        <div class="icon">${ia.icon}</div>
+                        <div class="label">${ia.title}</div>
+                    </div>
+                `;
+            });
+        }
+        desktopEl.innerHTML = coreIcons + installedIcons;
+    },
     renderStore: () => {
         const listEl = document.getElementById('store-app-list');
         const buyPanel = document.getElementById('store-buy-perk-panel');
@@ -260,26 +338,31 @@ const app = window.app = {
             plusBtn.classList.add('hidden');
         }
 
+        firebase.database().ref('store_apps').off('value'); // Clear old
         firebase.database().ref('store_apps').on('value', (snap) => {
             const apps = snap.val() || {};
             listEl.innerHTML = '';
             const isAdmin = STATE.currentUser?.role === 'admin';
 
-            Object.values(apps).reverse().forEach(app => {
+            Object.values(apps).reverse().forEach(appData => {
                 const item = document.createElement('div');
                 item.className = 'glass-panel';
                 item.style.padding = '15px';
                 item.style.display = 'flex';
                 item.style.justifyContent = 'space-between';
                 item.style.alignItems = 'center';
+                
+                // Constructing escaped app object for the onclick
+                const appJson = JSON.stringify(appData).replace(/"/g, '&quot;');
+
                 item.innerHTML = `
                     <div style="flex: 1;">
-                        <div style="font-weight: 800; color: #fff; font-size: 1.1rem;">${app.title}</div>
-                        <div style="font-size: 0.75rem; color: #aaa;">[${app.category}] - by ${app.author}</div>
+                        <div style="font-weight: 800; color: #fff; font-size: 1.1rem;">${appData.title}</div>
+                        <div style="font-size: 0.75rem; color: #aaa;">[${appData.category}] - by ${appData.author}</div>
                     </div>
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn primary" onclick="window.open('${app.url}', '_blank')" style="font-size: 0.8rem; padding: 6px 15px; background: #00e5ff !important;">방문하기</button>
-                        ${isAdmin ? `<button class="btn" onclick="app.deleteApp('${app.id}')" style="background: rgba(255,0,0,0.2); color: #ff5252; padding: 6px 10px; font-size: 0.8rem; border: 1px solid #ff5252;">삭제</button>` : ''}
+                        <button class="btn primary" onclick="app.installApp(${appJson})" style="font-size: 0.8rem; padding: 6px 15px; background: #007bff !important;">다운로드</button>
+                        ${isAdmin ? `<button class="btn" onclick="app.deleteApp('${appData.id}')" style="background: rgba(255,0,0,0.2); color: #ff5252; padding: 6px 10px; font-size: 0.8rem; border: 1px solid #ff5252;">삭제</button>` : ''}
                     </div>
                 `;
                 listEl.appendChild(item);
@@ -1074,6 +1157,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
                         initFirebaseChatListener();
                         if (STATE.currentUser.role === 'creator') syncAllUsers();
                         updateUI();
+                        app.updateDesktop(); // Trigger desktop refresh (v117)
                         showScreen('menu-screen');
                         addServerLog('로그인 성공 (Firebase)');
                     } else if (isCreator) {
