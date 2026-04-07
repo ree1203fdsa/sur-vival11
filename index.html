@@ -91,30 +91,30 @@
         <!-- 1.3 PUBLIC REGISTER SCREEN -->
         <section id="register-screen" class="screen portrait hidden">
             <div class="glass-panel login-panel">
-                <h1 class="logo" style="font-size: 2rem;">회원가입</h1>
-                <p class="subtitle">새로운 모험을 시작하세요</p>
+                <h1 class="logo" style="font-size: 2rem;">PlayTech 계정 만들기</h1>
+                <p class="subtitle" style="color: #00ff88;">PlayTech 전자 메일을 만드세요.</p>
 
                 <form id="register-form">
                     <div class="input-group">
-                        <label for="reg-new-username">아이디</label>
-                        <input type="text" id="reg-new-username" placeholder="사용할 아이디 (4자 이상)" required>
+                        <label for="reg-new-username">PlayTech 이메일</label>
+                        <input type="email" id="reg-new-username" placeholder="example@playtech.com" required>
                     </div>
                     <div class="input-group">
-                        <label for="reg-new-password">비밀번호</label>
-                        <input type="password" id="reg-new-password" placeholder="비밀번호 (4자 이상)" required>
+                        <label for="reg-new-password">강력한 비밀번호</label>
+                        <input type="password" id="reg-new-password" placeholder="8자 이상, 기호 포함 권장" required>
                     </div>
                     <div class="input-group">
                         <label for="reg-new-password2">비밀번호 확인</label>
-                        <input type="password" id="reg-new-password2" placeholder="비밀번호 다시 입력" required>
+                        <input type="password" id="reg-new-password2" placeholder="비밀번호 재입력" required>
                     </div>
 
                     <div id="register-error"
                         style="color: var(--accent-red); font-size: 0.85rem; text-align: center; min-height: 1.2em;">
                     </div>
                     <div class="btn-group">
-                        <button type="submit" class="btn primary">가입하기</button>
+                        <button type="submit" class="btn primary">계정 만들기</button>
                         <button type="button" class="btn secondary"
-                            onclick="app.showScreen('login-screen')">로그인으로</button>
+                            onclick="app.showScreen('login-screen')">취소</button>
                     </div>
                 </form>
             </div>
@@ -124,33 +124,13 @@
         <div id="os-layer" class="os-container hidden">
             <!-- Desktop Icons -->
             <div class="desktop" id="desktop">
-                <div class="desktop-icon" onclick="app.openWindow('win-play')">
-                    <div class="icon">⛺</div>
-                    <div class="label">생존 시작</div>
-                </div>
-                <div class="desktop-icon" onclick="app.openWindow('win-shop')">
-                    <div class="icon">💰</div>
-                    <div class="label">상점</div>
-                </div>
-                <div class="desktop-icon" onclick="app.openWindow('win-chat')">
-                    <div class="icon">💬</div>
-                    <div class="label">전체 채팅</div>
-                </div>
-                <div class="desktop-icon" onclick="app.openWindow('win-quests')">
-                    <div class="icon">📜</div>
-                    <div class="label">퀘스트</div>
-                </div>
-                <div class="desktop-icon" id="icon-admin" onclick="app.openWindow('win-admin')" style="display:none;">
-                    <div class="icon">🛡️</div>
-                    <div class="label">관리자 모드</div>
-                </div>
-                <div class="desktop-icon" onclick="app.openWindow('win-mypage')">
-                    <div class="icon">👤</div>
-                    <div class="label">내 정보</div>
-                </div>
                 <div class="desktop-icon" onclick="app.openWindow('win-store'); app.renderStore();">
                     <div class="icon">🛍️</div>
                     <div class="label">주람 스토어</div>
+                </div>
+                <div class="desktop-icon" onclick="app.openWindow('win-browser')">
+                    <div class="icon">🌐</div>
+                    <div class="label">PlayTech 브라우저</div>
                 </div>
             </div>
 
@@ -194,22 +174,21 @@
 
         <section id="signup-screen" class="screen portrait hidden">
             <div class="glass-panel login-panel">
-                <h1 class="logo" style="font-size: 2.2rem;">신규 유저 생성</h1>
-                <p class="subtitle">마스터 관리자 전용 권한</p>
+                <h1 class="logo" style="font-size: 2rem;">PlayTech 계정 만들기</h1>
+                <p class="subtitle" style="color: #00ff88; margin-bottom: 2rem;">PlayTech 전자 메일을 만드세요.</p>
 
                 <form id="signup-form">
                     <div class="input-group">
-                        <label for="reg-username">아이디</label>
-                        <input type="text" id="reg-username" placeholder="사용할 아이디" required>
+                        <label for="reg-username">PlayTech 이메일</label>
+                        <input type="email" id="reg-username" placeholder="name@playtech.com" required>
                     </div>
                     <div class="input-group">
-                        <label for="reg-password">비밀번호</label>
-                        <input type="password" id="reg-password" placeholder="사용할 비밀번호" required>
+                        <label for="reg-password">강력한 비밀번호</label>
+                        <input type="password" id="reg-password" placeholder="8자 이상, 특수문자 권장" required>
                     </div>
 
-
                     <div class="btn-group">
-                        <button type="submit" class="btn primary">가입하기</button>
+                        <button type="submit" class="btn primary">계정 생성</button>
                         <button type="button" class="btn secondary" onclick="app.showScreen('login-screen')">취소</button>
                     </div>
                 </form>
@@ -1638,6 +1617,38 @@
             </div>
         </section>
 
+        <!-- 9. PLAYTECH BROWSER SCREEN (v128) -->
+        <section id="browser-screen" class="screen portrait hidden" style="background: #f0f2f5 !important; display: flex !important; flex-direction: column !important;">
+            <div id="browser-navbar" style="padding: 10px; background: #fff; border-bottom: 1px solid #ddd; display: flex; gap: 10px; align-items: center;">
+                <button class="btn secondary" onclick="document.getElementById('browser-frame').contentWindow.history.back()" style="padding: 5px 10px; background: #eee !important; color: #333 !important;">◀</button>
+                <div style="flex: 1; position: relative;">
+                    <input type="text" id="browser-address" placeholder="https://google.com" 
+                        style="width: 100%; padding: 8px 15px; border-radius: 20px; border: 1px solid #ccc; background: #fff; color: #000;"
+                        onkeydown="if(event.key==='Enter') app.navigateBrowser(this.value)">
+                </div>
+                <button class="btn primary" onclick="app.navigateBrowser(document.getElementById('browser-address').value)" style="padding: 8px 15px; background: #007bff !important;">이동</button>
+            </div>
+            <div id="browser-content-area" style="flex: 1; background: #fff; position: relative; overflow-y: auto;">
+                <!-- SEARCH HOME (v129) -->
+                <div id="browser-home" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; z-index: 10;">
+                    <h1 style="font-size: 3rem; font-weight: 900; background: linear-gradient(to right, #4285F4, #EA4335, #FBBC05, #34A853); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 30px;">PlayTech</h1>
+                    <div style="width: 80%; max-width: 500px; position: relative;">
+                        <input type="text" id="browser-home-search" placeholder="PlayTech 지식 엔진에 물어보세요" 
+                            style="width: 100%; padding: 15px 50px 15px 25px; border-radius: 30px; border: 1px solid #dfe1e5; box-shadow: 0 1px 6px rgba(32,33,36,0.28); font-size: 1.1rem; color: #000;"
+                            onkeydown="if(event.key==='Enter') app.navigateBrowser(this.value)">
+                        <span style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; cursor: pointer;" onclick="app.navigateBrowser(document.getElementById('browser-home-search').value)">🔍</span>
+                    </div>
+                </div>
+
+                <!-- SEARCH RESULTS (v131) -->
+                <div id="browser-results" class="hidden" style="padding: 20px 10% 50px; background: #fff; min-height: 100%;">
+                    <div id="browser-results-list" style="display: flex; flex-direction: column; gap: 30px;">
+                        <!-- Results populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- WHEEL MODAL -->
         <div id="wheel-modal" class="modal-overlay hidden" style="z-index: 100000; background: rgba(0,0,0,0.9);">
             <div class="glass-panel" style="width: 320px; text-align: center; position: relative;">
@@ -1658,17 +1669,22 @@
         <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
-        <!-- Interaction Fix (v109) -->
+        <!-- Interaction Fix (v122) - Strict Active Only -->
         <style>
             .window-layer, #window-layer { pointer-events: none !important; }
-            .window, .screen.active { pointer-events: auto !important; }
+            /* Only the active window can capture clicks. Background windows are ignored. */
+            .window.active, .screen.active { pointer-events: auto !important; z-index: 500 !important; }
+            .window:not(.active) { pointer-events: none !important; opacity: 0; visibility: hidden; } /* Fully hide and disable inactive */
+            
             .menu-card, .btn, .btn-back, input, select, textarea { pointer-events: auto !important; cursor: pointer; }
-            .window-content section { display: flex !important; opacity: 1 !important; visibility: visible !important; }
+            
+            .window-content section:not(.hidden) { display: flex !important; opacity: 1 !important; visibility: visible !important; }
+            .window-content section.hidden { display: none !important; pointer-events: none !important; }
         </style>
 
         <!-- Three.js for 3D Game Mode -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=119"></script>
+        <script src="app.js?v=134"></script>
 </body>
 
 </html>

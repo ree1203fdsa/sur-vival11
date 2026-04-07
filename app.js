@@ -46,7 +46,8 @@ const app = window.app = {
         'win-admin': { title: '관리자 모드', icon: '🛡️', screenId: 'admin-screen' },
         'win-mypage': { title: '내 정보', icon: '👤', screenId: 'mypage-screen' },
         'win-settings': { title: '설정', icon: '⚙️', screenId: 'settings-screen' },
-        'win-store': { title: '주람 스토어', icon: '🛍️', screenId: 'store-screen' }
+        'win-store': { title: '주람 스토어', icon: '🛍️', screenId: 'store-screen' },
+        'win-browser': { title: 'PlayTech 브라우저', icon: '🌐', screenId: 'browser-screen' }
     },
     openWindow: (winId) => {
         if (app.activeWindows.has(winId)) {
@@ -107,9 +108,14 @@ const app = window.app = {
         }
     },
     focusWindow: (winId) => {
-        document.querySelectorAll('.window').forEach(w => w.classList.remove('focused'));
+        document.querySelectorAll('.window').forEach(w => {
+            w.classList.remove('focused', 'active'); // Clear both (v123)
+        });
         const winEl = document.getElementById(winId);
-        if (winEl) winEl.classList.add('focused');
+        if (winEl) {
+            winEl.classList.add('focused', 'active'); // Add both
+            winEl.style.display = 'flex'; // Ensure visible
+        }
         app.updateTaskbar();
     },
     minimizeWindow: (winId) => {
@@ -272,35 +278,15 @@ const app = window.app = {
         const desktopEl = document.getElementById('desktop');
         if (!desktopEl) return;
 
-        // Keep core icons (this is a simplified refresh)
+        // ONLY keep Essential Icons: Store & Browser (v128)
         const coreIcons = `
-            <div class="desktop-icon" onclick="app.openWindow('win-play')">
-                <div class="icon">⛺</div>
-                <div class="label">생존 시작</div>
-            </div>
-            <div class="desktop-icon" onclick="app.openWindow('win-shop')">
-                <div class="icon">💰</div>
-                <div class="label">상점</div>
-            </div>
-            <div class="desktop-icon" onclick="app.openWindow('win-chat')">
-                <div class="icon">💬</div>
-                <div class="label">전체 채팅</div>
-            </div>
-            <div class="desktop-icon" onclick="app.openWindow('win-quests')">
-                <div class="icon">📜</div>
-                <div class="label">퀘스트</div>
-            </div>
-            <div class="desktop-icon" id="icon-admin" onclick="app.openWindow('win-admin')" style="${STATE.currentUser?.role === 'admin' || STATE.currentUser?.role === 'creator' ? '' : 'display:none;'}">
-                <div class="icon">🛡️</div>
-                <div class="label">관리자 모드</div>
-            </div>
-            <div class="desktop-icon" onclick="app.openWindow('win-mypage')">
-                <div class="icon">👤</div>
-                <div class="label">내 정보</div>
-            </div>
             <div class="desktop-icon" onclick="app.openWindow('win-store'); app.renderStore();">
                 <div class="icon">🛍️</div>
                 <div class="label">주람 스토어</div>
+            </div>
+            <div class="desktop-icon" onclick="app.openWindow('win-browser')">
+                <div class="icon">🌐</div>
+                <div class="label">PlayTech 브라우저</div>
             </div>
         `;
 
@@ -316,6 +302,58 @@ const app = window.app = {
             });
         }
         desktopEl.innerHTML = coreIcons + installedIcons;
+    },
+    navigateBrowser: (url) => {
+        if (!url) return;
+        
+        const home = document.getElementById('browser-home');
+        const results = document.getElementById('browser-results');
+        const list = document.getElementById('browser-results-list');
+        const input = document.getElementById('browser-address');
+        const homeInput = document.getElementById('browser-home-search');
+
+        if (home) home.style.display = 'none';
+        if (results) results.classList.remove('hidden');
+        if (input) input.value = url;
+        if (homeInput) homeInput.value = url;
+
+        // Populate Results (v131: AI Simulation)
+        list.innerHTML = `
+            <div style="padding: 20px; background: #f8f9fa; border-radius: 12px; border-left: 5px solid #4285F4; margin-bottom: 20px;">
+                <h3 style="color: #4285F4; margin-bottom: 10px;">🤖 PlayTech AI Answer</h3>
+                <p style="color: #333; line-height: 1.6;">'${url}'에 대한 플레이텍 지식 엔진의 분석 결과입니다. 이 키워드는 현재 시스템 데이터상 매우 중요한 비중을 차지하고 있습니다.</p>
+            </div>
+            
+            <div class="search-result" style="cursor: pointer; padding: 15px; border-radius: 12px; border: 1px solid transparent; transition: all 0.2s;" onmouseover="this.style.background='#f8f9fa'; this.style.borderColor='#dadce0'" onmouseout="this.style.background='transparent'; this.style.borderColor='transparent'" onclick="app.showBrowserDetail('${url} - PlayTech 심층 백과사전', '【 개요 】\\n${url}은(는) 현대 기술 생태계와 플레이텍 시스템 아키텍처의 핵심을 관통하는 중요한 개념입니다.\\n\\n【 히스토리 및 유래 】\\n초기 Juram OS 개발 단계에서 ${url}은 시스템 최적화와 유저 인터페이스 혁신을 위해 제안되었습니다. 수십 명의 수석 개발자들이 참여한 프로젝트를 통해 현재의 완성된 형태를 갖추게 되었으며, 이는 단순한 기능을 넘어 하나의 문화적 트렌드로 자리매김했습니다.\\n\\n【 기술적 아키텍처 】\\n${url}의 구현은 0.001ms 단위의 정밀한 데이터 처리를 기반으로 합니다. 비대칭 암호화 기술과 분산 네트워크 노드가 결합되어 최상의 안정성을 제공하며, 실시간 피드백 루프를 통해 유저의 의도를 즉각적으로 반영합니다.\\n\\n【 사회적/경제적 영향 】\\n이 기술의 도입으로 인해 관련 산업 분야에서는 연간 수조 원 규모의 부가 가치가 창출되고 있습니다. 특히 교육, 엔터테인먼트, 그리고 생산성 향상 측면에서 ${url}은 대체 불가능한 도구로 활용되고 있습니다.\\n\\n【 향후 전망 】\\n차세대 PlayTech OS 2.0에서는 ${url}과 인공지능 신경망의 결합이 예정되어 있습니다. 더욱 개인화된 경험과 지능형 자동화 시스템의 중추 역할을 수행할 것으로 기대됩니다.')">
+                <div style="color: #202124; font-size: 0.85rem; margin-bottom: 4px;">https://playtech.info > encyclopedia > ${url}</div>
+                <h3 style="color: #1a0dab; text-decoration: underline; margin-bottom: 5px;">${url} - PlayTech 심층 백과사전 (Full Version)</h3>
+                <p style="color: #4d5156; font-size: 0.9rem;">${url}에 관한 히스토리부터 미래 전망까지, 플레이텍 전문가들이 집필한 수만 자 분량의 전문 지식을 확인하세요.</p>
+            </div>
+
+            <div class="search-result" style="cursor: pointer; padding: 15px; border-radius: 12px; border: 1px solid transparent; transition: all 0.2s;" onmouseover="this.style.background='#f8f9fa'; this.style.borderColor='#dadce0'" onmouseout="this.style.background='transparent'; this.style.borderColor='transparent'" onclick="app.showBrowserDetail('${url} 전문 분석 보고서', '【 서론 】\\n본 보고서는 ${url}의 현재 시장 지위와 향후 파급력을 심도 있게 분석합니다.\\n\\n【 핵심 트렌드 분석 】\\n1. 디지털 전환 가속화: ${url}은 오프라인 데이터를 온라인으로 연결하는 핵심 브릿지 역할을 수행 중입니다.\\n2. 사용자 경험 중심 설계: UX/UI 최적화를 통해 ${url}의 접근성이 비약적으로 상승했습니다.\\n3. 보안 및 프라이버시: 강화된 암호 알고리즘 탑재로 데이터 유출 가능성을 제로에 가깝게 낮췄습니다.\\n\\n【 전문가 제언 】\\n미래 성장 동력 확보를 위해 ${url}과 관련된 인프라 확충이 시급하며, 이를 통한 생태계 선점이 필수적입니다.')">
+                <div style="color: #202124; font-size: 0.85rem; margin-bottom: 4px;">https://analytica.plat > report > ${url}</div>
+                <h3 style="color: #1a0dab; text-decoration: underline; margin-bottom: 5px;">[전문가 리포트] ${url}의 성공 요인과 시장 분석</h3>
+                <p style="color: #4d5156; font-size: 0.9rem;">최신 데이터와 통계를 기반으로 분석한 ${url}의 현재와 미래. 비즈니스 전략 수립을 위한 필독 자료입니다.</p>
+            </div>
+        `;
+    },
+    showBrowserDetail: (title, content) => {
+        const list = document.getElementById('browser-results-list');
+        list.innerHTML = `
+            <div style="padding: 20px;">
+                <button class="btn secondary" onclick="app.navigateBrowser(document.getElementById('browser-address').value)" style="margin-bottom: 20px; font-weight: bold;">◀ 지식 목록으로 돌아가기</button>
+                <h1 style="font-size: 2.2rem; color: #1a0dab; margin-bottom: 25px; border-bottom: 4px solid #4285F4; padding-bottom: 15px; font-weight: 900;">${title}</h1>
+                
+                <div style="background: #fff; padding: 35px; border-radius: 15px; border: 1px solid #e0e0e0; box-shadow: 0 4px 20px rgba(0,0,0,0.05); line-height: 2.0; color: #202124; font-size: 1.15rem; white-space: pre-wrap; font-family: 'Inter', system-ui, sans-serif;">
+                    ${content}
+                    
+                    <div style="margin-top: 40px; padding: 20px; background: #e8f0fe; border-radius: 10px; border-left: 5px solid #4285F4;">
+                        <h4 style="color: #1967d2; margin-bottom: 10px;">🌟 PlayTech 공식 콘텐츠 인증</h4>
+                        <p style="font-size: 0.95rem; color: #5f6368;">본 문서는 Juram OS의 공식 지식 엔진 v134에 의해 생성된 정품 콘텐츠입니다. 플레이텍 시스템의 신뢰할 수 있는 데이터베이스를 통해 실시간으로 제공됩니다.</p>
+                    </div>
+                </div>
+            </div>
+        `;
     },
     renderStore: () => {
         const listEl = document.getElementById('store-app-list');
@@ -1333,13 +1371,18 @@ document.getElementById('register-form').addEventListener('submit', (e) => {
     const passIn2 = document.getElementById('reg-new-password2').value.trim();
     const errorEl = document.getElementById('register-error');
 
+    if (userIn.indexOf('@') === -1) {
+        errorEl.textContent = '올바른 PlayTech 이메일 형식이 아닙니다 (예: name@playtech.com).';
+        return;
+    }
+
     if (passIn !== passIn2) {
         errorEl.textContent = '비밀번호가 일치하지 않습니다.';
         return;
     }
 
-    if (passIn.length < 6) {
-        errorEl.textContent = '비밀번호는 최소 6자 이상이어야 합니다.';
+    if (passIn.length < 8) {
+        errorEl.textContent = '보안을 위해 비밀번호는 최소 8자 이상이어야 합니다.';
         return;
     }
 
@@ -1361,7 +1404,7 @@ document.getElementById('register-form').addEventListener('submit', (e) => {
                     uid: user.uid
                 };
                 db.ref('users/' + user.uid).set(userData).then(() => {
-                    showToast('회원가입 성공! 로그인 해주세요.', 'success');
+                    showToast('PlayTech 계정이 성공적으로 생성되었습니다!', 'success');
                     showScreen('login-screen');
                 });
             }).catch(err => {
