@@ -176,8 +176,9 @@ const app = window.app = {
         }
         if (confirm("300 코인을 사용하여 게임 자랑(스토어 등록) 기능을 구매하시겠습니까?")) {
             try {
-                await firebase.database().ref(`users/${STATE.currentUser.id}/perks/promote_game`).set(true);
-                await firebase.database().ref(`users/${STATE.currentUser.id}/coins`).set(STATE.currentUser.coins - 300);
+                const uid = STATE.currentUser.uid || STATE.currentUser.id; // Corrected field (v115)
+                await firebase.database().ref(`users/${uid}/perks/promote_game`).set(true);
+                await firebase.database().ref(`users/${uid}/coins`).set(STATE.currentUser.coins - 300);
                 
                 // Update local state immediately (v111 fix)
                 if (!STATE.currentUser.perks) STATE.currentUser.perks = {};
@@ -217,7 +218,7 @@ const app = window.app = {
                 url,
                 category,
                 author: STATE.currentUser.username,
-                authorId: STATE.currentUser.id,
+                authorId: STATE.currentUser.uid || STATE.currentUser.id, // Corrected field (v115)
                 time: Date.now()
             });
             showToast("구름 서버에 성공적으로 저장되었습니다!", "success");
