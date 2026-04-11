@@ -57,6 +57,9 @@ const app = window.app = {
             screenEl.classList.remove('hidden');
             screenEl.classList.add('active');
         }
+
+        // 스토어 열 때 데이터베이스 연결
+        if (winId === 'win-store') app.initStore();
     },
     // 창 닫기
     closeWindow: (winId) => {
@@ -147,6 +150,121 @@ const app = window.app = {
                 document.msExitFullscreen();
             }
         }
+    },
+    // 상점 스토어 동기화 및 초기화
+    initStore: () => {
+        if (!app.storeInitialized && typeof db !== 'undefined' && db) {
+            // Firebase Realtime DB에서 앱 실시간 목록 가져오기
+            db.ref('store_apps').on('value', (snap) => {
+                const apps = snap.val() || {};
+                const listEl = document.getElementById('store-app-list');
+                if (!listEl) return;
+                listEl.innerHTML = ''; // 초기화
+                Object.keys(apps).reverse().forEach(key => { // 최신순
+                    const appData = apps[key];
+                    const card = document.createElement('div');
+                    card.className = 'glass-panel';
+                    card.style.cssText = 'padding: 20px; text-align: left; background: rgba(255,255,255,0.05); border-radius: 12px; transition: transform 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);';
+                    card.onmouseover = () => card.style.transform = 'translateY(-5px)';
+                    card.onmouseout = () => card.style.transform = 'translateY(0)';
+                    
+                    const emj = appData.category === '게임' ? '🎮' : appData.category === '엔터테인먼트' ? '🎬' : '🛠️';
+                    card.innerHTML = `
+                        <div style="font-size: 2.8rem; margin-bottom: 12px; height: 60px; display:flex; align-items:center;">${emj}</div>
+                        <h3 style="font-size: 1.25rem; font-weight: 800; color:#fff; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${appData.title}</h3>
+                        <p style="color: #68f7b5; font-size: 0.85rem; font-weight:600; margin-bottom: 15px;">👤 ${appData.creator} <span style="color:#aaa; font-weight:400;">• ${appData.category}</span></p>
+                        <button class="btn primary" onclick="window.open('${appData.url}', '_blank')" style="border-radius: 8px; font-weight: 800; width: 100%; border: none; padding: 12px;">다운로드 (실행)</button>
+                    `;
+                    listEl.appendChild(card);
+                });
+            });
+            app.storeInitialized = true;
+        }
+        
+        // 권한에 따른 내 앱 등록 / 구매 버튼 표시
+        if (STATE.currentUser) {
+            const isCr = STATE.currentUser.role === 'creator' || STATE.currentUser.role === 'admin';
+            const addBtn = document.getElementById('store-btn-add-app');
+            const buyPanel = document.getElementById('store-buy-perk-panel');
+            if (addBtn) {
+                if (isCr) addBtn.classList.remove('hidden');
+                else addBtn.classList.add('hidden');
+            }
+            if (buyPanel) {
+                if (isCr) buyPanel.style.display = 'none';
+                else buyPanel.style.display = 'flex';
+            }
+        }
+    },
+    // 상점 등록 팝업 제어
+    openStoreRegister: () => {
+        document.getElementById('store-list-view').classList.add('hidden');
+        document.getElementById('store-register-form').classList.remove('hidden');
+    },
+    cancelStoreRegister: () => {
+        document.getElementById('store-register-form').classList.add('hidden');
+        document.getElementById('store-list-view').classList.remove('hidden');
+    },
+    // 상점 권한 구입
+    buyPromotePerk: () => {
+        if (!STATE.currentUser) return showToast('로그인이 필요합니다.', 'error');
+        if (STATE.currentUser.coins < 300) return showToast('코인이 부족합니다! (300 코인 필요)', 'error');
+        
+        STATE.currentUser.coins -= 300;
+        STATE.currentUser.role = 'creator';
+        saveData(); updateUI(); app.initStore();
+        showToast('🎉 크리에이터 권한 획득! 앱을 등록해보세요.', 'success');
+    },
+    // 파이어베이스 DB에 스토어 앱 업로드 (전 기기 동기화)
+    registerApp: () => {
+        if (!STATE.currentUser || STATE.currentUser.role !== 'creator') return showToast('크리에이터가 아닙니다.', 'error');
+        const title = document.getElementById('store-app-title').value.trim();
+        const cat = document.getElementById('store-app-category').value;
+        const url = document.getElementById('store-app-url').value.trim();
+        
+        if (!title || !url) return showToast('이름과 URL을 모두 입력해주세요.', 'error');
+        if (title.length > 20) return showToast('이름이 너무 깁니다.', 'error');
+        if (!url.startsWith('http')) return showToast('http 또는 https로 시작하는 URL을 입력해주세요.', 'error');
+        
+        if (db) {
+            showToast('데이터베이스에 업로드 중...', 'info');
+            db.ref('store_apps').push({
+                title: title, category: cat, url: url, 
+                creator: STATE.currentUser.username, timestamp: Date.now()
+            }).then(() => {
+                showToast('🚀 앱 업로드 완료! 모든 사람의 스토어에 추가되었습니다.', 'success');
+                app.cancelStoreRegister();
+                document.getElementById('store-app-title').value = '';
+                document.getElementById('store-app-url').value = '';
+            }).catch(e => showToast('서버 오류: ' + e.message, 'error'));
+        } else {
+            showToast('데이터베이스 참조를 찾을 수 없습니다.', 'error');
+        }
+    },
+    // 브라우저 네비게이션 엔진
+    navigateBrowser: (query) => {
+        if (!query.trim()) return;
+        document.getElementById('browser-home').style.display = 'none';
+        document.getElementById('browser-results').classList.remove('hidden');
+        document.getElementById('browser-address').value = query;
+        
+        const listEl = document.getElementById('browser-results-list');
+        listEl.innerHTML = `<div style="text-align:center; padding: 50px;"><p style="font-size: 1.2rem; font-weight:600; color:#34A853;">"${query}" 찾는 중...</p></div>`;
+        
+        setTimeout(() => {
+            if (query.startsWith('http')) {
+                listEl.innerHTML = `<iframe src="${query}" style="width:100%; height:80vh; border:none; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></iframe>`;
+            } else {
+                listEl.innerHTML = `
+                    <div style="font-size:0.9rem; color:#70757a; margin-bottom: 20px;">검색 결과 약 1,240개</div>
+                    <div style="margin-bottom: 30px;">
+                        <a href="#" onclick="window.app.navigateBrowser('https://ko.wikipedia.org/wiki/${query}')" style="font-size: 1.2rem; color: #1a0dab; text-decoration: none; font-weight:600;">${query} - 위키백과</a><br>
+                        <span style="color: #006621; font-size: 0.85rem;">https://ko.wikipedia.org/wiki/${query}</span>
+                        <p style="color: #4d5156; font-size: 0.95rem; margin-top:5px;">${query}에 대한 위키백과 문서입니다...</p>
+                    </div>
+                `;
+            }
+        }, 1000);
     },
     // 로그아웃
     logout: () => {

@@ -56,21 +56,29 @@
     .settings-screen { flex-direction: column !important; }
     .settings-sidebar { 
         width: 100% !important; 
-        height: auto !important;
-        max-height: 180px !important; 
+        height: 65px !important;
+        max-height: none !important;
         flex-direction: row !important; 
-        flex-wrap: wrap !important;
-        overflow-y: auto !important; 
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important; 
+        overflow-y: hidden !important;
         padding: 10px !important;
         border-right: none !important;
         border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+        -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
     }
+    .settings-sidebar::-webkit-scrollbar { display: none; /* Hide scrollbar */ }
+    
     .settings-sidebar > div:first-child { display: none !important; } /* Hide user profile on mobile sidebar */
+    
     .settings-sidebar .settings-item { 
-        flex: 1 1 calc(50% - 10px) !important;
-        padding: 10px !important; 
+        flex: 0 0 auto !important;
+        width: auto !important;
+        padding: 8px 15px !important; 
         font-size: 0.9rem !important;
-        justify-content: flex-start !important;
+        justify-content: center !important;
+        margin-right: 10px !important;
+        white-space: nowrap !important;
     }
     .settings-content { padding: 20px !important; flex: 1 !important; }
     .settings-content h1 { font-size: 1.6rem !important; margin-bottom: 20px !important; }
