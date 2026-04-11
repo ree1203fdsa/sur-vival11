@@ -1,0 +1,64 @@
+/* theme.css (v139) - Juram OS Theme Engine Overrides */
+:root {
+    --bg-main: #090b10;
+    --bg-panel: rgba(255, 255, 255, 0.05);
+    --text-main: #ffffff;
+    --text-muted: #a0a5b1;
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --window-bg: rgba(15, 20, 30, 0.85);
+}
+
+body.light-mode {
+    --bg-main: #f0f2f5;
+    --bg-panel: rgba(0, 0, 0, 0.08);
+    --text-main: #1a202c;
+    --text-muted: #4a5568;
+    --glass-border: rgba(0, 0, 0, 0.15);
+    --window-bg: rgba(255, 255, 255, 0.95);
+}
+
+/* Force apply theme variables to main elements */
+body {
+    background-color: var(--bg-main) !important;
+    color: var(--text-main) !important;
+    transition: background-color 0.4s ease, color 0.4s ease !important;
+}
+
+.window, .glass-panel, .modal-overlay, .start-menu {
+    background: var(--window-bg) !important;
+    color: var(--text-main) !important;
+    border-color: var(--glass-border) !important;
+}
+
+.taskbar {
+    background: var(--window-bg) !important;
+    border-top: 1px solid var(--glass-border) !important;
+}
+
+input, textarea, select {
+    background: var(--bg-panel) !important;
+    color: var(--text-main) !important;
+    border-color: var(--glass-border) !important;
+}
+
+.settings-sidebar {
+    background: var(--bg-panel) !important;
+    border-color: var(--glass-border) !important;
+}
+
+.settings-content {
+    background: transparent !important;
+    color: var(--text-main) !important;
+}
+
+.settings-tab {
+    color: var(--text-main) !important;
+}
+
+.settings-tab h1, .settings-tab h2, .settings-tab h3 {
+    color: var(--text-main) !important;
+}
+
+.settings-tab div {
+    color: var(--text-main) !important;
+}

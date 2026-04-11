@@ -6,1685 +6,329 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Survival 3D</title>
     <link rel="icon" type="image/png" href="favicon.png">
-    <link rel="stylesheet" href="style.css?v=6">
-    <!-- Google Fonts -->
+    <link rel="stylesheet" href="style.css?v=138">
+    <link rel="stylesheet" href="theme.css?v=139">
+    <link rel="stylesheet" href="mobile_styles.css?v=138">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@500;700;900&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@500;700;900&display=swap" rel="stylesheet">
 </head>
 
 <body>
     <div id="app">
-        <!-- Notification Toast -->
         <div id="toast" class="toast hidden"></div>
-
-        <!-- Orientation Warning (Mobile) -->
         <div id="orientation-warning" class="orientation-warning hidden">
-            <div class="warning-content">
-                <div class="rotate-icon">📱🔄</div>
-                <h2>가로 모드로 전환해 주세요</h2>
-                <p>더 원활한 게임 플레이를 위해 기기를 가로로 돌려주세요.</p>
-            </div>
+            <div class="warning-content"><div class="rotate-icon">📱🔄</div><h2>가로 모드로 전환해 주세요</h2></div>
         </div>
-
-        <!-- Background Video / Animation wrapper -->
         <div class="bg-wrapper">
             <div class="glow-orb orb-1"></div>
             <div class="glow-orb orb-2"></div>
             <div class="glow-orb orb-3"></div>
         </div>
 
-        <!-- 1. LOGIN SCREEN (Portrait) -->
+        <!-- SETTINGS SCREEN -->
+        <!-- SETTINGS SCREEN -->
+        <section id="settings-screen" class="screen portrait hidden settings-screen" style="display: flex !important; flex-direction: row !important; height: 100% !important; width: 100% !important; background: #1c1c1f;">
+            <div class="settings-sidebar" style="width: 280px; background: rgba(0,0,0,0.3); border-right: 1px solid rgba(255,255,255,0.05); padding: 20px 15px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto;">
+                <!-- User Profile -->
+                <div style="display: flex; align-items: center; gap: 15px; padding: 10px; margin-bottom: 20px;">
+                    <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #7cfc00, #40e0d0); box-shadow: 0 0 15px rgba(124, 252, 0, 0.4);"></div>
+                    <div>
+                        <div id="set-acc-name" style="font-weight: 800; font-size: 1.1rem; color: #fff;">User</div>
+                        <div style="font-size: 0.8rem; color: #68f7b5; font-weight: 600;">PlayTech 계정</div>
+                    </div>
+                </div>
+                <!-- Menu Items -->
+                <div class="settings-item active" onclick="app.switchSettingsTab('sys')" style="padding: 12px 15px; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 15px; color: #fff; font-weight: 600; background: rgba(255,255,255,0.05);">
+                    <span style="font-size: 1.2rem;">🖥️</span> 시스템 (System)
+                </div>
+                <div class="settings-item" onclick="app.switchSettingsTab('apps')" style="padding: 12px 15px; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 15px; color: #ccc; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                    <span style="font-size: 1.2rem;">📱</span> 앱 (Apps)
+                </div>
+                <div class="settings-item" onclick="app.switchSettingsTab('acc')" style="padding: 12px 15px; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 15px; color: #ccc; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                    <span style="font-size: 1.2rem;">👤</span> 계정 (Accounts)
+                </div>
+                <div class="settings-item" onclick="app.switchSettingsTab('lang')" style="padding: 12px 15px; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 15px; color: #ccc; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                    <span style="font-size: 1.2rem;">🌐</span> 시간 및 언어
+                </div>
+                <div class="settings-item" onclick="app.switchSettingsTab('game')" style="padding: 12px 15px; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 15px; color: #ccc; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                    <span style="font-size: 1.2rem;">🎮</span> 게임 (Gaming)
+                </div>
+                <div class="settings-item" onclick="app.switchSettingsTab('access')" style="padding: 12px 15px; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 15px; color: #ccc; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                    <span style="font-size: 1.2rem;">♿</span> 접근성
+                </div>
+                <div class="settings-item" onclick="app.switchSettingsTab('sec')" style="padding: 12px 15px; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 15px; color: #ccc; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                    <span style="font-size: 1.2rem;">🛡️</span> 개인 정보 및 보안
+                </div>
+                <div class="settings-item" onclick="app.switchSettingsTab('update')" style="padding: 12px 15px; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 15px; color: #ccc; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                    <span style="font-size: 1.2rem;">🔄</span> PlayTech 업데이트
+                </div>
+            </div>
+            
+            <div id="settings-main-content" class="settings-content" style="flex: 1; padding: 40px 60px; overflow-y: auto; background: linear-gradient(145deg, #23252a, #1a1c21);">
+                <div id="set-tab-sys" class="settings-tab">
+                    <h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">시스템</h1>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                        <!-- Display Card -->
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; transition: all 0.2s; cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+                            <div style="font-size: 2rem; margin-bottom: 20px;">🖥️</div>
+                            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 5px;">디스플레이</h3>
+                            <p style="color: #aaa; font-size: 0.9rem;">밝기, 야간 모드, 해상도</p>
+                        </div>
+                        
+                        <!-- Sound Card -->
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; transition: all 0.2s; cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+                            <div style="font-size: 2rem; margin-bottom: 20px;">🔊</div>
+                            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 5px;">소리</h3>
+                            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">볼륨 수준, 출력 장치</p>
+                            <input type="range" style="width: 100%; accent-color: #64b5f6;" value="50">
+                        </div>
+                        
+                        <!-- Notifications Card -->
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; transition: all 0.2s; cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+                            <div style="font-size: 2rem; margin-bottom: 20px;">🔔</div>
+                            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 5px;">알림</h3>
+                            <p style="color: #aaa; font-size: 0.9rem;">앱 및 시스템의 알림</p>
+                        </div>
+                        
+                        <!-- Storage Card -->
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; transition: all 0.2s; cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+                            <div style="font-size: 2rem; margin-bottom: 20px;">📁</div>
+                            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 5px;">저장소</h3>
+                            <p style="color: #aaa; font-size: 0.9rem;">저장 공간 사용량, 관리 규칙</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add empty tabs for others to prevent errors -->
+                <div id="set-tab-apps" class="settings-tab hidden"><h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">앱 (Apps)</h1><p style="color: #aaa;">앱 설정 기능이 곧 추가됩니다.</p></div>
+                <div id="set-tab-acc" class="settings-tab hidden"><h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">계정 (Accounts)</h1><p style="color: #aaa;">계정 관리 기능이 곧 추가됩니다.</p></div>
+                <div id="set-tab-lang" class="settings-tab hidden">
+                    <h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">시간 및 언어</h1>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn primary" onclick="app.setLanguage('ko')" style="padding: 10px 20px;">한국어</button>
+                        <button class="btn primary" onclick="app.setLanguage('en')" style="padding: 10px 20px;">English</button>
+                    </div>
+                </div>
+                <div id="set-tab-game" class="settings-tab hidden"><h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">게임 (Gaming)</h1><p style="color: #aaa;">게임 성능 최적화 기능이 곧 추가됩니다.</p></div>
+                <div id="set-tab-access" class="settings-tab hidden"><h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">접근성</h1><p style="color: #aaa;">시각 및 청각 보조 설정 기능이 곧 추가됩니다.</p></div>
+                <div id="set-tab-sec" class="settings-tab hidden"><h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">개인 정보 및 보안</h1><p style="color: #aaa;">비밀번호 변경 및 보안 관리가 곧 추가됩니다.</p></div>
+                <div id="set-tab-update" class="settings-tab hidden"><h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">PlayTech 업데이트</h1><p style="color: #aaa;">시스템은 현재 최신 버전입니다. (v158)</p></div>
+            </div>
+        </section>
+
+        <!-- 1. LOGIN SCREEN -->
         <section id="login-screen" class="screen portrait active">
             <div class="glass-panel login-panel">
-                <div style="text-align: center; margin-bottom: 10px;">
-                    <span style="background: linear-gradient(135deg, #00e5ff, #00ff88); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-size: 0.75rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;">🌐 멀티플레이어 3D 서바이벌 게임</span>
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <span style="color: #68f7b5; font-size: 0.95rem; font-weight: 700; display: flex; justify-content: center; align-items: center; gap: 6px; letter-spacing: 0.5px;">
+                        🌐 멀티플레이어 <span style="font-family: Outfit, sans-serif;">3D</span> 서바이벌 게임
+                    </span>
                 </div>
                 <h1 class="logo">SURVIVAL <span class="highlight">3D</span></h1>
                 <p class="subtitle">생존의 법칙을 증명하세요</p>
-                
-
-
                 <form id="login-form">
                     <div class="input-group">
-                        <label for="username">아이디</label>
-                        <input type="text" id="username" placeholder="아이디를 입력하세요" required>
+                        <label>아이디</label>
+                        <input type="text" id="username" placeholder="아이디" required>
                     </div>
-                    <div class="input-group" id="pw-section">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <label for="password" style="margin-bottom: 0;">비밀번호</label>
-                            <button type="button" id="btn-forgot-password"
-                                style="background:none; border:none; color: var(--secondary-color); font-size:0.75rem; font-weight:700; cursor:pointer; text-decoration:underline;">비밀번호 찾기</button>
+                    <div class="input-group">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
+                            <label style="margin-bottom: 0;">비밀번호</label>
+                            <a href="#" style="color: #64b5f6; font-size: 0.8rem; text-decoration: underline; font-weight: 600;">비밀번호 찾기</a>
                         </div>
                         <div class="password-wrapper">
-                            <input type="password" id="password" placeholder="비밀번호를 입력하세요">
-                            <button type="button" id="btn-toggle-password" class="btn-icon toggle-pwd-btn">👁️</button>
+                            <input type="password" id="password" placeholder="비밀번호" required>
+                            <button type="button" id="btn-toggle-password" class="btn-icon">👁️</button>
                         </div>
                     </div>
-
-                    <div class="btn-group">
+                    <div class="btn-group" style="margin-top: 25px;">
                         <button type="submit" class="btn primary">로그인</button>
                         <button type="button" class="btn secondary" id="btn-guest-login">게스트 로그인</button>
                     </div>
-                    <div style="margin-top: 0.8rem;">
-                        <button type="button" class="btn" id="btn-google-login" style="background: #ffffff; color: #444; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid #ddd;">
-                            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" viewBox="0 0 48 48">
-                                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-                                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-                                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-                                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-                            </svg>
-                            구글 계정으로 로그인
-                        </button>
-                    </div>
-                    <div style="text-align:center; margin-top: 1rem;">
-                        <span style="color: var(--text-muted); font-size: 0.85rem;">계정이 없으세요? </span>
-                        <button type="button" id="btn-goto-register"
-                            style="background:none; border:none; color: var(--secondary-color); font-size:0.85rem; font-weight:700; cursor:pointer; text-decoration:underline;">회원가입</button>
+                    <button type="button" class="btn" id="btn-google-login" style="background:white; color:#222; width:100%; margin-top:20px; display:flex; align-items:center; justify-content:center; gap:12px; font-weight: 700; border-radius: 8px; font-size: 1rem; border: none;">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="22"> 구글 계정으로 로그인
+                    </button>
+                    <div style="margin-top:25px; text-align:center; font-size: 0.95rem; color: #999;">
+                        계정이 없으세요? 
+                        <button type="button" id="btn-goto-register" style="background:none; border:none; color: #64b5f6; font-size: 0.95rem; font-weight: 700; cursor:pointer; text-decoration:underline; padding: 0;">회원가입</button>
                     </div>
                 </form>
             </div>
         </section>
 
-        <!-- 1.3 PUBLIC REGISTER SCREEN -->
+        <!-- REGISTER SCREEN -->
         <section id="register-screen" class="screen portrait hidden">
             <div class="glass-panel login-panel">
-                <h1 class="logo" style="font-size: 2rem;">PlayTech 계정 만들기</h1>
-                <p class="subtitle" style="color: #00ff88;">PlayTech 전자 메일을 만드세요.</p>
-
+                <h1 class="logo" style="font-size: 1.8rem;">신규 계정 등록</h1>
                 <form id="register-form">
-                    <div class="input-group">
-                        <label for="reg-new-username">PlayTech 이메일</label>
-                        <input type="email" id="reg-new-username" placeholder="example@playtech.com" required>
-                    </div>
-                    <div class="input-group">
-                        <label for="reg-new-password">강력한 비밀번호</label>
-                        <input type="password" id="reg-new-password" placeholder="8자 이상, 기호 포함 권장" required>
-                    </div>
-                    <div class="input-group">
-                        <label for="reg-new-password2">비밀번호 확인</label>
-                        <input type="password" id="reg-new-password2" placeholder="비밀번호 재입력" required>
-                    </div>
-
-                    <div id="register-error"
-                        style="color: var(--accent-red); font-size: 0.85rem; text-align: center; min-height: 1.2em;">
-                    </div>
+                    <div class="input-group"><label>이메일/ID</label><input type="email" id="reg-new-username" placeholder="name@playtech.com" required></div>
+                    <div class="input-group"><label>비밀번호</label><input type="password" id="reg-new-password" placeholder="8자 이상" required></div>
+                    <div class="input-group"><label>비밀번호 확인</label><input type="password" id="reg-new-password2" placeholder="다시 입력" required></div>
+                    <div id="register-error" style="color:#ff5252; font-size:0.8rem; margin-bottom:10px;"></div>
                     <div class="btn-group">
-                        <button type="submit" class="btn primary">계정 만들기</button>
-                        <button type="button" class="btn secondary"
-                            onclick="app.showScreen('login-screen')">취소</button>
+                        <button type="submit" class="btn primary">가입하기</button>
+                        <button type="button" class="btn secondary" onclick="app.showScreen('login-screen')">뒤로</button>
                     </div>
                 </form>
             </div>
         </section>
 
-        <!-- 1.6 JURAM OS LAYER (New v103) -->
+        <!-- OS LAYER -->
         <div id="os-layer" class="os-container hidden">
-            <!-- Desktop Icons -->
-            <div class="desktop" id="desktop">
-                <div class="desktop-icon" onclick="app.openWindow('win-store'); app.renderStore();">
-                    <div class="icon">🛍️</div>
-                    <div class="label">주람 스토어</div>
-                </div>
-                <div class="desktop-icon" onclick="app.openWindow('win-browser')">
-                    <div class="icon">🌐</div>
-                    <div class="label">PlayTech 브라우저</div>
-                </div>
-            </div>
-
-            <!-- Taskbar -->
+            <div class="desktop" id="desktop"></div>
             <div class="taskbar">
-                <div class="start-btn" onclick="app.toggleStartMenu()">
-                    <img id="start-btn-img" src="favicon.png" style="width: 32px; height: 32px; object-fit: contain;">
-                </div>
-                <div id="taskbar-items" style="display: flex; gap: 5px;"></div>
+                <div class="start-btn" onclick="app.toggleStartMenu()"><img src="favicon.png" style="width: 32px; height: 32px;"></div>
+                <div id="taskbar-items"></div>
                 <div class="taskbar-spacer"></div>
-                <div class="taskbar-tray" style="display: flex; align-items: center; gap: 15px;">
-                    <div class="btn-icon" onclick="app.toggleFullScreen()" title="전체화면" style="font-size: 1.2rem; cursor: pointer; color: white; opacity: 0.8;">⛶</div>
-                    <div id="os-clock" class="taskbar-clock">
-                        12:00 PM<br><small>2026-04-04</small>
-                    </div>
+                <div class="taskbar-tray">
+                    <div class="btn-icon" id="btn-notif-center" style="margin-right:10px;">🔔</div>
+                    <div class="btn-icon" onclick="app.toggleFullScreen()">⛶</div>
+                    <div id="os-clock" class="taskbar-clock">12:00 PM</div>
                 </div>
             </div>
-
-            <!-- Start Menu -->
             <div id="start-menu" class="start-menu">
-                <div style="padding: 10px; border-bottom: 1px solid #444; margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
-                    <div class="avatar" style="width: 32px; height: 32px;"></div>
-                    <span id="start-username" style="font-weight: 700;">User</span>
-                </div>
-                <div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">
-                    <div class="desktop-icon" style="width: 100%; flex-direction: row; justify-content: flex-start; height: 50px; gap: 15px;" onclick="app.openWindow('win-settings')">
-                        <span style="font-size: 1.5rem;">⚙️</span> <span>설정</span>
-                    </div>
-                    <div class="desktop-icon" style="width: 100%; flex-direction: row; justify-content: flex-start; height: 50px; gap: 15px;" onclick="app.logout()">
-                        <span style="font-size: 1.5rem;">🚪</span> <span>로그아웃</span>
-                    </div>
-                </div>
-                <div style="padding: 10px; text-align: center; font-size: 0.7rem; color: #666;">
-                    Juram Survival OS v103
+                <div id="start-username" style="padding:15px; border-bottom:1px solid #444; font-weight:800;">User</div>
+                <div style="padding:10px; display:flex; flex-direction:column; gap:5px;">
+                    <div class="settings-item" onclick="app.openWindow('win-settings')">⚙️ 설정</div>
+                    <div class="settings-item" onclick="app.logout()">🚪 로그아웃</div>
                 </div>
             </div>
-
-            <!-- Window Layer (Dynamic Windows) -->
-            <div id="window-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100;"></div>
+            <div id="window-layer"></div>
         </div>
 
-        <section id="signup-screen" class="screen portrait hidden">
-            <div class="glass-panel login-panel">
-                <h1 class="logo" style="font-size: 2rem;">PlayTech 계정 만들기</h1>
-                <p class="subtitle" style="color: #00ff88; margin-bottom: 2rem;">PlayTech 전자 메일을 만드세요.</p>
-
-                <form id="signup-form">
-                    <div class="input-group">
-                        <label for="reg-username">PlayTech 이메일</label>
-                        <input type="email" id="reg-username" placeholder="name@playtech.com" required>
-                    </div>
-                    <div class="input-group">
-                        <label for="reg-password">강력한 비밀번호</label>
-                        <input type="password" id="reg-password" placeholder="8자 이상, 특수문자 권장" required>
-                    </div>
-
-                    <div class="btn-group">
-                        <button type="submit" class="btn primary">계정 생성</button>
-                        <button type="button" class="btn secondary" onclick="app.showScreen('login-screen')">취소</button>
-                    </div>
-                </form>
-            </div>
-        </section>
-
-        <!-- 2. MAIN MENU SCREEN (Landscape) -->
+        <!-- MENU SCREEN -->
         <section id="menu-screen" class="screen landscape hidden">
-            <!-- Top Bar -->
             <header class="top-bar glass-bar">
                 <div class="user-info">
                     <div class="avatar"></div>
                     <div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span id="current-username" class="username">User</span>
-                            <span id="user-level" class="level-badge">Lv.1</span>
-                        </div>
-                        <div class="xp-bar-container" style="width: 100px; height: 6px; margin-top: 4px;">
-                            <div id="user-xp-bar" class="xp-bar" style="width: 0%;"></div>
+                        <span id="current-username" class="username">User</span>
+                        <div id="user-level" style="font-size:0.75rem; color:#ffd700;">Lv.1</div>
+                        <div class="xp-bar-container" style="width: 80px; height: 4px; background:rgba(255,255,255,0.1); border-radius:10px; margin-top:2px;">
+                            <div id="user-xp-bar" style="width:0%; height:100%; background:#ffd700; border-radius:10px;"></div>
                         </div>
                     </div>
                 </div>
                 <div class="resources">
-                    <div class="resource">
-                        <span class="icon">🪙</span>
-                        <span id="coin-amount">0</span>
-                    </div>
-                    <div class="resource">
-                        <span class="icon">💎</span>
-                        <span id="diamond-amount">0</span>
-                    </div>
-                    <div class="resource">
-                        <span class="icon">🪨</span>
-                        <span id="stone-amount">0</span>
-                    </div>
-                    <div class="resource">
-                        <span class="icon">⛓️</span>
-                        <span id="iron-amount">0</span>
-                    </div>
-                    <div class="resource">
-                        <span class="icon">📀</span>
-                        <span id="gold-amount">0</span>
-                    </div>
+                    <div class="resource">🪙 <span id="coin-amount">0</span></div>
+                    <div class="resource">💎 <span id="diamond-amount">0</span></div>
+                    <span id="lobby-online-badge" style="font-size:0.7rem; color:#00ff88; margin-left:10px;">🟢 접속자: 0명</span>
                 </div>
-                <div style="display: flex; gap: 15px; align-items: center; z-index: 100;">
-                    <!-- Online Counter Badge (New v93) -->
-                    <div id="lobby-online-badge" class="badge online" style="padding: 6px 12px; border-radius: 20px; background: rgba(0,255,136,0.15); border: 1px solid #00ff88; color: #00ff88; font-weight: bold; font-size: 0.85rem;">
-                        🟢 접속자: -명
-                    </div>
-                    <!-- Visit Counter Badge (New v95) -->
-                    <div id="lobby-visit-badge" class="badge" style="padding: 6px 12px; border-radius: 20px; background: rgba(255,215,0,0.1); border: 1px solid #ffd700; color: #ffd700; font-weight: bold; font-size: 0.85rem;">
-                        📊 누적 방문: -명
-                    </div>
-                    <button id="btn-settings" class="btn primary" onclick="app.openSettings()"
-                        style="padding: 8px 15px; font-weight: bold; border-radius: 8px;">⚙️ 환경설정</button>
-                    <button id="btn-logout" class="btn secondary"
-                        style="padding: 8px 15px; border-radius: 8px;">로그아웃</button>
-                </div>
+                <button class="btn secondary" id="btn-logout">로그아웃</button>
             </header>
-
-            <div class="menu-container">
-                <h2 class="menu-title">메인 메뉴</h2>
-                <div class="menu-grid">
-                    <button class="menu-card" id="btn-start-game">
-                        <div class="card-icon">⚔️</div>
-                        <h3>게임 시작</h3>
-                        <p>3D 생존 모드에 진입합니다</p>
-                    </button>
-                    <button class="menu-card" id="btn-shop">
-                        <div class="card-icon">🏪</div>
-                        <h3>상점</h3>
-                        <p>아이템과 자원을 구매하세요</p>
-                    </button>
-                    <button class="menu-card" id="btn-quest">
-                        <div class="card-icon">📜</div>
-                        <h3>일일 퀘스트</h3>
-                        <p>퀘스트를 완료하고 보상을 받으세요</p>
-                    </button>
-                    <button class="menu-card" id="btn-support">
-                        <div class="card-icon">✉️</div>
-                        <h3>관리 지원</h3>
-                        <p>관리팀에 지원하세요</p>
-                    </button>
-                    <button class="menu-card" id="btn-tutorial">
-                        <div class="card-icon">📖</div>
-                        <h3>튜토리얼</h3>
-                        <p>조작법 및 게임 방법 안내</p>
-                    </button>
-                    <button class="menu-card" id="btn-mypage">
-                        <div class="card-icon">👤</div>
-                        <h3>내 정보</h3>
-                        <p>내 프로필 및 통계 확인</p>
-                    </button>
-                    <button class="menu-card" id="btn-admin">
-                        <div class="card-icon">⚙️</div>
-                        <h3>관리자 모드</h3>
-                        <p>시스템 및 유저 관리</p>
-                    </button>
-                    <button class="menu-card" id="btn-chat">
-                        <div class="card-icon">💬</div>
-                        <h3>채팅방</h3>
-                        <p>유저들과 대화하세요</p>
-                    </button>
-                    <button class="menu-card" id="btn-announcements">
-                        <div class="card-icon">📢</div>
-                        <h3>공지사항</h3>
-                        <p>가장 빠른 업데이트 소식</p>
-                    </button>
-                    <button class="menu-card" id="btn-multiplayer">
-                        <div class="card-icon">🌐</div>
-                        <h3>멀티플레이</h3>
-                        <p>접속 중인 플레이어 확인</p>
-                    </button>
-                    <button class="menu-card" id="btn-notif-center">
-                        <div class="card-icon">🔔</div>
-                        <h3>알림 센터</h3>
-                        <p>최근 서버 소식 및 알림</p>
-                    </button>
-                    <button class="menu-card" id="btn-feedback">
-                        <div class="card-icon">💡</div>
-                        <h3>피드백 고고</h3>
-                        <p>건의사항을 보내주세요<br><span style="color:#ff5252; font-size: 0.8rem;">(미완성입니다)</span></p>
-                    </button>
-                </div>
+            <div class="menu-grid">
+                <button class="menu-card" id="btn-start-game">⚔️<h3>게임 시작</h3></button>
+                <button class="menu-card" id="btn-shop">🏪<h3>상점</h3></button>
+                <button class="menu-card" id="btn-chat">💬<h3>채팅방</h3></button>
+                <button class="menu-card" id="btn-announcements">📢<h3>공지사항</h3></button>
+                <button class="menu-card hidden" id="btn-admin">🛡️<h3>관리자</h3></button>
             </div>
+            <div style="position:fixed; bottom:20px; left:20px;" id="lobby-visit-badge">📊 누적 방문: 0명</div>
         </section>
 
-        <!-- 2.4 MAP SELECTION SCREEN -->
-        <section id="map-selection-screen" class="screen landscape hidden">
-            <header class="top-bar glass-bar">
-                <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
-                <h2 class="screen-title">🗺️ 맵 선택</h2>
-            </header>
-            <div class="menu-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
-                <p style="color: #00ff88; margin-bottom: 2rem; font-size: 1.2rem; text-shadow: 0 0 10px rgba(0,255,136,0.3);">탐험할 지역을 선택하세요</p>
-                <div class="menu-grid" style="width: 90%; max-width: 900px;">
-                    <button class="menu-card" onclick="app.startWithMap('classic')">
-                        <div class="card-icon">🌲</div>
-                        <h3>클래식 계곡</h3>
-                        <p>균형 잡힌 자원과 지형</p>
-                    </button>
-                    <button class="menu-card" onclick="app.startWithMap('ocean')">
-                        <div class="card-icon">🏝️</div>
-                        <h3>끝없는 바다</h3>
-                        <p>작은 섬들과 넓은 바다 (어려움)</p>
-                    </button>
-                    <button class="menu-card" onclick="app.startWithMap('snow')">
-                        <div class="card-icon">❄️</div>
-                        <h3>얼어붙은 설산</h3>
-                        <p>극심한 추위와 눈 덮인 산맥</p>
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- 2.4-B MULTIPLAYER SCREEN -->
-        <section id="multiplayer-screen" class="screen landscape hidden">
-            <header class="top-bar glass-bar">
-                <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
-                <h2 class="screen-title">👥 멀티플레이 & 친구</h2>
-            </header>
-            <div class="menu-container">
-                <!-- My code display -->
-                <div style="text-align: center; margin-bottom: 1rem; background: rgba(0,229,255,0.1); padding: 10px; border-radius: 8px; border: 1px solid rgba(0,229,255,0.3);">
-                    <span style="color: #aaa; font-size: 0.9rem;">내 친구 코드: </span>
-                    <span id="my-friend-code" style="color: #00e5ff; font-weight: bold; font-size: 1.2rem; letter-spacing: 2px;">------</span>
-                </div>
-
-                <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 1.5rem;">
-                    <button class="btn secondary active" id="btn-tab-servers" style="padding: 10px 20px;" onclick="app.switchTab('servers')">🖥️ 서버 목록</button>
-                    <button class="btn secondary" id="btn-tab-global" style="padding: 10px 20px;" onclick="app.switchTab('global')">🌐 전체 유저</button>
-                    <button class="btn secondary" id="btn-tab-friends" style="padding: 10px 20px;" onclick="app.switchTab('friends')">⭐ 친구 목록</button>
-                </div>
-                
-                <div class="admin-panel glass-panel" style="max-width: 800px; margin: 0 auto; padding: 20px;">
-                    <!-- Friend Code Add UI -->
-                    <div id="friend-add-by-code" class="hidden" style="margin-bottom: 1.5rem; display: flex; gap: 10px; justify-content: center;">
-                        <input type="text" id="input-friend-code" placeholder="친구 코드 6자리 입력" maxlength="6" 
-                            style="width: 180px; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #222; color: #fff; text-align: center; letter-spacing: 3px;">
-                        <button class="btn primary" style="padding: 10px 20px;" onclick="app.addFriendByCode()">+ 코드 추가</button>
+        <!-- STORE SCREEN (Juram Store) -->
+        <section id="store-screen" class="screen hidden" style="flex-direction: column; height: 100%; background: #121418;">
+            <div id="store-list-view" style="display: flex; flex-direction: column; height: 100%;">
+                <div style="padding: 30px; background: linear-gradient(135deg, #2b5876, #4e4376); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <div>
+                        <h1 style="font-size: 2.2rem; font-weight: 800; color: #fff; margin-bottom: 5px;">🛍️ 주람 스토어</h1>
+                        <p style="color: #cbd5e1;">최고의 게임과 앱을 다운로드하세요.</p>
                     </div>
-
-                    <!-- User Server Create UI (New v92) -->
-                    <div id="user-server-create-ui" class="hidden" style="margin-bottom: 1.5rem; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(0,229,255,0.2);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <span style="color: #00e5ff; font-weight: bold;">🖥️ 내 서버 개설하기</span>
-                            <span id="user-server-slots-badge" class="badge" style="background: #444;">보유 구축권: 15개</span>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px;">
-                            <input type="text" id="user-server-name" placeholder="서버 이름을 입력하세요" style="padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
-                            <select id="user-server-map" style="padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
-                                <option value="classic">🌲 클래식</option>
-                                <option value="ocean">🏝️ 바다</option>
-                                <option value="snow">❄️ 설산</option>
-                            </select>
-                            <input type="number" id="user-server-capacity" value="10" min="1" max="50" style="width: 70px; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;" title="최대 인원">
-                            <button class="btn primary" onclick="app.createUserOfficialServer()" style="padding: 10px 20px; font-weight: bold; background: #00e5ff; color: #000;">개설</button>
-                        </div>
-                        <p style="font-size: 0.75rem; color: #888; margin-top: 8px; margin-left: 2px;">⚠️ 5일 동안 아무도 접속하지 않은 서버는 자동으로 사라집니다.</p>
-                    </div>
-                    </div>
-
-                    <div id="multiplayer-loading" style="text-align: center; color: #aaa;">불러오는 중...</div>
-                    <div id="multiplayer-player-list" class="user-list">
-                        <!-- Content depends on selected tab -->
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 2.5 LOADING SCREEN -->
-        <section id="loading-screen" class="screen landscape hidden">
-            <div class="loading-container"
-                style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
-                <h2
-                    style="color: var(--primary-color); font-size: 2.5rem; margin-bottom: 2rem; text-shadow: 0 0 15px var(--primary-glow);">
-                    월드 생성 중...</h2>
-                <div class="loading-bar-wrap"
-                    style="width: 80%; max-width: 500px; height: 15px; background: rgba(0,0,0,0.5); border-radius: 10px; overflow: hidden; border: 1px solid var(--glass-border);">
-                    <div id="loading-bar"
-                        style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--secondary-color), var(--primary-color)); transition: width 0.1s linear; box-shadow: 0 0 15px var(--primary-glow);">
-                    </div>
-                </div>
-                <p id="loading-text" style="color: var(--text-muted); margin-top: 1rem;">자원 로딩 중 (0%)</p>
-            </div>
-        </section>
-
-        <!-- 2.6 DEATH SCREEN -->
-        <section id="death-screen" class="screen landscape hidden"
-            style="background: rgba(100, 0, 0, 0.8) !important; backdrop-filter: blur(10px);">
-            <div
-                style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center;">
-                <h1
-                    style="color: #ff3366; font-size: 4rem; margin-bottom: 1rem; text-shadow: 0 0 20px #ff3366; letter-spacing: 5px;">
-                    당신은 죽었습니다</h1>
-                <p id="death-reason" style="color: white; font-size: 1.2rem; margin-bottom: 2rem;">자연에서 살아남지 못했습니다.</p>
-                <div style="display: flex; gap: 1rem;">
-                    <button class="btn primary" onclick="app.showScreen('menu-screen')"
-                        style="font-size: 1.2rem; padding: 1rem 2rem;">메인 메뉴로 돌아가기</button>
-                </div>
-            </div>
-        </section>
-
-        <!-- 2.7 MY PAGE SCREEN -->
-        <section id="mypage-screen" class="screen landscape hidden">
-            <header class="top-bar glass-bar">
-                <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
-                <h2 class="screen-title">내 정보</h2>
-            </header>
-
-            <div class="mypage-container">
-                <div class="profile-card glass-panel">
-                    <div class="profile-header">
-                        <div class="profile-avatar"></div>
-                        <div class="profile-main-info">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
-                                <h2 id="my-username">User</h2>
-                                <span id="my-level-badge" class="level-badge" style="font-size: 0.9rem;">Lv.1</span>
-                            </div>
-                            <span id="my-role-badge" class="badge">USER</span>
-                            <div class="xp-bar-container" style="width: 100%; height: 8px; margin-top: 10px;">
-                                <div id="my-xp-bar" class="xp-bar" style="width: 0%;"></div>
-                            </div>
-                            <div id="my-xp-text"
-                                style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px; text-align: right;">
-                                0 / 100 XP</div>
-                        </div>
-                    </div>
-
-                    <div class="profile-details">
-                        <div class="detail-item">
-                            <span class="label">연락처</span>
-                            <span class="value" id="my-phone">-</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="label">가입 상태</span>
-                            <span class="value">활동 중</span>
-                        </div>
-                    </div>
-
-                    <div class="stats-grid">
-                        <div class="stat-box">
-                            <span class="stat-icon">❤️</span>
-                            <span class="stat-label">현재 체력</span>
-                            <span class="stat-value" id="my-health">100</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-icon">🪙</span>
-                            <span class="stat-label">보유 코인</span>
-                            <span class="stat-value" id="my-coins">0</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-icon">💎</span>
-                            <span class="stat-label">보유 다이아</span>
-                            <span class="stat-value" id="my-diamonds">0</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-icon">🪵</span>
-                            <span class="stat-label">수집한 나무</span>
-                            <span class="stat-value" id="my-wood">0</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-icon">🪨</span>
-                            <span class="stat-label">수집한 돌</span>
-                            <span class="stat-value" id="my-stone">0</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-icon">⛓️</span>
-                            <span class="stat-label">수집한 철</span>
-                            <span class="stat-value" id="my-iron">0</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-icon">📀</span>
-                            <span class="stat-label">수집한 금</span>
-                            <span class="stat-value" id="my-gold">0</span>
-                        </div>
-                        <div class="stat-box treasure-box">
-                            <span class="stat-icon">📦</span>
-                            <span class="stat-label">보물 상자</span>
-                            <span class="stat-value" id="my-treasures">0</span>
-                            <button class="btn primary open-btn hidden" id="btn-open-treasure"
-                                onclick="app.openTreasure()">열기</button>
-                        </div>
-                    </div>
-
-                    <div class="skin-selection">
-                        <h3>캐릭터 스킨 선택</h3>
-                        <div class="skin-grid">
-                            <button class="skin-btn active" data-skin="green" onclick="app.setSkin('green')"
-                                style="background: #00ff88;"></button>
-                            <button class="skin-btn" data-skin="blue" onclick="app.setSkin('blue')"
-                                style="background: #00e5ff;"></button>
-                            <button class="skin-btn" data-skin="red" onclick="app.setSkin('red')"
-                                style="background: #ff3366;"></button>
-                            <button class="skin-btn" data-skin="yellow" onclick="app.setSkin('yellow')"
-                                style="background: #ffd700;"></button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 2.5 APPLY SCREEN -->
-        <section id="apply-screen" class="screen portrait hidden">
-            <div class="glass-panel login-panel">
-                <h1 class="logo" style="font-size: 2.2rem;">관리팀 지원</h1>
-                <p class="subtitle">커뮤니티를 위해 힘써주세요</p>
-
-                <form id="apply-form">
-                    <div class="input-group">
-                        <label for="apply-reason">지원 동기 및 각오</label>
-                        <textarea id="apply-reason" placeholder="내용을 입력하세요..." required
-                            style="width: 100%; height: 150px; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; color: white; padding: 10px; font-family: inherit; resize: none;"></textarea>
-                    </div>
-
-                    <div class="btn-group">
-                        <button type="submit" class="btn primary">지원서 제출</button>
-                        <button type="button" class="btn secondary" onclick="app.showScreen('menu-screen')">취소</button>
-                    </div>
-                </form>
-            </div>
-        </section>
-
-        <!-- 6. QUEST SCREEN -->
-        <section id="quest-screen" class="screen landscape hidden">
-            <header class="top-bar glass-bar">
-                <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
-                <h2 class="screen-title">📜 일일 퀘스트</h2>
-                <div class="resources">
-                    <div class="resource"><span class="icon">🪙</span><span class="shop-coin-amount">0</span></div>
-                    <div class="resource"><span class="icon">💎</span><span class="shop-diamond-amount">0</span></div>
-                </div>
-            </header>
-
-            <div class="quest-container">
-                <div class="quest-list" id="quest-list">
-                    <!-- Quests injected by JS -->
-                </div>
-            </div>
-        </section>
-
-        <!-- 3. SHOP SCREEN -->
-        <section id="shop-screen" class="screen landscape hidden">
-            <header class="top-bar glass-bar">
-                <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
-                <h2 class="screen-title">상점</h2>
-                <div class="resources">
-                    <div class="resource"><span class="icon">🪙</span><span class="shop-coin-amount">0</span></div>
-                    <div class="resource"><span class="icon">💎</span><span class="shop-diamond-amount">0</span></div>
-                </div>
-            </header>
-
-            <div class="shop-container">
-                <div class="shop-grid">
-                    <!-- Item 1 -->
-                    <div class="shop-item">
-                        <div class="item-visual chest-visual">📦</div>
-                        <h4>보물 상자</h4>
-                        <p class="desc">특별한 아이템이 들어있습니다.</p>
-                        <button class="btn buy-btn" onclick="app.buyItem('treasure')">
-                            164 <span class="icon">🪙</span>
-                        </button>
-                    </div>
-                    <!-- Item 2 -->
-                    <div class="shop-item">
-                        <div class="item-visual exchange-visual">🔄</div>
-                        <h4>다이아몬드 교환</h4>
-                        <p class="desc">코인 1개를 다이아몬드 2개로 교환합니다.</p>
-                        <button class="btn buy-btn" onclick="app.exchangeCoins(1)">
-                            교환 (1 🪙 ➔ 2 💎)
-                        </button>
-                    </div>
-                    <!-- Item 3 -->
-                    <div class="shop-item">
-                        <div class="item-visual luck-visual">🍀</div>
-                        <h4>행운 돈상자 (소)</h4>
-                        <p class="desc">행운을 시험해보세요!</p>
-                        <button class="btn buy-btn" onclick="app.buyLuckyBox('small', 100)">
-                            100 <span class="icon">🪙</span>
-                        </button>
-                    </div>
-                    <!-- Item 4 -->
-                    <div class="shop-item">
-                        <div class="item-visual luck-visual gold">🍀</div>
-                        <h4>행운 돈상자 (중)</h4>
-                        <p class="desc">더 큰 행운을 시험해보세요!</p>
-                        <button class="btn buy-btn" onclick="app.buyLuckyBox('medium', 1000)">
-                            1,000 <span class="icon">🪙</span>
-                        </button>
-                    </div>
-                    <!-- Server Slots Items -->
-                    <div class="shop-item" style="border-color: #00e5ff;">
-                        <div class="item-visual">🖥️</div>
-                        <h4>서버 구축권 (+1)</h4>
-                        <p class="desc">멀티플레이 서버를 1회 더 개설할 수 있습니다.</p>
-                        <button class="btn buy-btn" onclick="app.buyServerSlots(1, 5000)">
-                            5,000 <span class="icon">🪙</span>
-                        </button>
-                    </div>
-                    <div class="shop-item" style="border-color: #00e5ff;">
-                        <div class="item-visual">🖥️</div>
-                        <h4>서버 구축권 (+2)</h4>
-                        <p class="desc">서버 구축권을 2개 추가합니다. (할인!)</p>
-                        <button class="btn buy-btn" onclick="app.buyServerSlots(2, 8000)">
-                            8,000 <span class="icon">🪙</span>
-                        </button>
-                    </div>
-                    <div class="shop-item" style="border-color: #00e5ff;">
-                        <div class="item-visual">🖥️</div>
-                        <h4>서버 구축권 (+3)</h4>
-                        <p class="desc">서버 구축권을 3개 추가합니다. (최대 할인!)</p>
-                        <button class="btn buy-btn" onclick="app.buyServerSlots(3, 10000)">
-                            10,000 <span class="icon">🪙</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 4. ADMIN SCREEN -->
-        <section id="admin-screen" class="screen landscape hidden">
-            <header class="top-bar glass-bar">
-                <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
-                <h2 class="screen-title" style="color: var(--accent-red);">🛡️ 관리자 모드</h2>
-                <div class="resources">
-                    <button id="btn-master-signup" class="btn primary hidden"
-                        style="margin-right: 15px; padding: 5px 15px; font-size: 0.8rem; background: var(--secondary-color); color: var(--bg-dark);">👤
-                        신규 유저 생성</button>
-                    <div class="resource"><span class="icon">🪙</span>무제한</div>
-                    <div class="resource"><span class="icon">💎</span>무제한</div>
-                </div>
-            </header>
-
-            <div class="admin-container" style="display: flex; flex-direction: column; height: 82vh; padding: 20px;">
-                <!-- Admin Tabs -->
-                <div style="display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; flex-shrink: 0;">
-                    <button class="btn secondary active" onclick="app.switchAdminTab('status', this)" style="white-space:nowrap; padding: 10px 20px;">🌐 접속 현황</button>
-                    <button class="btn secondary" onclick="app.switchAdminTab('apply', this)" style="white-space:nowrap; padding: 10px 20px;">✉️ 관리 지원</button>
-                    <button class="btn secondary" onclick="app.switchAdminTab('users', this)" style="white-space:nowrap; padding: 10px 20px;">👥 계정 관리</button>
-                    <button class="btn secondary" onclick="app.switchAdminTab('reports', this)" style="white-space:nowrap; padding: 10px 20px;">🚨 신고 센터</button>
-                    <button class="btn secondary" onclick="app.switchAdminTab('servers', this)" style="white-space:nowrap; padding: 10px 20px;">🖥️ 서버 구축</button>
-                    <button class="btn secondary" onclick="app.switchAdminTab('logs', this)" style="white-space:nowrap; padding: 10px 20px;">📜 서버 로그</button>
-                </div>
-
-                <div id="admin-main-content" style="flex: 1; overflow-y: auto; padding-right: 5px;">
-                    <!-- Monitoring & Notif (Status Tab) -->
-                    <div id="admin-tab-status" class="admin-tab-content">
-                        <div class="admin-panel glass-panel global-notif" style="margin-bottom: 25px; border: 1px solid #ffd700;">
-                            <h3 style="color: #ffd700;">📣 전체 서버 알림 발송</h3>
-                            <div style="display: flex; gap: 10px;">
-                                <select id="admin-notif-type" style="padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
-                                    <option value="info">일반 (Normal)</option>
-                                    <option value="warning">긴급 (Urgent)</option>
-                                    <option value="success">이벤트 (Event)</option>
-                                </select>
-                                <input type="text" id="admin-notif-msg" placeholder="모든 유저에게 즉시 보낼 메시지를 입력하세요" style="flex:1; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
-                                <button class="btn primary" onclick="app.sendGlobalNotification()" style="padding: 10px 20px; font-weight: bold;">전송하기</button>
-                            </div>
-                        </div>
-
-                        <div class="admin-panel glass-panel live-monitoring" style="margin-bottom: 25px; border: 1px solid #00e5ff;">
-                            <h3 style="color: #00e5ff; display: flex; align-items: center; gap: 8px;">🌐 실시간 접속 모니터링 <span id="admin-online-count" style="font-size: 0.9rem; background: rgba(0,229,255,0.2); padding: 2px 8px; border-radius: 10px;">0명</span></h3>
-                            <div class="user-list-header" style="grid-template-columns: 1.5fr 1fr 1fr auto !important;">
-                                <span>아이디</span>
-                                <span>현재 위치</span>
-                                <span>상태</span>
-                                <span>활동 시간</span>
-                            </div>
-                            <div id="admin-live-list" class="user-list-body"></div>
-                        </div>
-                    </div>
-
-                    <!-- Applications Tab -->
-                    <div id="admin-tab-apply" class="admin-tab-content hidden">
-                        <div class="admin-panel glass-panel application-management">
-                            <h3>관리 지원서 목록</h3>
-                            <div class="application-list-header">
-                                <span>아이디</span>
-                                <span>지원 내용</span>
-                                <span>상태</span>
-                                <span>액션</span>
-                            </div>
-                            <div id="admin-apply-list" class="user-list-body"></div>
-                        </div>
-                    </div>
-
-                    <!-- Users Tab -->
-                    <div id="admin-tab-users" class="admin-tab-content hidden">
-                        <div class="admin-panel glass-panel user-management">
-                            <div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center;">
-                                <div style="position: relative; flex: 1;">
-                                    <input type="text" id="admin-user-search" placeholder="아이디 검색..." oninput="app.renderAdminUserListSearch()" 
-                                        style="width: 100%; padding: 12px 15px 12px 40px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 10px;">
-                                    <span style="position: absolute; left: 15px; top: 12px;">🔍</span>
-                                </div>
-                                <button class="btn primary" onclick="syncAllUsers(true); showToast('심층 수색 시작...','info');" 
-                                    style="padding: 10px 20px; font-weight: bold; background: linear-gradient(135deg, #00e5ff, #00ff88); color: #000; border: none; height: 46px;">⚡ 초정밀 수색 (Deep Sync)</button>
-                            </div>
-
-                            <div class="user-list-header" style="grid-template-columns: 1fr 1.2fr 0.8fr 0.8fr 0.8fr 1fr !important;">
-                                <span>아이디</span>
-                                <span>전화번호</span>
-                                <span>코인</span>
-                                <span>다이아몬드</span>
-                                <span>권한</span>
-                                <span>액션</span>
-                            </div>
-                            <div id="admin-user-list" class="user-list-body"></div>
-                        </div>
-
-                        <!-- Role Permission Guide (New v101) -->
-                        <div class="admin-panel glass-panel" style="margin-top: 20px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02);">
-                            <h3 style="color: #fff; margin-bottom: 15px; font-size: 1rem;">🛡️ 등급별 권한 가이드</h3>
-                            <table style="width: 100%; border-collapse: collapse; color: #ccc; font-size: 0.8rem; text-align: left;">
-                                <thead>
-                                    <tr style="border-bottom: 1px solid #444; color: #aaa;">
-                                        <th style="padding: 8px;">등급</th>
-                                        <th style="padding: 8px;">주요 특징 및 권한</th>
-                                        <th style="padding: 8px;">설명</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr style="border-bottom: 1px solid #333;">
-                                        <td style="padding: 8px; color: #fff;">👤 유저</td>
-                                        <td style="padding: 8px;">일반 플레이어</td>
-                                        <td style="padding: 8px;">기본 서바이벌 및 상점 이용 (서버 개설 시 구축권 소모)</td>
-                                    </tr>
-                                    <tr style="border-bottom: 1px solid #333;">
-                                        <td style="padding: 8px; color: #00e5ff;">💎 VIP</td>
-                                        <td style="padding: 8px;">특별 회원</td>
-                                        <td style="padding: 8px;">이벤트 보상/전용 등급 (현재 관리 권한 없음)</td>
-                                    </tr>
-                                    <tr style="border-bottom: 1px solid #333;">
-                                        <td style="padding: 8px; color: #00ff88;">🛡️ 매니저</td>
-                                        <td style="padding: 8px;">준관리자</td>
-                                        <td style="padding: 8px;">채팅 관리 및 신고 센터 모니터링 담당</td>
-                                    </tr>
-                                    <tr style="border-bottom: 1px solid #333;">
-                                        <td style="padding: 8px; color: #ffd700;">⚙️ 관리자</td>
-                                        <td style="padding: 8px;">시스템 운영자</td>
-                                        <td style="padding: 8px;">관리자 기능 전체 사용, 유저 선물 지급, 서버 파기 가능</td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 8px; color: #ff5252;">👑 크리에이터</td>
-                                        <td style="padding: 8px;">최상위 마스터</td>
-                                        <td style="padding: 8px;"><b>jur1203</b> 전용. 모든 유저 비밀번호 열람 및 관리자 삭제 가능</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Reports Tab -->
-                    <div id="admin-tab-reports" class="admin-tab-content hidden">
-                        <div class="admin-panel glass-panel" style="border: 1px solid #ff5252;">
-                            <h3 style="color: #ff5252;">🚨 유저 신고 내역</h3>
-                            <div class="user-list-header" style="grid-template-columns: 1.2fr 2fr 1.2fr auto !important;">
-                                <span>대상 유저</span>
-                                <span>신고 사유</span>
-                                <span>신고자</span>
-                                <span>관리</span>
-                            </div>
-                            <div id="admin-report-list" class="user-list-body">
-                                <div style="text-align:center; padding:20px; color:#666;">신고 내역이 없습니다.</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Servers Tab (Admin) -->
-                    <div id="admin-tab-servers" class="admin-tab-content hidden">
-                        <div class="admin-panel glass-panel" style="margin-bottom: 25px; border: 1px solid #00e5ff;">
-                            <h3 style="color: #00e5ff;">🖥️ 신규 멀티플레이 서버 생성 (서버 파기)</h3>
-                            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                                <input type="text" id="admin-server-name" placeholder="서버 이름을 입력하세요" style="flex:1; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
-                                <select id="admin-server-map" style="padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;">
-                                    <option value="classic">🌲 클래식 계곡</option>
-                                    <option value="ocean">🏝️ 끝없는 바다</option>
-                                    <option value="snow">❄️ 얼어붙은 설산</option>
-                                </select>
-                                <input type="number" id="admin-server-capacity" value="50" min="1" max="100" style="width: 80px; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 8px;" title="최대 인원">
-                                <button class="btn primary" onclick="app.createOfficialServer()" style="padding: 10px 20px; font-weight: bold; background: #00e5ff; color: #000;">서버 열기</button>
-                            </div>
-                            <div class="user-list-header" style="grid-template-columns: 1fr 1fr 0.8fr 1fr auto !important;">
-                                <span>서버 이름</span>
-                                <span>맵 종류</span>
-                                <span>인원 제한</span>
-                                <span>최근 활동</span>
-                                <span>액션</span>
-                            </div>
-                            <div id="admin-server-list" class="user-list-body"></div>
-                        </div>
-                    </div>
-
-                    <!-- Logs Tab -->
-                    <div id="admin-tab-logs" class="admin-tab-content hidden">
-                        <div class="admin-panel glass-panel" style="border: 1px solid #aaa;">
-                            <h3 style="color: #aaa;">📜 실시간 서버 로그</h3>
-                            <div id="admin-log-list" class="user-list-body" style="font-family: monospace; font-size: 0.85rem; max-height: 500px; overflow: auto; display: flex; flex-direction: column; gap: 6px; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px;">
-                                <!-- Logs appear here -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 4.7 REPORT MODAL -->
-        <div id="report-modal" class="modal-overlay hidden" style="z-index: 12000; align-items: center; justify-content: center; display: none;">
-            <div class="glass-panel" style="width: 90%; max-width: 400px; padding: 30px; border: 2px solid #ff5252; border-radius: 20px;">
-                <h2 style="color: #ff5252; margin-bottom: 20px; text-align: center;">🚨 플레이어 신고</h2>
-                <div style="margin-bottom: 20px; color: #fff;">
-                    신고 대상: <span id="report-target-name" style="font-weight: bold; color: #ffd700;">Unknown</span>
-                </div>
-                <div class="input-group">
-                    <label style="color: #aaa; font-size: 0.9rem; margin-bottom: 8px; display: block;">신고 사유</label>
-                    <textarea id="report-reason" rows="4" placeholder="사유를 자세히 적어주세요 (비매너, 욕설, 버그 등)" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 10px; resize: none;"></textarea>
-                </div>
-                <div style="display: flex; gap: 15px; margin-top: 10px;">
-                    <button class="btn secondary" onclick="document.getElementById('report-modal').style.display='none'" style="flex: 1; padding: 12px; border-radius: 10px;">취소</button>
-                    <button class="btn primary" id="btn-submit-report" style="flex: 1; padding: 12px; background: #ff5252 !important; color: #fff !important; border-radius: 10px;">신고하기</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 4.6 NOTIFICATION CENTER SCREEN -->
-        <section id="notif-center-screen" class="screen portrait hidden" style="background: #11141a !important; display: flex; align-items: center; justify-content: center;">
-            <div class="glass-panel" style="width: 90%; max-width: 500px; height: 75vh; display: flex; flex-direction: column; background: #1a1a24; position: relative; padding: 40px 20px 20px; border-radius: 20px;">
-                <button class="btn secondary" onclick="app.showScreen('menu-screen')" style="align-self: flex-start; margin-bottom: 20px; padding: 10px 20px; background-color: #ff5252 !important; color: #fff !important; border: 2px solid #fff; font-size: 1rem; font-weight: 900; border-radius: 10px;">◀ 돌아가기</button>
-                <h2 style="color: #ffd700; margin-bottom: 20px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px;">🔔 서버 알림 센터</h2>
-                
-                <div id="notif-history-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 8px;">
-                    <div style="text-align: center; color: #666; padding: 40px 0;">최근 알림이 없습니다.</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 4.5 TUTORIAL SCREEN -->
-        <section id="tutorial-screen" class="screen landscape hidden">
-            <header class="top-bar glass-bar">
-                <button class="btn-back" onclick="app.closeTutorial()">◀ 뒤로</button>
-                <h2 class="screen-title">📖 튜토리얼</h2>
-            </header>
-
-            <div
-                style="overflow-y: auto; height: calc(100% - 56px); padding: 1.5rem; display: flex; flex-direction: column; gap: 1.2rem;">
-
-                <!-- PC 조작법 -->
-                <div class="glass-panel" style="padding: 1.2rem;">
-                    <h3 style="color: var(--primary-color); margin-bottom: 1rem; font-size: 1.1rem;">🖥️ PC 조작법</h3>
-                    <div
-                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.7rem;">
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="color: var(--secondary-color); font-weight: 700;">WASD / 방향키</span>
-                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">캐릭터 이동</p>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="color: var(--secondary-color); font-weight: 700;">마우스 이동</span>
-                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">시점 회전</p>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="color: var(--secondary-color); font-weight: 700;">마우스 클릭</span>
-                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">공격 / 자원 채집</p>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="color: var(--secondary-color); font-weight: 700;">F 키</span>
-                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">가까운 아이템 줍기</p>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="color: var(--secondary-color); font-weight: 700;">E 키</span>
-                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">인벤토리 열기/닫기</p>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="color: var(--secondary-color); font-weight: 700;">B 키</span>
-                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">건설 모드 활성화/해제</p>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="color: var(--secondary-color); font-weight: 700;">ESC</span>
-                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">마우스 잠금 해제</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 모바일 조작법 -->
-                <div class="glass-panel" style="padding: 1.2rem;">
-                    <h3 style="color: var(--secondary-color); margin-bottom: 1rem; font-size: 1.1rem;">📱 모바일 조작법</h3>
-                    <div
-                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.7rem;">
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="color: var(--primary-color); font-weight: 700;">왼쪽 조이스틱</span>
-                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">캐릭터 이동</p>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="color: var(--primary-color); font-weight: 700;">오른쪽 드래그</span>
-                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">시점 회전</p>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="color: var(--primary-color); font-weight: 700;">⚔️ 버튼</span>
-                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">공격 / 채집</p>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="color: var(--primary-color); font-weight: 700;">👜 버튼</span>
-                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">인벤토리 열기</p>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="color: var(--primary-color); font-weight: 700;">줍기 버튼</span>
-                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">근처 아이템 획득</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 생존 시스템 -->
-                <div class="glass-panel" style="padding: 1.2rem;">
-                    <h3 style="color: #ff9800; margin-bottom: 1rem; font-size: 1.1rem;">💀 생존 시스템</h3>
-                    <div style="display: flex; flex-direction: column; gap: 0.6rem;">
-                        <div
-                            style="display: flex; align-items: center; gap: 0.8rem; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="font-size: 1.4rem;">❤️</span>
-                            <div><strong>체력</strong> — 몬스터 공격, 굶주림, 목마름으로 감소. 0이 되면 게임 오버.</div>
-                        </div>
-                        <div
-                            style="display: flex; align-items: center; gap: 0.8rem; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="font-size: 1.4rem;">🍎</span>
-                            <div><strong>허기</strong> — 시간이 지나면 감소. 0이 되면 체력 소모. 사과를 먹어 회복.</div>
-                        </div>
-                        <div
-                            style="display: flex; align-items: center; gap: 0.8rem; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="font-size: 1.4rem;">💧</span>
-                            <div><strong>목마름</strong> — 허기보다 빠르게 감소. 물을 마셔 회복. 허기보다 위험!</div>
-                        </div>
-                        <div
-                            style="display: flex; align-items: center; gap: 0.8rem; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">
-                            <span style="font-size: 1.4rem;">🌙</span>
-                            <div><strong>밤</strong> — 밤이 되면 몬스터가 더 많이 출현합니다. 조심하세요!</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 자원과 제작 -->
-                <div class="glass-panel" style="padding: 1.2rem;">
-                    <h3 style="color: #a5d6a7; margin-bottom: 1rem; font-size: 1.1rem;">⛏️ 자원 & 제작</h3>
-                    <div
-                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.6rem; font-size: 0.85rem;">
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">🌲
-                            <strong>나무</strong> — 나무를 공격해서 획득
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">🪨
-                            <strong>돌</strong> — 바위를 공격해서 획득
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">🪙
-                            <strong>코인</strong> — 바닥에서 습득
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">💎
-                            <strong>다이아</strong> — 바닥에서 습득 (희귀)
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">📦
-                            <strong>제작대</strong> — 나무 5개로 제작 후, <strong>B키</strong>로 배치하여 사용 (고급 아이템 제작 가능)
-                        </div>
-                        <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.7rem;">🪓
-                            <strong>강철 도끼</strong> — 제작대 근처에서 제작 가능, 나무를 2배 빠르게 채집
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 팁 -->
-                <div class="glass-panel"
-                    style="padding: 1.2rem; border: 1px solid rgba(255, 215, 0, 0.2); background: rgba(255, 215, 0, 0.03);">
-                    <h3 style="color: var(--accent-yellow); margin-bottom: 0.8rem; font-size: 1.1rem;">💡 생존 팁</h3>
-                    <ul
-                        style="padding-left: 1.2rem; color: var(--text-muted); font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                        <li>물과 음식을 항상 충분히 확보해 두세요.</li>
-                        <li>밤에는 시야가 좁아지므로 낮에 자원을 최대한 모으세요.</li>
-                        <li>몬스터는 플레이어에게 30 이내 접근하면 쫓아옵니다.</li>
-                        <li>상점에서 코인으로 다이아몬드로 교환할 수 있습니다.</li>
-                        <li>보물 상자를 열면 랜덤 보상을 얻을 수 있습니다!</li>
-                    </ul>
-                </div>
-
-            </div>
-        </section>
-
-        <!-- 5. GAME SCREEN (3D Container) -->
-        <section id="game-screen" class="screen landscape hidden">
-            <!-- Three.js Canvas will be appended here -->
-            <div id="game-ui">
-                <div class="crosshair">+</div>
-
-                <div id="mouse-hint" class="mouse-hint-overlay">
-                    <p>마우스로 화면을 움직이려면 <span>화면을 클릭</span>하세요</p>
-                    <small>(ESC 키를 누르면 마우스가 해제됩니다)</small>
-                </div>
-                <div class="game-hud">
-                    <button class="btn-back glass-btn" onclick="app.exitGame()">◀ 메뉴로 돌아가기</button>
-                    <button class="glass-btn" onclick="app.openTutorial()" style="margin-right: 15px;">📖 튜토리얼</button>
-                    <button class="glass-btn" onclick="app.openCraftModal()" style="margin-right: 15px;">🔨
-                        제작하기</button>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <!-- Health -->
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="color: white; font-size: 0.75rem; font-weight: bold; width: 35px;">HP</span>
-                            <div class="health-bar-container" style="width: 200px; position: relative;">
-                                <div class="health-bar"></div>
-                                <span id="health-text"
-                                    style="position: absolute; width: 100%; text-align: center; color: white; font-size: 10px; font-weight: bold; line-height: 11px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); top: 0;">100%</span>
-                            </div>
-                        </div>
-                        <!-- Hunger -->
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="color: #ff9800; font-size: 0.75rem; font-weight: bold; width: 35px;">허기</span>
-                            <div class="health-bar-container"
-                                style="width: 200px; position: relative; background: rgba(255,152,0,0.1); border-color: rgba(255,152,0,0.2);">
-                                <div id="hunger-bar" class="health-bar"
-                                    style="background: linear-gradient(90deg, #ffb74d, #f57c00);"></div>
-                                <span id="hunger-text"
-                                    style="position: absolute; width: 100%; text-align: center; color: white; font-size: 10px; font-weight: bold; line-height: 11px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); top: 0;">100%</span>
-                            </div>
-                        </div>
-                        <!-- Thirst -->
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="color: #2196f3; font-size: 0.75rem; font-weight: bold; width: 35px;">목마름</span>
-                            <div class="health-bar-container"
-                                style="width: 200px; position: relative; background: rgba(33,150,243,0.1); border-color: rgba(33,150,243,0.2);">
-                                <div id="thirst-bar" class="health-bar"
-                                    style="background: linear-gradient(90deg, #64b5f6, #1976d2);"></div>
-                                <span id="thirst-text"
-                                    style="position: absolute; width: 100%; text-align: center; color: white; font-size: 10px; font-weight: bold; line-height: 11px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); top: 0;">100%</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div
-                    style="position: absolute; top: 1rem; right: 1rem; display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
-                    <span id="game-time"
-                        style="color: #ffd700; font-weight: bold; font-size: 1.1rem; text-shadow: 0 0 10px rgba(255,215,0,0.5);">☀️
-                        12:00</span>
-                    <span id="game-temp"
-                        style="color: #ff5722; font-weight: bold; font-size: 1.1rem; text-shadow: 0 0 10px rgba(255,87,34,0.3);">🌡️
-                        20°C</span>
-                </div>
-            </div>
-
-            <div id="craft-modal" class="modal-overlay hidden">
-                <div class="modal-content glass-panel" style="max-width: 400px;">
-                    <span class="close-btn" onclick="app.closeCraftModal()">&times;</span>
-                    <h2 class="modal-title">🔨 제작 메뉴</h2>
-                    <div class="craft-list">
-                        <div class="craft-item glass-panel">
-                            <div style="font-size: 2rem;">📦</div>
-                            <div style="flex-grow: 1; margin: 0 15px;">
-                                <h4 style="margin: 0; color: var(--secondary-color);">제작대</h4>
-                                <p style="margin: 5px 0 0; font-size: 0.8rem; color: var(--text-muted);">복잡한 도구를
-                                    만듭니다</p>
-                            </div>
-                            <div style="text-align: right;">
-                                <span style="display: block; font-size: 0.75rem; margin-bottom: 5px;">🪵 5개
-                                    필요</span>
-                                <button class="btn primary" onclick="app.craftItem('workbench')"
-                                    style="padding: 5px 10px; font-size: 0.8rem;">제작</button>
-                            </div>
-                        </div>
-
-                        <div class="craft-item glass-panel" id="craft-steel_axe">
-                            <div style="font-size: 2rem;">🪓</div>
-                            <div style="flex-grow: 1; margin: 0 15px;">
-                                <h4 style="margin: 0; color: #aabac1;">강철 도끼</h4>
-                                <p style="margin: 5px 0 0; font-size: 0.8rem; color: #ffeb3b;">⚠️ 제작대 근처에서 가능</p>
-                                <p style="margin: 2px 0 0; font-size: 0.7rem; color: var(--text-muted);">나무를 2배 빨리
-                                    벱니다</p>
-                            </div>
-                            <div style="text-align: right;">
-                                <span style="display: block; font-size: 0.75rem; margin-bottom: 5px;">🪙 100 / 🪵
-                                    10</span>
-                                <button class="btn primary" onclick="app.craftItem('steel_axe')"
-                                    style="padding: 5px 10px; font-size: 0.8rem;">제작</button>
-                            </div>
-                        </div>
-
-                        <div class="craft-item glass-panel" id="craft-bow">
-                            <div style="font-size: 2rem;">🏹</div>
-                            <div style="flex-grow: 1; margin: 0 15px;">
-                                <h4 style="margin: 0; color: #ff9800;">활</h4>
-                                <p style="margin: 5px 0 0; font-size: 0.8rem; color: #ffeb3b;">⚠️ 제작대 근처에서 가능</p>
-                                <p style="margin: 2px 0 0; font-size: 0.7rem; color: var(--text-muted);">괴물을 원거리 공격
-                                </p>
-                            </div>
-                            <div style="text-align: right;">
-                                <span style="display: block; font-size: 0.75rem; margin-bottom: 5px;">🪙 150 / 🪵
-                                    15</span>
-                                <button class="btn primary" onclick="app.craftItem('bow')"
-                                    style="padding: 5px 10px; font-size: 0.8rem;">제작</button>
-                             </div>
-                        </div>
-
-                        <div class="craft-item glass-panel" id="craft-campfire">
-                            <div style="font-size: 2rem;">🔥</div>
-                            <div style="flex-grow: 1; margin: 0 15px;">
-                                <h4 style="margin: 0; color: #ff5722;">모닥불</h4>
-                                <p style="margin: 5px 0 0; font-size: 0.8rem; color: #ffeb3b;">⚠️ 제작대 근처에서 가능</p>
-                                <p style="margin: 2px 0 0; font-size: 0.7rem; color: var(--text-muted);">주변의 온도를 올려줍니다</p>
-                            </div>
-                            <div style="text-align: right;">
-                                <span style="display: block; font-size: 0.75rem; margin-bottom: 5px;">🪵 5 / ⛓️ 2</span>
-                                <button class="btn primary" onclick="app.craftItem('campfire')"
-                                    style="padding: 5px 10px; font-size: 0.8rem;">제작</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="build-guide" class="hidden"
-                style="position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 10px 20px; border-radius: 20px; border: 1px solid var(--secondary-color); pointer-events: none;">
-                [B] 건설 모드 활성화 (클릭하여 설치)
-            </div>
-
-            <div class="game-hint"
-                style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.4); font-size: 0.75rem; pointer-events: none; letter-spacing: 1px;">
-                [E] 인벤토리 열기
-            </div>
-
-            <div class="inventory-hud hidden">
-                <button class="btn-icon" onclick="app.toggleInventory()"
-                    style="position: absolute; top: 20px; right: 20px; color: white; font-size: 2rem; background: rgba(255,255,255,0.1); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">✕</button>
-                <h3>인벤토리</h3>
-                <div class="inventory-slots">
-                    <!-- Coins & Diamonds -->
-                    <div class="inv-slot">
-                        <span class="inv-icon">🪙</span>
-                        <span class="inv-count shop-coin-amount">0</span>
-                    </div>
-                    <div class="inv-slot">
-                        <span class="inv-icon">💎</span>
-                        <span class="inv-count" id="inv-diamond-count">0</span>
-                    </div>
-                    <div class="inv-slot">
-                        <span class="inv-icon">🪵</span>
-                        <span class="inv-count" id="inv-wood-count">0</span>
-                    </div>
-                    <div class="inv-slot">
-                        <span class="inv-icon">🍎</span>
-                        <span class="inv-count" id="inv-apple-count">0</span>
-                    </div>
-                    <div class="inv-slot">
-                        <span class="inv-icon">🪨</span>
-                        <span class="inv-count" id="inv-stone-count">0</span>
-                    </div>
-                    <div class="inv-slot">
-                        <span class="inv-icon">⛓️</span>
-                        <span class="inv-count" id="inv-iron-count">0</span>
-                    </div>
-                    <div class="inv-slot">
-                        <span class="inv-icon">📀</span>
-                        <span class="inv-count" id="inv-gold-count">0</span>
-                    </div>
-                    <div class="inv-slot hidden" id="inv-workbench-slot">
-                        <span class="inv-icon">📦</span>
-                        <span class="inv-count" id="inv-workbench-count">0</span>
-                    </div>
-                    <div class="inv-slot hidden" id="inv-steel_axe-slot">
-                        <span class="inv-icon">🪓</span>
-                        <span class="inv-count" id="inv-steel_axe-count">0</span>
-                    </div>
-                    <div class="inv-slot hidden" id="inv-bow-slot">
-                        <span class="inv-icon">🏹</span>
-                        <span class="inv-count" id="inv-bow-count">0</span>
-                    </div>
-                    <div class="inv-slot hidden" id="inv-campfire-slot">
-                        <span class="inv-icon">🔥</span>
-                        <span class="inv-count" id="inv-campfire-count">0</span>
-                    </div>
-                </div>
-            </div>
-            <div class="mobile-controls" id="mobile-controls">
-                <div class="touch-look-area" id="touch-look-area"></div>
-
-                <div class="mobile-joystick-area" id="joystick-area">
-                    <div class="mobile-joystick-knob" id="joystick-knob"></div>
-                </div>
-
-                <div class="mobile-action-btns">
-                    <div class="mobile-btn big" id="mobile-attack-btn" ontouchstart="app.mobileAction('attack')">
-                        ATTACK
-                    </div>
-                    <div class="mobile-btn-row">
-                        <div class="mobile-btn" ontouchstart="app.mobileAction('jump')">🚀</div>
-                        <div class="mobile-btn" ontouchstart="app.mobileAction('build')">🧱</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 5.5 CHAT SCREEN -->
-        <section id="chat-screen" class="screen landscape hidden">
-        <header class="top-bar glass-bar">
-            <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
-            <h2 class="screen-title">💬 채팅방</h2>
-        </header>
-
-        <div class="chat-container">
-            <div class="chat-messages glass-panel" id="chat-messages">
-                <div class="chat-msg system">채팅방에 입장했습니다.</div>
-            </div>
-            <form id="chat-form" class="chat-input-area">
-                <input type="text" id="chat-input" placeholder="메시지를 입력하세요..." autocomplete="off">
-                <button type="submit" class="btn primary">전송</button>
-            </form>
-        </div>
-        </section>
-
-        <!-- 11. VERSION LOG -->
-        <section id="version-log" class="screen landscape hidden">
-            <header class="top-bar glass-bar">
-                <button class="btn-back" onclick="app.showScreen('menu-screen')">◀ 뒤로</button>
-                <h2 class="screen-title">v69 업데이트 로그</h2>
-            </header>
-            <div class="glass-panel" style="margin: 20px; padding: 25px; flex: 1; overflow-y: auto;">
-                <h3 style="color: var(--primary-color); margin-bottom: 15px;">🚀 v69 수정 사항</h3>
-                <ul style="list-style: none; display: flex; flex-direction: column; gap: 10px; color: #ccc;">
-                    <li>✅ <strong>UI 구조 안정화</strong>: 화면 중첩 문제를 완전히 해결했습니다.</li>
-                    <li>✅ <strong>공지사항/알림 최적화</strong>: 이제 모든 버튼이 정상적으로 보입니다.</li>
-                    <li>✅ <strong>배경 애니메이션</strong>: 오로라 배경이 화면을 가리지 않도록 조정했습니다.</li>
-                </ul>
-                <button class="btn primary" onclick="app.showScreen('menu-screen')" style="margin-top: 30px; padding: 12px 25px;">확인</button>
-            </div>
-        </section>
-
-        <!-- 6. PASSWORD CHANGE MODAL (Overlay) -->
-        <div id="pw-modal" class="modal-overlay hidden">
-            <div class="glass-panel modal-content">
-                <h3>비밀번호 변경</h3>
-                <p id="pw-modal-target-user" style="color: var(--text-muted); margin-bottom: 1.5rem;">유저: test</p>
-                <div class="input-group">
-                    <label for="new-pw-input">새 비밀번호</label>
-                    <input type="text" id="new-pw-input" placeholder="새 비밀번호 입력">
-                </div>
-                <div class="btn-group-row">
-                    <button class="btn primary" id="btn-confirm-pw">변경하기</button>
-                    <button class="btn secondary" onclick="app.closePwModal()">취소</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 6.5 REWARD / GIFT MODAL -->
-        <div id="reward-modal" class="modal-overlay hidden" style="z-index: 5000;">
-            <div class="glass-panel modal-content" style="width: 350px;">
-                <h3 style="color: #ffd700; margin-bottom: 5px;">🎁 재화 선물하기</h3>
-                <p id="reward-target-user" style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px;">대상: -</p>
-                
-                <div class="input-group" style="margin-bottom: 15px;">
-                    <label>유형 선택</label>
-                    <select id="reward-type" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff;">
-                        <option value="coins">🪙 코인 (Coins)</option>
-                        <option value="diamonds">💎 다이아몬드 (Diamonds)</option>
-                    </select>
-                </div>
-
-                <div class="input-group" style="margin-bottom: 20px;">
-                    <label>지급 수량</label>
-                    <input type="number" id="reward-amount" placeholder="수량을 입력하세요" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff;">
-                </div>
-
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn primary" id="btn-submit-reward" style="flex: 1; padding: 12px; font-weight: bold; background: #ffd700 !important; color: #000 !important;">지급하기</button>
-                    <button class="btn secondary" onclick="document.getElementById('reward-modal').classList.add('hidden'); document.getElementById('reward-modal').style.display = 'none';" style="padding: 12px 20px;">취소</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 6.6 FEEDBACK GO GO MODAL -->
-        <div id="feedback-modal" class="modal-overlay hidden" style="z-index: 5000;">
-            <div class="glass-panel modal-content" style="width: 400px; padding: 25px;">
-                <h3 style="color: #ffb142; margin-bottom: 10px; font-size: 1.5rem;">💡 피드백 고고</h3>
-                <p style="color: #ccc; margin-bottom: 20px; font-size: 0.9rem;">
-                    게임의 발전을 위한 소중한 의견을 남겨주세요!<br>관리자가 직접 확인합니다.
-                </p>
-                
-                <div class="input-group" style="text-align: left;">
-                    <label for="feedback-textarea" style="color: #fff; margin-bottom: 8px; display: block;">내용</label>
-                    <textarea id="feedback-textarea" placeholder="건의사항이나 버그 리포트를 상세히 적어주세요!" 
-                        style="width: 100%; height: 120px; padding: 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,177,66,0.3); border-radius: 8px; color: #fff; font-family: inherit; resize: none; margin-bottom: 20px;"></textarea>
-                </div>
-                
-                <div class="btn-group-row" style="justify-content: space-between;">
-                    <button class="btn primary" id="btn-submit-feedback" style="flex: 1; background: #ffb142; color: #111; font-weight: bold;">보내기 🚀</button>
-                    <button class="btn secondary" onclick="document.getElementById('feedback-modal').classList.add('hidden')" style="flex: 1;">닫기</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 7. SETTINGS SCREEN (ULTIMATE OS App v107) -->
-        <section id="settings-screen" class="screen portrait hidden" style="background: transparent !important; display: flex !important; flex-direction: row !important; height: 100% !important;">
-            <!-- Settings Sidebar (Full Windows List) -->
-            <div style="width: 240px; background: rgba(0,0,0,0.4); border-right: 1px solid rgba(255,255,255,0.1); padding: 15px 10px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto;">
-                <div style="padding: 10px 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px;">
-                    <div class="avatar" style="width: 40px; height: 40px;"></div>
-                    <div style="overflow: hidden;">
-                        <div id="side-user-name" style="font-weight: 800; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">User</div>
-                        <div style="font-size: 0.65rem; color: #00ff88;">PlayTech 계정</div>
+                    <div>
+                        <button id="store-btn-add-app" class="btn hidden" onclick="window.app.openStoreRegister()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 10px 20px; font-weight: 700; border-radius: 8px;">+ 내 앱 등록하기</button>
                     </div>
                 </div>
                 
-                <div class="desktop-icon" style="width: 100%; height: 40px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 15px; border-radius: 6px;" onclick="app.switchSettingsTab('sys')">
-                    <span style="font-size: 1.1rem;">🖥️</span> <span style="font-size: 0.8rem;">시스템 (System)</span>
+                <div id="store-buy-perk-panel" style="padding: 15px 30px; background: rgba(255,215,0,0.1); border-bottom: 1px solid rgba(255,215,0,0.2); display: flex; justify-content: space-between; align-items: center;">
+                    <div style="color: #ffd700; font-weight: 600;">👑 크리에이터 권한 구매 (300 코인) - 내 앱을 스토어에 등록해보세요!</div>
+                    <button class="btn primary" onclick="window.app.buyPromotePerk()" style="background: #ffd700; color: #000; padding: 6px 15px; font-weight: 800; border: none;">구매하기</button>
                 </div>
-                <div class="desktop-icon" style="width: 100%; height: 40px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 15px; border-radius: 6px;" onclick="app.switchSettingsTab('apps')">
-                    <span style="font-size: 1.1rem;">📱</span> <span style="font-size: 0.8rem;">앱 (Apps)</span>
-                </div>
-                <div class="desktop-icon" style="width: 100%; height: 40px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 15px; border-radius: 6px;" onclick="app.switchSettingsTab('prof')">
-                    <span style="font-size: 1.1rem;">👤</span> <span style="font-size: 0.8rem;">계정 (Accounts)</span>
-                </div>
-                <div class="desktop-icon" style="width: 100%; height: 40px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 15px; border-radius: 6px;" onclick="app.switchSettingsTab('lang')">
-                    <span style="font-size: 1.1rem;">🌐</span> <span style="font-size: 0.8rem;">시간 및 언어</span>
-                </div>
-                <div class="desktop-icon" style="width: 100%; height: 40px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 15px; border-radius: 6px;" onclick="app.switchSettingsTab('game')">
-                    <span style="font-size: 1.1rem;">🎮</span> <span style="font-size: 0.8rem;">게임 (Gaming)</span>
-                </div>
-                <div class="desktop-icon" style="width: 100%; height: 40px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 15px; border-radius: 6px;" onclick="app.switchSettingsTab('access')">
-                    <span style="font-size: 1.1rem;">♿</span> <span style="font-size: 0.8rem;">접근성</span>
-                </div>
-                <div class="desktop-icon" style="width: 100%; height: 40px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 15px; border-radius: 6px;" onclick="app.switchSettingsTab('sec')">
-                    <span style="font-size: 1.1rem;">🛡️</span> <span style="font-size: 0.8rem;">개인 정보 및 보안</span>
-                </div>
-                <div class="desktop-icon" style="width: 100%; height: 40px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 15px; border-radius: 6px;" onclick="app.switchSettingsTab('update')">
-                    <span style="font-size: 1.1rem;">🔄</span> <span style="font-size: 0.8rem;">PlayTech 업데이트</span>
+                
+                <div style="flex: 1; padding: 30px; overflow-y: auto;">
+                    <div id="store-app-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+                        <!-- Apps render here -->
+                    </div>
                 </div>
             </div>
             
-            <!-- Settings Main Content Area -->
-            <div id="settings-main-content" style="flex: 1; padding: 40px; overflow-y: auto; background: rgba(0,0,0,0.1);">
-                
-                <!-- [TAB: SYSTEM] -->
-                <div id="set-tab-sys" class="settings-tab">
-                    <h1 style="margin-bottom: 30px; font-weight: 800;">시스템</h1>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div class="glass-panel" style="padding: 20px; cursor: pointer;" onclick="app.switchSettingsTab('sys-display')">
-                            <span style="font-size: 1.5rem;">🖥️</span> <div style="font-weight: 700; margin-top: 10px;">디스플레이</div>
-                            <div style="font-size: 0.75rem; color: #aaa;">밝기, 야간 모드, 해상도</div>
-                        </div>
-                        <div class="glass-panel" style="padding: 20px;">
-                            <span style="font-size: 1.5rem;">🔊</span> <div style="font-weight: 700; margin-top: 10px;">소리</div>
-                            <div style="font-size: 0.75rem; color: #aaa;">볼륨 수준, 출력 장치</div>
-                            <input type="range" style="width: 100%; margin-top: 10px;">
-                        </div>
-                        <div class="glass-panel" style="padding: 20px;">
-                            <span style="font-size: 1.5rem;">🔔</span> <div style="font-weight: 700; margin-top: 10px;">알림</div>
-                            <div style="font-size: 0.75rem; color: #aaa;">앱 및 시스템의 알림</div>
-                        </div>
-                        <div class="glass-panel" style="padding: 20px;">
-                            <span style="font-size: 1.5rem;">📂</span> <div style="font-weight: 700; margin-top: 10px;">저장소</div>
-                            <div style="font-size: 0.75rem; color: #aaa;">저장 공간 사용량, 관리 규칙</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- [TAB: ACCOUNTS] -->
-                <div id="set-tab-prof" class="settings-tab hidden">
-                    <h1 style="margin-bottom: 30px; font-weight: 800;">계정</h1>
-                    <div class="glass-panel" style="padding: 30px; display: flex; align-items: center; gap: 30px; margin-bottom: 20px; background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,229,255,0.15));">
-                        <div class="avatar" style="width: 100px; height: 100px; border: 4px solid #fff; box-shadow: 0 15px 40px rgba(0,0,0,0.5);"></div>
-                        <div>
-                            <div style="font-size: 1.8rem; font-weight: 900;" id="set-acc-name">User Name</div>
-                            <div style="color: #00ff88; font-weight: 700; background: rgba(0,0,0,0.3); display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 0.8rem; margin-top: 5px;">관리자 / 장치 소유자</div>
-                            <div style="font-size: 0.8rem; color: #aaa; margin-top: 10px;">user@survival.com</div>
-                        </div>
-                    </div>
-                    <div class="glass-panel" style="padding: 20px; display: flex; justify-content: space-between; align-items: center;">
-                        <div style="font-weight: 700;">로그인 옵션</div>
-                        <button class="btn secondary">비밀번호 변경</button>
-                    </div>
-                </div>
-
-                <!-- [TAB: GAMING] -->
-                <div id="set-tab-game" class="settings-tab hidden">
-                    <h1 style="margin-bottom: 30px; font-weight: 800;">게임 (Gaming)</h1>
-                    <div class="glass-panel" style="padding: 20px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-weight: 800;">게임 모드 (Game Mode)</div>
-                            <div style="font-size: 0.75rem; color: #aaa;">백그라운드 성능을 최적화하여 프레임을 향상시킵니다.</div>
-                        </div>
-                        <input type="checkbox" checked style="width: 20px; height: 20px;">
-                    </div>
-                    <div class="glass-panel" style="padding: 20px;">
-                        <div style="font-weight: 800; margin-bottom: 10px;">프레임 속도 (FPS) 제한</div>
-                        <select class="btn secondary" style="width: 100%;">
-                            <option>제한 없음</option>
-                            <option selected>60 FPS</option>
-                            <option>30 FPS</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- [TAB: UPDATE] -->
-                <div id="set-tab-update" class="settings-tab hidden">
-                    <h1 style="margin-bottom: 30px; font-weight: 800;">PlayTech 업데이트</h1>
-                    <div class="glass-panel" style="padding: 40px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; background: rgba(0,255,136,0.05); border: 1px solid rgba(0,255,136,0.2);">
-                        <div style="font-size: 4rem;">✅</div>
-                        <div style="font-size: 1.5rem; font-weight: 900;">최신 상태입니다.</div>
-                        <div style="font-size: 0.85rem; color: #aaa;">마지막 확인: 오늘 오후 8:48</div>
-                        <button class="btn primary" style="padding: 12px 40px;">업데이트 확인</button>
-                    </div>
-                </div>
-
-                <!-- Tab: Security (Existing) -->
-                <div id="set-tab-sec" class="settings-tab hidden">
-                    <h1 style="margin-bottom: 30px; font-weight: 800;">개인 정보 및 보안</h1>
-                    <div class="glass-panel" style="padding: 25px; border-radius: 12px; border: 1px solid rgba(255,0,0,0.2); background: rgba(255,0,0,0.05);">
-                        <div style="font-weight: 800; color: #ff3366; margin-bottom: 10px;">위험 구역: 데이터 초기화</div>
-                        <p style="font-size: 0.85rem; color: #ccc; margin-bottom: 20px;">기기의 모든 데이터를 삭제합니다.</p>
-                        <button id="btn-delete-account-self" class="btn primary" style="background: #ff3366 !important; width: 100%;">초기화 진행</button>
-                    </div>
-                </div>
-                
-                <!-- More tabs would be hidden here -->
-                <div id="set-tab-apps" class="settings-tab hidden"><h1>설치된 앱</h1><p>관리할 수 있는 앱이 없습니다.</p></div>
-                <div id="set-tab-lang" class="settings-tab hidden"><h1>시간 및 언어</h1><p>한국어 (대한민국) - 사용 중</p></div>
-                <div id="set-tab-access" class="settings-tab hidden"><h1>접근성</h1><p>마우스 포인터 크기, 고대비 모드 등</p></div>
-
-            </div>
-        </section>
-
-        <!-- 15. ANNOUNCEMENT SCREEN -->
-        <section id="ann-list-screen" class="screen portrait hidden" style="background: #11141a !important; display: flex; align-items: center; justify-content: center;">
-            <button id="btn-new-announcement" class="btn primary" style="position: absolute; bottom: 30px; right: 30px; width: 65px; height: 65px; border-radius: 50%; display: flex !important; align-items: center; justify-content: center; font-size: 2.8rem; font-weight: 800; padding: 0; padding-bottom: 5px; box-shadow: 0 5px 20px rgba(0,255,136,0.6); z-index: 10000; pointer-events: all; background-color: #00ff88 !important; color: #000 !important; border: 3px solid #fff; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease;" onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 30px rgba(0,255,136,0.8)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 5px 20px rgba(0,255,136,0.6)'">+</button>
-
-            <div class="glass-panel" style="width: 90%; max-width: 600px; height: 80vh; display: flex; flex-direction: column; background: #1a1a24; position: relative; padding: 40px 20px 20px; border-radius: 20px;">
-                <button class="btn secondary" onclick="app.showScreen('menu-screen')" style="align-self: flex-start; margin-bottom: 15px; padding: 10px 20px; background-color: #ff5252 !important; color: #fff !important; border: 2px solid #fff; font-size: 1rem; font-weight: 900; pointer-events: all; border-radius: 10px; box-shadow: 0 4px 10px rgba(255,0,0,0.3);">◀ 돌아가기</button>
-                <div id="ann-tabs" style="display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px;">
-                    <button class="btn" onclick="playSound('click'); renderAnnouncements('all')" style="flex:1; white-space:nowrap; padding: 8px 12px; background: rgba(0,255,136,0.2); color: #00ff88; border: 1px solid #00ff88; border-radius: 8px; font-size: 0.9rem;">전체</button>
-                    <button class="btn" onclick="playSound('click'); renderAnnouncements('notice')" style="flex:1; white-space:nowrap; padding: 8px 12px; background: rgba(255,255,255,0.05); color: #ccc; border: 1px solid #444; border-radius: 8px; font-size: 0.9rem;">📢 공지</button>
-                    <button class="btn" onclick="playSound('click'); renderAnnouncements('event')" style="flex:1; white-space:nowrap; padding: 8px 12px; background: rgba(255,255,255,0.05); color: #ccc; border: 1px solid #444; border-radius: 8px; font-size: 0.9rem;">🎁 이벤트</button>
-                    <button class="btn" onclick="playSound('click'); renderAnnouncements('update')" style="flex:1; white-space:nowrap; padding: 8px 12px; background: rgba(255,255,255,0.05); color: #ccc; border: 1px solid #444; border-radius: 8px; font-size: 0.9rem;">🛠️ 업데이트</button>
-                </div>
-                
-                <div id="announcement-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding-right: 10px;">
-                    <!-- List populated by JS -->
-                </div>
-            </div>
-        </section>
-
-        <!-- 17. NEW ANNOUNCEMENT MODAL -->
-        <div id="ann-create-modal" class="modal-overlay hidden" style="background: rgba(0,0,0,0.9); z-index: 11000; align-items: center; justify-content: center; display: none;">
-            <div class="glass-panel" style="width: 92%; max-width: 500px; padding: 30px; background: #1a1a24; border: 2px solid var(--primary-color); border-radius: 20px; box-shadow: 0 0 30px var(--primary-glow); transform: scale(0.9); transition: transform 0.3s ease;">
-                <h2 style="color: var(--primary-color); margin-bottom: 25px; text-align: center; font-size: 1.8rem;">🆕 새 공지 작성</h2>
-                
-                <div style="display: flex; flex-direction: column; gap: 20px; max-height: 65vh; overflow-y: auto; padding-right: 8px;">
-                    <div style="display: flex; gap: 15px;">
-                        <div class="input-group" style="flex: 1;">
-                            <label style="color: #00ff88; font-weight: bold; margin-bottom: 8px; display: block;">카테고리</label>
-                            <select id="new-ann-type" style="width: 100%; padding: 14px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 10px; font-size: 1.1rem;" onchange="const v=document.getElementById('new-ann-vote-options-group'); if(this.value==='event') v.style.display='block'; else v.style.display='none';">
-                                <option value="notice">📢 공지사항</option>
-                                <option value="event">🎁 이벤트</option>
-                                <option value="update">🛠️ 업데이트</option>
-                            </select>
-                        </div>
-                        <div class="input-group" style="flex: 2;">
-                            <label style="color: #00ff88; font-weight: bold; margin-bottom: 8px; display: block;">제목</label>
-                            <input type="text" id="new-ann-title" placeholder="제목을 입력하세요" style="width: 100%; padding: 14px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 10px; font-size: 1.1rem; box-sizing: border-box;">
-                        </div>
-                    </div>
-
-                    <!-- Wheel Toggle -->
-                    <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,82,82,0.1); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,82,82,0.2);">
-                        <input type="checkbox" id="new-ann-has-wheel" style="width: 20px; height: 20px; cursor: pointer;">
-                        <label for="new-ann-has-wheel" style="color: #ff5252; font-weight: bold; cursor: pointer; flex: 1; margin: 0;">🎡 행운의 돌림판 포함하기</label>
-                        <span style="font-size: 0.75rem; color: #aaa;">(체크 시 유저들이 돌림판을 돌릴 수 있습니다)</span>
-                    </div>
-
-                    <div id="new-ann-vote-options-group" class="input-group" style="display: none; margin-bottom: 15px;">
-                        <label style="color: #ffd700; font-weight: bold; margin-bottom: 8px; display: block;">📊 투표 항목 테마 (카테고리)</label>
-                        <select id="new-ann-vote-theme" style="width: 100%; padding: 14px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 10px; font-size: 1rem; margin-bottom: 12px;" onchange="app.applyVoteTemplate(this.value)">
-                            <option value="">-- 테마 선택 안함 --</option>
-                            <option value="content">🎮 신규 콘텐츠 (무기, 맵, 펫...)</option>
-                            <option value="gameplay">🛠️ 게임플레이 개선 (밸런스, 벅스...)</option>
-                            <option value="event">🎈 이벤트 방식 (퀴즈, 숨바꼭질...)</option>
-                            <option value="custom">✍️ 직접 입력 공란</option>
-                        </select>
-
-                        <label style="color: #aaa; font-size: 0.85rem; margin-bottom: 8px; display: block;">항목 편집</label>
-                        <div id="new-ann-vote-options-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
-                            <!-- Options based on category will appear here -->
-                        </div>
-                        <button class="btn secondary" onclick="app.addVoteOptionField()" style="width: 100%; padding: 10px; font-size: 0.9rem; border-style: dashed; border-color: #ffd700; color: #ffd700;">+ 필드 추가하기</button>
-                    </div>
-
+            <!-- Store App Register Form -->
+            <div id="store-register-form" class="hidden" style="padding: 40px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #121418;">
+                <div class="glass-panel" style="width: 100%; max-width: 500px; padding: 40px; border-radius: 20px;">
+                    <h2 style="margin-bottom: 25px; font-size: 1.8rem; font-weight: 800;">🚀 새 앱 등록</h2>
                     <div class="input-group">
-                        <label style="color: #00ff88; font-weight: bold; margin-bottom: 8px; display: block;">내용</label>
-                        <textarea id="new-ann-content" rows="8" placeholder="내용을 입력하세요" style="width: 100%; padding: 14px; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; border-radius: 10px; resize: none; font-family: inherit; font-size: 1.1rem; box-sizing: border-box;"></textarea>
-                    </div>
-                    
-                    <div style="display: flex; gap: 15px; margin-top: 10px;">
-                        <button class="btn secondary" onclick="const m=document.getElementById('ann-create-modal'); m.classList.remove('show'); setTimeout(()=>m.classList.add('hidden'), 300); m.style.display='none'" style="flex: 1; padding: 12px; font-weight: bold; border-radius: 10px;">취소</button>
-                        <button class="btn primary" id="btn-submit-ann" style="flex: 1; padding: 12px; font-weight: bold; border-radius: 10px; background-color: #00ff88 !important; color: #000 !important;">등록하기</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 16. ANNOUNCEMENT DETAIL SCREEN -->
-        <section id="ann-detail-screen" class="screen portrait hidden" style="background: #11141a !important; display: flex; align-items: center; justify-content: center;">
-            <div class="glass-panel" style="width: 90%; max-width: 600px; height: 85vh; display: flex; flex-direction: column; background: #1a1a24; position: relative;">
-                <button class="btn secondary" onclick="app.showScreen('ann-list-screen')" style="position: absolute; top: -50px; left: 0; padding: 8px 16px; background: #444 !important; color: #fff !important; border: 1px solid #fff; border-radius: 8px;">◀ 목록으로</button>
-                <button id="btn-delete-ann" class="btn" style="position: absolute; top: 15px; right: 15px; background: rgba(255,0,0,0.2); color: #ff5252; padding: 6px 12px; font-size: 0.8rem; border: 1px solid rgba(255,0,0,0.3); border-radius: 6px; display: none;">삭제</button>
-                <div style="border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px;">
-                    <h2 id="ann-detail-title" style="font-size: 1.5rem; color: var(--secondary-color); margin-bottom: 5px;">공지 제목</h2>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between;">
-                        <span id="ann-detail-author">작성자</span>
-                        <span id="ann-detail-date">날짜</span>
-                    </div>
-                </div>
-                
-                <div id="ann-detail-container" style="flex: 1; overflow-y: auto; padding-right: 5px;">
-                    <div id="ann-detail-content" style="padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-bottom: 15px; font-size: 1rem; line-height: 1.6; white-space: pre-wrap;">내용</div>
-                    
-                    <!-- VOTE AREA -->
-                    <div id="ann-vote-area" style="display: none; background: rgba(255,215,0,0.05); padding: 15px; border: 1px solid rgba(255,215,0,0.2); border-radius: 12px; margin-bottom: 15px;">
-                        <h3 style="color: #ffd700; font-size: 1.1rem; margin-bottom: 12px; text-align: center;">📊 유저 투표 참여</h3>
-                        <div id="ann-vote-options" style="display: grid; gap: 8px;">
-                            <!-- Vote options injected here -->
-                        </div>
-                    </div>
-
-                    <!-- MINI GAME AREA (Spin Wheel) -->
-                    <div id="ann-event-game-area" style="display: none; background: rgba(255,82,82,0.1); padding: 20px; border: 2px dashed #ff5252; border-radius: 12px; margin-bottom: 15px; text-align: center;">
-                        <h3 style="color: #ff5252; font-size: 1.2rem; margin-bottom: 10px;">🎡 이벤트 행운의 돌림판</h3>
-                        <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 15px;">오늘의 행운을 시험하고 보상을 받으세요!</p>
-                        <button class="btn primary" id="btn-open-wheel" style="background: linear-gradient(135deg, #ff5252, #ffb142) !important; padding: 12px 24px; border-radius: 20px; font-weight: bold; border: none; box-shadow: 0 4px 15px rgba(255,0,0,0.3);">지금 돌리기!</button>
-                    </div>
-
-                    <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 10px;">💬 댓글 (<span id="ann-comment-count">0</span>)</h3>
-                    <div id="ann-comments-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;"></div>
-                </div>
-                
-                <form id="ann-comment-form" style="display: flex; gap: 10px; flex: 0 0 auto; margin-top: 10px;">
-                    <input type="text" id="ann-comment-input" placeholder="댓글을 입력하세요..." style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(0,0,0,0.5); color: #fff;" required>
-                    <button type="submit" class="btn primary" style="white-space: nowrap; padding: 0 20px;">등록</button>
-                </form>
-            </div>
-        </section>
-
-        <!-- 8. JURAM STORE SCREEN (v110) -->
-        <section id="store-screen" class="screen portrait hidden" style="background: rgba(10,15,25,0.95) !important;">
-            <div id="store-list-view" style="width: 100%; height: 100%; display: flex; flex-direction: column; padding: 25px;">
-                <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                    <h2 style="font-weight: 800; font-size: 1.8rem; color: #fff;">🛍️ 주람 스토어</h2>
-                    <button id="store-btn-add-app" class="btn primary hidden" onclick="app.openStoreRegister()" style="width: 45px; height: 45px; border-radius: 50%; padding: 0; font-size: 1.5rem;">+</button>
-                </header>
-
-                <div id="store-buy-perk-panel" class="glass-panel" style="padding: 20px; background: linear-gradient(135deg, rgba(0,229,255,0.1), rgba(0,255,136,0.1)); border: 1px solid rgba(0,255,136,0.3); margin-bottom: 20px;">
-                    <div style="font-weight: 800; color: #fff; margin-bottom: 10px;">🚀 내 게임 자랑하기</div>
-                    <p style="font-size: 0.8rem; color: #ccc; margin-bottom: 15px;">300 코인으로 평생 자랑 권한을 획득하고 개발한 앱을 스토어에 등록하세요!</p>
-                    <button class="btn primary" onclick="app.buyPromotePerk()" style="width: 100%; background: #00ff88 !important; color: #000 !important;">300 코인으로 구매하기</button>
-                </div>
-
-                <div id="store-app-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
-                    <!-- Apps populated by JS -->
-                    <div style="text-align: center; color: #666; padding: 40px;">등록된 앱이 없습니다.</div>
-                </div>
-            </div>
-
-            <!-- REGISTRATION FORM -->
-            <div id="store-register-form" class="hidden" style="width: 100%; height: 100%; display: flex; flex-direction: column; padding: 25px;">
-                <h2 style="font-weight: 800; font-size: 1.5rem; color: #fff; margin-bottom: 20px;">🆕 앱 등록하기</h2>
-                <div style="display: flex; flex-direction: column; gap: 20px;">
-                    <div class="input-group">
-                        <label>앱 이름 (제목)</label>
-                        <input type="text" id="store-app-title" placeholder="멋진 게임 이름을 입력하세요">
-                    </div>
-                    <div class="input-group">
-                        <label>사이트 주소 (URL)</label>
-                        <input type="text" id="store-app-url" placeholder="https://...">
+                        <label>앱 이름</label>
+                        <input type="text" id="store-app-title" placeholder="멋진 이름을 지어주세요" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; margin-bottom: 15px;">
                     </div>
                     <div class="input-group">
                         <label>카테고리</label>
-                        <select id="store-app-category" class="btn secondary" style="width: 100%; background: #000; text-align: left; padding: 12px;">
-                            <option value="게임">🎮 게임 (Game)</option>
-                            <option value="유틸리티">🛠️ 유틸리티 (Utility)</option>
-                            <option value="도구">🔨 개발 도구 (Dev Tools)</option>
-                            <option value="기타">✨ 기타 (Others)</option>
+                        <select id="store-app-category" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; margin-bottom: 15px;">
+                            <option value="게임">게임</option>
+                            <option value="유틸리티">유틸리티</option>
+                            <option value="엔터테인먼트">엔터테인먼트</option>
                         </select>
                     </div>
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button class="btn secondary" onclick="app.cancelStoreRegister()" style="flex: 1;">취소</button>
-                        <button class="btn primary" onclick="app.registerApp()" style="flex: 1; background: #00ff88 !important; color: #000 !important;">등록하기</button>
+                    <div class="input-group">
+                        <label>URL (웹 주소)</label>
+                        <input type="text" id="store-app-url" placeholder="https://..." style="width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; margin-bottom: 25px;">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn primary" onclick="window.app.registerApp()" style="flex: 1; padding: 15px; font-size: 1.1rem; font-weight: bold;">등록하기</button>
+                        <button class="btn secondary" onclick="window.app.cancelStoreRegister()" style="flex: 1; padding: 15px; font-size: 1.1rem;">취소</button>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- 9. PLAYTECH BROWSER SCREEN (v128) -->
-        <section id="browser-screen" class="screen portrait hidden" style="background: #f0f2f5 !important; display: flex !important; flex-direction: column !important;">
-            <div id="browser-navbar" style="padding: 10px; background: #fff; border-bottom: 1px solid #ddd; display: flex; gap: 10px; align-items: center;">
-                <button class="btn secondary" onclick="document.getElementById('browser-frame').contentWindow.history.back()" style="padding: 5px 10px; background: #eee !important; color: #333 !important;">◀</button>
-                <div style="flex: 1; position: relative;">
-                    <input type="text" id="browser-address" placeholder="https://google.com" 
-                        style="width: 100%; padding: 8px 15px; border-radius: 20px; border: 1px solid #ccc; background: #fff; color: #000;"
-                        onkeydown="if(event.key==='Enter') app.navigateBrowser(this.value)">
-                </div>
-                <button class="btn primary" onclick="app.navigateBrowser(document.getElementById('browser-address').value)" style="padding: 8px 15px; background: #007bff !important;">이동</button>
+        <!-- BROWSER SCREEN (PlayTech Browser) -->
+        <section id="browser-screen" class="screen hidden" style="flex-direction: column; height: 100%; background: #ffffff;">
+            <!-- Address Bar -->
+            <div style="display: flex; gap: 10px; padding: 15px 25px; background: #f1f3f4; border-bottom: 1px solid #dadce0; align-items: center;">
+                <div style="font-size: 1.5rem; cursor: pointer; color: #5f6368;" onclick="document.getElementById('browser-home').style.display='flex'; document.getElementById('browser-results').classList.add('hidden');">🏠</div>
+                <input type="text" id="browser-address" placeholder="웹 주소 검색 또는 입력" style="flex: 1; padding: 10px 20px; border-radius: 20px; border: 1px solid #dfe1e5; font-size: 1rem; color: #202124; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);" onkeypress="if(event.key === 'Enter') window.app.navigateBrowser(this.value)">
+                <button class="btn primary" onclick="window.app.navigateBrowser(document.getElementById('browser-address').value)" style="border-radius: 20px; padding: 10px 25px; background: #4285F4; color: white; border: none; font-weight: bold;">검색</button>
             </div>
-            <div id="browser-content-area" style="flex: 1; background: #fff; position: relative; overflow-y: auto;">
-                <!-- SEARCH HOME (v129) -->
-                <div id="browser-home" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; z-index: 10;">
-                    <h1 style="font-size: 3rem; font-weight: 900; background: linear-gradient(to right, #4285F4, #EA4335, #FBBC05, #34A853); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 30px;">PlayTech</h1>
-                    <div style="width: 80%; max-width: 500px; position: relative;">
-                        <input type="text" id="browser-home-search" placeholder="PlayTech 지식 엔진에 물어보세요" 
-                            style="width: 100%; padding: 15px 50px 15px 25px; border-radius: 30px; border: 1px solid #dfe1e5; box-shadow: 0 1px 6px rgba(32,33,36,0.28); font-size: 1.1rem; color: #000;"
-                            onkeydown="if(event.key==='Enter') app.navigateBrowser(this.value)">
-                        <span style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; cursor: pointer;" onclick="app.navigateBrowser(document.getElementById('browser-home-search').value)">🔍</span>
-                    </div>
+            
+            <!-- Home View -->
+            <div id="browser-home" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white;">
+                <h1 style="font-size: 4rem; font-weight: 900; letter-spacing: -2px; margin-bottom: 30px;">
+                    <span style="color: #4285F4;">P</span><span style="color: #EA4335;">l</span><span style="color: #FBBC05;">a</span><span style="color: #34A853;">y</span><span style="color: #EA4335;">T</span><span style="color: #4285F4;">e</span><span style="color: #34A853;">c</span><span style="color: #FBBC05;">h</span>
+                </h1>
+                <div style="width: 100%; max-width: 600px; position: relative;">
+                    <span style="position: absolute; left: 20px; top: 16px; font-size: 1.2rem; color: #9aa0a6;">🔍</span>
+                    <input type="text" id="browser-home-search" placeholder="Google 검색 또는 URL 입력" style="width: 100%; padding: 15px 15px 15px 50px; font-size: 1.1rem; border: 1px solid #dfe1e5; border-radius: 24px; outline: none; box-shadow: 0 1px 6px rgba(32,33,36,.28);" onkeypress="if(event.key === 'Enter') window.app.navigateBrowser(this.value)">
                 </div>
-
-                <!-- SEARCH RESULTS (v131) -->
-                <div id="browser-results" class="hidden" style="padding: 20px 10% 50px; background: #fff; min-height: 100%;">
-                    <div id="browser-results-list" style="display: flex; flex-direction: column; gap: 30px;">
-                        <!-- Results populated by JS -->
-                    </div>
-                </div>
+            </div>
+            
+            <!-- Results View -->
+            <div id="browser-results" class="hidden" style="flex: 1; overflow-y: auto; background: white; padding: 30px 40px;">
+                <div id="browser-results-list" style="max-width: 800px; margin: 0 auto;"></div>
             </div>
         </section>
 
-        <!-- WHEEL MODAL -->
-        <div id="wheel-modal" class="modal-overlay hidden" style="z-index: 100000; background: rgba(0,0,0,0.9);">
-            <div class="glass-panel" style="width: 320px; text-align: center; position: relative;">
-                <h2 style="color: #ff5252; margin-bottom: 20px;">🎡 행운의 돌림판</h2>
-                <div id="wheel-container" style="position: relative; width: 250px; height: 250px; margin: 0 auto 20px; border: 5px solid #fff; border-radius: 50%; overflow: hidden; background: #222;">
-                    <!-- Canvas for wheel -->
-                    <canvas id="wheel-canvas" width="250" height="250"></canvas>
-                    <div id="wheel-pointer" style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid #ff5252; z-index: 10;"></div>
-                </div>
-                <button class="btn primary" id="btn-spin-wheel" style="width: 100%; padding: 15px; font-size: 1.2rem; margin-bottom: 10px;">돌리기!</button>
-                <button class="btn secondary" onclick="document.getElementById('wheel-modal').classList.add('hidden')" style="width: 100%;">닫기</button>
-            </div>
+        <!-- VARIOUS HUD ELEMENTS (Expected by script) -->
+        <div id="game-ui" class="hidden">
+            <div class="health-bar-container"><div class="health-bar" style="width:100%;"></div><span id="health-text">100%</span></div>
+            <div id="hunger-bar" style="width:0;"></div><span id="hunger-text"></span>
+            <div id="thirst-bar" style="width:0;"></div><span id="thirst-text"></span>
+            <div id="stone-amount">0</div><div id="iron-amount">0</div><div id="gold-amount">0</div>
         </div>
 
+        <button id="btn-notif-center" class="hidden"></button>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-
-        <!-- Interaction Fix (v122) - Strict Active Only -->
-        <style>
-            .window-layer, #window-layer { pointer-events: none !important; }
-            /* Only the active window can capture clicks. Background windows are ignored. */
-            .window.active, .screen.active { pointer-events: auto !important; z-index: 500 !important; }
-            .window:not(.active) { pointer-events: none !important; opacity: 0; visibility: hidden; } /* Fully hide and disable inactive */
-            
-            .menu-card, .btn, .btn-back, input, select, textarea { pointer-events: auto !important; cursor: pointer; }
-            
-            .window-content section:not(.hidden) { display: flex !important; opacity: 1 !important; visibility: visible !important; }
-            .window-content section.hidden { display: none !important; pointer-events: none !important; }
-        </style>
-
-        <!-- Three.js for 3D Game Mode -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js?v=138"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Modularized Juram OS (v156) -->
+    <script src="config.js?v=156"></script>
+    <script src="ui.js?v=156"></script>
+    <script src="os.js?v=156"></script>
+    <script src="auth.js?v=156"></script>
+    <script src="app.js?v=156"></script>
 </body>
 
 </html>
