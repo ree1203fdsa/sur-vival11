@@ -294,14 +294,33 @@ const app = window.app = {
         if (STATE.currentUser?.installedApps) {
             STATE.currentUser.installedApps.forEach(ia => {
                 installedIcons += `
-                    <div class="desktop-icon" onclick="window.open('${ia.url}', '_blank')">
-                        <div class="icon">${ia.icon}</div>
-                        <div class="label">${ia.title}</div>
+                    <div class="desktop-icon" style="position: relative;">
+                        <div onclick="window.open('${ia.url}', '_blank')">
+                            <div class="icon">${ia.icon}</div>
+                            <div class="label">${ia.title}</div>
+                        </div>
+                        <div class="delete-btn" onclick="app.uninstallApp('${ia.id}')" style="position: absolute; top: -5px; right: -5px; background: rgba(255,0,0,0.8); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 5;">×</div>
                     </div>
                 `;
             });
         }
         desktopEl.innerHTML = coreIcons + installedIcons;
+    },
+    uninstallApp: async (appId) => {
+        if (!STATE.currentUser || !STATE.currentUser.installedApps) return;
+        
+        const res = confirm("이 앱을 삭제하시겠습니까?");
+        if (!res) return;
+
+        STATE.currentUser.installedApps = STATE.currentUser.installedApps.filter(a => a.id !== appId);
+        
+        try {
+            await db.ref(`users/${STATE.currentUser.uid}/installedApps`).set(STATE.currentUser.installedApps);
+            showToast("앱이 삭제되었습니다.", "success");
+            app.updateDesktop();
+        } catch (e) {
+            showToast("삭제 중 오류가 발생했습니다.", "error");
+        }
     },
     navigateBrowser: (url) => {
         if (!url) return;
@@ -1164,6 +1183,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
                 const ex = sn.val() || {};
                 STATE.currentUser = { ...ex, username: userIn, role: 'creator', uid: mUid };
                 saveData(); updateUI(); incrementVisitCount(); 
+                app.updateDesktop(); // Fix: Added desktop refresh for master login (v135)
                 app.showScreen('menu-screen');
                 addServerLog('로그인 완료 (동기화)');
                 showToast(`마스터 계정 데이터 로드 완료!`, 'success');
@@ -1198,14 +1218,21 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
                         app.updateDesktop(); // Trigger desktop refresh (v117)
                         showScreen('menu-screen');
                         addServerLog('로그인 성공 (Firebase)');
-                    } else if (isCreator) {
-                        const masterData = { username: userIn, role: 'creator', coins: 99999, uid: user.uid };
-                        db.ref('users/' + user.uid).set(masterData);
-                        STATE.currentUser = masterData;
-                        showToast('마스터 계정 데이터 생성 완료!', 'success');
+                    } else {
+                        // Handle missing user data in DB (v136)
+                        const role = isCreator ? 'creator' : 'user';
+                        const defaultData = { 
+                            username: userIn, 
+                            role: role, 
+                            coins: isCreator ? 99999 : 1000, 
+                            uid: user.uid 
+                        };
+                        db.ref('users/' + user.uid).set(defaultData);
+                        STATE.currentUser = defaultData;
+                        showToast(`환영합니다, ${userIn}님! 계정이 준비되었습니다.`, 'success');
                         initFirebaseChatListener();
-                        syncAllUsers();
                         updateUI();
+                        app.updateDesktop();
                         showScreen('menu-screen');
                     }
                 });

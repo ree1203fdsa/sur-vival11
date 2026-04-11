@@ -12,14 +12,16 @@
     }
     .window-header { height: 45px; padding: 0 10px; }
     .desktop { 
-        grid-template-columns: repeat(auto-fill, 80px); 
-        grid-template-rows: repeat(auto-fill, 80px); 
-        padding: 10px; 
-        gap: 8px; 
+        grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); 
+        grid-template-rows: auto; 
+        grid-auto-flow: row;
+        padding: 20px 10px; 
+        gap: 15px; 
+        flex: 1;
     }
-    .desktop-icon { width: 75px; height: 75px; }
-    .desktop-icon .icon { font-size: 1.8rem; }
-    .desktop-icon .label { font-size: 0.65rem; }
+    .desktop-icon { width: auto; height: auto; min-height: 80px; }
+    .desktop-icon .icon { font-size: 2.2rem; }
+    .desktop-icon .label { font-size: 0.75rem; margin-top: 5px; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
     .taskbar { height: 55px; padding: 0 10px; }
     .taskbar-clock { display: none; }
     .start-menu { 
