@@ -152,7 +152,7 @@
                     </button>
                     <div style="margin-top:25px; text-align:center; font-size: 0.95rem; color: #999;">
                         계정이 없으세요? 
-                        <button type="button" id="btn-goto-register" style="background:none; border:none; color: #64b5f6; font-size: 0.95rem; font-weight: 700; cursor:pointer; text-decoration:underline; padding: 0;">회원가입</button>
+                        <button type="button" id="btn-goto-register" onclick="showScreen('register-screen')" style="background:none; border:none; color: #64b5f6; font-size: 0.95rem; font-weight: 700; cursor:pointer; text-decoration:underline; padding: 0;">회원가입</button>
                     </div>
                 </form>
             </div>
@@ -161,15 +161,27 @@
         <!-- REGISTER SCREEN -->
         <section id="register-screen" class="screen portrait hidden">
             <div class="glass-panel login-panel">
-                <h1 class="logo" style="font-size: 1.8rem;">신규 계정 등록</h1>
+                <h1 class="logo" style="font-size: 1.8rem; margin-bottom: 20px;">신규 계정 등록</h1>
                 <form id="register-form">
-                    <div class="input-group"><label>이메일/ID</label><input type="email" id="reg-new-username" placeholder="name@playtech.com" required></div>
-                    <div class="input-group"><label>비밀번호</label><input type="password" id="reg-new-password" placeholder="8자 이상" required></div>
-                    <div class="input-group"><label>비밀번호 확인</label><input type="password" id="reg-new-password2" placeholder="다시 입력" required></div>
-                    <div id="register-error" style="color:#ff5252; font-size:0.8rem; margin-bottom:10px;"></div>
+                    <div class="input-group">
+                        <label>람메일 (RamMail) ID</label>
+                        <div style="display:flex; align-items:center; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:8px; overflow: hidden;">
+                            <input type="text" id="reg-new-username" placeholder="아이디 입력" style="flex:1; border:none; background:transparent; padding:12px; color:white; outline:none; font-size:16px;" required>
+                            <span style="color:#aaa; padding-right:12px; font-weight:600;">@rammail.com</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>안전한 비밀번호 (영문 대소문자, 숫자, 기호 포함 8자 이상)</label>
+                        <input type="password" id="reg-new-password" placeholder="강력한 비밀번호 입력" style="width:100%; padding:12px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px; font-size:16px; margin-bottom: 8px;" required>
+                    </div>
+                    <div class="input-group">
+                        <label>비밀번호 확인</label>
+                        <input type="password" id="reg-new-password2" placeholder="다시 입력" style="width:100%; padding:12px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px; font-size:16px;" required>
+                    </div>
+                    <div id="register-error" style="color:#ff5252; font-size:0.85rem; font-weight:600; margin-bottom:15px; text-align:center;"></div>
                     <div class="btn-group">
                         <button type="submit" class="btn primary">가입하기</button>
-                        <button type="button" class="btn secondary" onclick="app.showScreen('login-screen')">뒤로</button>
+                        <button type="button" class="btn secondary" onclick="showScreen('login-screen')">뒤로 가기</button>
                     </div>
                 </form>
             </div>
@@ -304,6 +316,59 @@
             <!-- Results View -->
             <div id="browser-results" class="hidden" style="flex: 1; overflow-y: auto; background: white; padding: 30px 40px;">
                 <div id="browser-results-list" style="max-width: 800px; margin: 0 auto;"></div>
+            </div>
+        <!-- ADMIN SCREEN (Master Admin Panel) -->
+        <section id="admin-screen" class="screen hidden" style="flex-direction: column; height: 100%; background: #1a1b22; color: white; padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
+                <h1 style="font-size: 2rem; font-weight: 800; color: #ff5252;">🛡️ 주람 마스터 제어 센터</h1>
+                <button class="btn primary" onclick="app.loadAdminUsers()" style="background: rgba(255,82,82,0.2); border: 1px solid #ff5252; color: #ff5252; font-weight: bold; border-radius: 8px;">🔄 유저 목록 새로고침</button>
+            </div>
+            
+            <div style="display: flex; gap: 20px; flex: 1; overflow: hidden; flex-direction: row; flex-wrap: wrap;">
+                <!-- User List container -->
+                <div style="flex: 1; min-width: 300px; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; max-height: 100%;">
+                    <div style="padding: 15px; background: rgba(0,0,0,0.4); font-weight: bold; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;">
+                        <div>가입된 전체 계정 <span id="admin-user-count" style="color: #64b5f6;">(0)</span></div>
+                        <select id="admin-user-filter" onchange="app.renderAdminUserList()" style="padding: 6px 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 6px; outline: none; cursor: pointer; font-size:0.85rem; font-weight:600;">
+                            <option value="default">기본순</option>
+                            <option value="guest">게스트만 보기</option>
+                            <option value="coins">코인 많은순 🪙</option>
+                            <option value="diamonds">다이아 많은순 💎</option>
+                            <option value="role">등급순 👑</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1; position: relative;">
+                        <div id="admin-user-list" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow-y: auto; padding: 10px; -webkit-overflow-scrolling: touch;">
+                            <!-- List populates here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- User Editor Panel -->
+                <div id="admin-editor-panel" style="flex: 1; min-width: 300px; display: none; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); padding: 20px;">
+                    <h2 id="admin-ed-title" style="margin-bottom: 15px; font-size: 1.5rem; color: #fff;">유저 수정</h2>
+                    <input type="hidden" id="admin-ed-uid">
+                    <div class="input-group">
+                        <label>권한 (Role)</label>
+                        <select id="admin-ed-role" style="width: 100%; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; margin-bottom: 10px;">
+                            <option value="user">일반 생존자 (user)</option>
+                            <option value="creator">크리에이터 (creator)</option>
+                            <option value="admin">관리자 (admin)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>보유 코인</label>
+                        <input type="number" id="admin-ed-coins" style="width: 100%; padding: 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; margin-bottom: 10px;">
+                    </div>
+                    <div class="input-group">
+                        <label>보유 다이아몬드</label>
+                        <input type="number" id="admin-ed-diamonds" style="width: 100%; padding: 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; margin-bottom: 20px;">
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: auto;">
+                        <button class="btn primary" onclick="app.saveAdminUser()" style="flex: 1; padding: 12px; background: #64b5f6; color: #000; font-weight: bold; border-radius: 8px;">💾 강제 덮어쓰기</button>
+                        <button class="btn secondary" onclick="app.deleteAdminUser()" style="flex: 1; padding: 12px; background: rgba(255,82,82,0.2); border: 1px solid #ff5252; color: #ff5252; font-weight: bold; border-radius: 8px;">🗑️ 영구 삭제</button>
+                    </div>
+                </div>
             </div>
         </section>
 

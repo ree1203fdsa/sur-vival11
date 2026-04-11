@@ -1,7 +1,7 @@
 // auth.js - 인증 및 사용자 등록 로직
 const CREATOR_ACCOUNTS = ['jur1203'];
 const getFirebaseEmail = (username) => {
-    return username.indexOf('@') > -1 ? username : `${username}@survival-3d.com`;
+    return username.indexOf('@') > -1 ? username : `${username}@rammail.com`;
 };
 
 let failedLoginAttempts = 0;
@@ -122,8 +122,77 @@ const setupLoginHandler = () => {
     }
 };
 
+// 회원가입 핸들러 설정
+const setupRegisterHandler = () => {
+    const regForm = document.getElementById('register-form');
+    if (!regForm) return;
+
+    regForm.onsubmit = (e) => {
+        e.preventDefault();
+        const userIn = document.getElementById('reg-new-username').value.trim();
+        const passIn = document.getElementById('reg-new-password').value;
+        const pass2In = document.getElementById('reg-new-password2').value;
+        const errEl = document.getElementById('register-error');
+        
+        // 입력값 기본 검증
+        if (!userIn || !passIn || !pass2In) {
+            errEl.textContent = '모든 필드를 입력해주세요.';
+            return;
+        }
+
+        if (passIn !== pass2In) {
+            errEl.textContent = '비밀번호가 서로 일치하지 않습니다.';
+            return;
+        }
+        
+        // 강력한 비밀번호 검증 (8자 이상, 대소문자, 숫자, 특수문자 모두 포함)
+        const strongRegex = new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})");
+        if (!strongRegex.test(passIn)) {
+            errEl.textContent = '경고: 영문 대/소문자, 숫자, 특수기호(!@#$%^&*)를 모두 포함하여 8자 이상 안전하게 설정해야 합니다.';
+            return;
+        }
+
+        errEl.textContent = '';
+        
+        // 람메일(RamMail) 포맷 처리
+        const email = `${userIn}@rammail.com`;
+        
+        if (FIREBASE_ENABLED && auth) {
+            showToast('안전한 서버로 람메일 계정 가입 중...', 'info');
+            auth.createUserWithEmailAndPassword(email, passIn)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    const defaultData = {
+                        username: userIn,
+                        role: 'user',
+                        coins: 1000,
+                        diamonds: 50,
+                        health: 100, hunger: 100, thirst: 100,
+                        createdAt: Date.now()
+                    };
+                    // 데이터베이스에 유저 초기 정보 저장
+                    return db.ref('users/' + user.uid).set(defaultData).then(() => {
+                        showToast(`가입 완료! 람메일(${userIn})님 환영합니다.`, 'success');
+                        STATE.currentUser = { ...defaultData, uid: user.uid };
+                        saveData(); updateUI(); 
+                        if (window.app && window.app.updateDesktop) app.updateDesktop();
+                        showScreen('menu-screen');
+                        regForm.reset();
+                    });
+                }).catch(err => {
+                    let msg = err.message;
+                    if (err.code === 'auth/email-already-in-use') msg = '이미 누군가 사용 중인 람메일 ID입니다.';
+                    else if (err.code === 'auth/invalid-email') msg = '유효하지 않은 람메일 형식입니다 (영문/숫자만 가능).';
+                    else if (err.code === 'auth/weak-password') msg = '비밀번호가 너무 약합니다.';
+                    errEl.textContent = msg;
+                });
+        }
+    };
+};
+
 // 인증 시스템 초기화
 window.initAuth = () => {
     setupPasswordToggle();
     setupLoginHandler();
+    setupRegisterHandler();
 };

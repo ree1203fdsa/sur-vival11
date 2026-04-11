@@ -102,6 +102,15 @@ const app = window.app = {
     updateDesktop: () => {
         const desktopEl = document.getElementById('desktop');
         if (!desktopEl) return;
+        let adminIcon = '';
+        if (STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.username === 'jur1203')) {
+            adminIcon = `
+            <div class="desktop-icon" onclick="app.openWindow('win-admin'); app.loadAdminUsers();">
+                <div class="icon" style="text-shadow: 0 0 10px #ff5252;">🛡️</div>
+                <div class="label" style="color:#ffbaba; font-weight: bold;">마스터 제어 센터</div>
+            </div>`;
+        }
+        
         desktopEl.innerHTML = `
             <div class="desktop-icon" onclick="app.openWindow('win-store')">
                 <div class="icon">🛍️</div>
@@ -111,6 +120,7 @@ const app = window.app = {
                 <div class="icon">🌐</div>
                 <div class="label" style="line-height:1.2;">PlayTech 브라우저</div>
             </div>
+            ${adminIcon}
         `;
     },
     // 설정 탭 프론트엔드 액션
@@ -265,6 +275,121 @@ const app = window.app = {
                 `;
             }
         }, 1000);
+    },
+    // ---- [ MASTER ADMIN MODULE ] ---- //
+    loadAdminUsers: () => {
+        if (!STATE.currentUser || (STATE.currentUser.role !== 'admin' && STATE.currentUser.username !== 'jur1203')) return;
+        if (typeof db === 'undefined' || !db) return showToast('데이터베이스에 연결할 수 없습니다. 온라인 상태인지 확인하세요.', 'error');
+        
+        showToast('유저 데이터베이스를 불러오는 중...', 'info');
+        db.ref('users').once('value').then(snap => {
+            const users = snap.val() || {};
+            app.adminUserCache = users; // 로컬 임시저장
+            app.renderAdminUserList();
+        });
+    },
+    renderAdminUserList: () => {
+        const users = app.adminUserCache;
+        if (!users) return;
+        
+        const listEl = document.getElementById('admin-user-list');
+        const cntEl = document.getElementById('admin-user-count');
+        const filterEl = document.getElementById('admin-user-filter');
+        if (!listEl) return;
+        
+        listEl.innerHTML = '';
+        let filterVal = filterEl ? filterEl.value : 'default';
+        
+        // 객체를 배열로 변환
+        let userArr = Object.keys(users).map(uid => ({ uid, ...users[uid] }));
+        
+        // 필터링 적용 (게스트 계정)
+        if (filterVal === 'guest') {
+            userArr = userArr.filter(u => u.isGuest === true || String(u.username).includes('게스트'));
+        }
+        
+        // 정렬 적용
+        if (filterVal === 'coins') {
+            userArr.sort((a, b) => (b.coins || 0) - (a.coins || 0));
+        } else if (filterVal === 'diamonds') {
+            userArr.sort((a, b) => (b.diamonds || 0) - (a.diamonds || 0));
+        } else if (filterVal === 'role') {
+            const rW = { 'admin': 3, 'creator': 2, 'user': 1 };
+            userArr.sort((a, b) => (rW[b.role || 'user'] || 1) - (rW[a.role || 'user'] || 1));
+        } else {
+            // 기본 (가입 최신순 등 뒤집기)
+            userArr.reverse();
+        }
+        
+        userArr.forEach(u => {
+            const div = document.createElement('div');
+            div.style.cssText = 'padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-bottom: 5px;';
+            div.onmouseover = () => div.style.background = 'rgba(255,255,255,0.05)';
+            div.onmouseout = () => div.style.background = 'transparent';
+            div.onclick = () => app.selectAdminUser(u.uid, u);
+            
+            const isGuestBadge = (u.isGuest || String(u.username).includes('게스트')) ? '<span style="font-size:0.75rem; background:#444; padding:2px 6px; border-radius:4px; margin-left:6px;">게스트</span>' : '';
+            
+            div.innerHTML = `
+                <div>
+                    <div style="font-weight:800; color:#fff; font-size: 1.1rem; display:flex; align-items:center;">
+                        ${u.username} ${isGuestBadge}
+                    </div>
+                    <div style="font-size:0.85rem; color:#aaa; margin-top: 4px;">
+                        등급: <span style="color: ${u.role==='admin'?'#ff5252':u.role==='creator'?'#ffd700':'#64b5f6'}">${u.role || 'user'}</span> 
+                        | 🪙 ${u.coins || 0} | 💎 ${u.diamonds || 0}
+                    </div>
+                </div>
+                <div style="font-size:1.4rem;">⚙️</div>
+            `;
+            listEl.appendChild(div);
+        });
+        
+        if(cntEl) cntEl.textContent = `(${userArr.length}명)`;
+    },
+    selectAdminUser: (uid, u) => {
+        const panel = document.getElementById('admin-editor-panel');
+        panel.style.display = 'flex';
+        document.getElementById('admin-ed-title').textContent = `${u.username} 정보 수정`;
+        document.getElementById('admin-ed-uid').value = uid;
+        document.getElementById('admin-ed-role').value = u.role || 'user';
+        document.getElementById('admin-ed-coins').value = u.coins || 0;
+        document.getElementById('admin-ed-diamonds').value = u.diamonds || 0;
+        
+        // 모바일 화면을 위해 부드럽게 스크롤 내리기
+        if (window.innerWidth <= 768) {
+            setTimeout(() => {
+                panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+    },
+    saveAdminUser: () => {
+        const uid = document.getElementById('admin-ed-uid').value;
+        if (!uid || !db || !app.adminUserCache[uid]) return;
+        
+        const role = document.getElementById('admin-ed-role').value;
+        const coins = parseInt(document.getElementById('admin-ed-coins').value) || 0;
+        const dia = parseInt(document.getElementById('admin-ed-diamonds').value) || 0;
+        
+        showToast('데이터 강제 덮어쓰기 중...', 'info');
+        db.ref(`users/${uid}`).update({ role: role, coins: coins, diamonds: dia }).then(() => {
+            showToast('데이터가 완벽히 수정되었습니다!', 'success');
+            app.loadAdminUsers(); // 리스트 갱신
+            document.getElementById('admin-editor-panel').style.display = 'none';
+        });
+    },
+    deleteAdminUser: () => {
+        const uid = document.getElementById('admin-ed-uid').value;
+        const u = app.adminUserCache[uid];
+        if (!uid || !db || !u) return;
+        
+        if (confirm(`진짜로 '${u.username}' 계정을 영구 삭제하시겠습니까?\n이 데이터는 다신 복구할 수 없습니다!!`)) {
+            db.ref(`users/${uid}`).remove().then(() => {
+                showToast(`💀 계정 '${u.username}' 영구 삭제 됨`, 'success');
+                app.loadAdminUsers(); // 리스트 갱신
+                document.getElementById('admin-editor-panel').style.display = 'none';
+            });
+        }
     },
     // 로그아웃
     logout: () => {
