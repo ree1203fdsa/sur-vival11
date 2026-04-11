@@ -1,6 +1,6 @@
-
-/* --- MOBILE RESPONSIVE (v118) --- */
+/* --- MOBILE RESPONSIVE JURAM OS (v164) --- */
 @media (max-width: 768px) {
+    /* OS Container & Window Rules */
     .os-container { background: #000; }
     .window { 
         width: 100% !important; 
@@ -9,8 +9,11 @@
         left: 0 !important; 
         border-radius: 0 !important; 
         box-shadow: none !important;
+        transform: none !important;
     }
     .window-header { height: 45px; padding: 0 10px; }
+    
+    /* Desktop Area */
     .desktop { 
         grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); 
         grid-template-rows: auto; 
@@ -21,7 +24,9 @@
     }
     .desktop-icon { width: auto; height: auto; min-height: 80px; }
     .desktop-icon .icon { font-size: 2.2rem; }
-    .desktop-icon .label { font-size: 0.75rem; margin-top: 5px; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+    .desktop-icon .label { font-size: 0.75rem; margin-top: 5px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+    
+    /* Taskbar */
     .taskbar { height: 55px; padding: 0 10px; }
     .taskbar-clock { display: none; }
     .start-menu { 
@@ -29,30 +34,64 @@
         left: 0; 
         bottom: 55px; 
         height: 75vh; 
+        border-radius: 20px 20px 0 0;
     }
-    .menu-title { font-size: 1.5rem; margin-bottom: 1rem; }
-    .menu-card { width: 100%; padding: 1.5rem; margin: 0; }
-    .menu-grid { padding: 10px; }
-    .login-panel { width: 95%; padding: 1.5rem; }
+    
+    /* Login & Register Screens */
+    .login-panel { width: 95%; max-width: 400px; padding: 2rem 1.5rem; border-radius: 20px; }
+    .logo { font-size: 2.2rem; }
+    #store-register-form .glass-panel { padding: 20px !important; border-radius: 15px !important; }
+
+    /* Menu / Lobby Screen */
+    #menu-screen header { flex-direction: column !important; gap: 10px; padding: 15px !important; align-items: flex-start !important; height: auto !important; }
+    #menu-screen header > div { width: 100%; justify-content: space-between; margin-bottom: 10px; }
+    #menu-screen .resources { width: 100%; justify-content: space-between; margin-left: 0 !important; gap: 5px; }
+    #lobby-visit-badge { display: none; } /* Hide on mobile to save space */
+    
+    .menu-grid { padding: 15px; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .menu-card { padding: 1.5rem 1rem; }
+    .menu-card h3 { font-size: 1.1rem; }
+
+    /* Settings Screen overhaul (Vertical to Horizontal Tabs) */
     .settings-screen { flex-direction: column !important; }
     .settings-sidebar { 
         width: 100% !important; 
-        height: 60px !important; 
+        height: auto !important;
+        max-height: 180px !important; 
         flex-direction: row !important; 
-        overflow-x: auto !important; 
-        padding: 5px !important;
+        flex-wrap: wrap !important;
+        overflow-y: auto !important; 
+        padding: 10px !important;
         border-right: none !important;
         border-bottom: 1px solid rgba(255,255,255,0.1) !important;
-        z-index: 100 !important;
     }
+    .settings-sidebar > div:first-child { display: none !important; } /* Hide user profile on mobile sidebar */
     .settings-sidebar .settings-item { 
-        width: auto !important; 
-        height: 50px !important; 
-        flex-shrink: 0 !important; 
-        padding: 0 15px !important; 
-        background: rgba(255,255,255,0.05) !important;
-        margin-right: 10px !important;
+        flex: 1 1 calc(50% - 10px) !important;
+        padding: 10px !important; 
+        font-size: 0.9rem !important;
+        justify-content: flex-start !important;
     }
-    .settings-sidebar .settings-item span:nth-child(2) { font-size: 0.75rem !important; }
-    .settings-content { padding: 15px !important; flex: 1 !important; }
+    .settings-content { padding: 20px !important; flex: 1 !important; }
+    .settings-content h1 { font-size: 1.6rem !important; margin-bottom: 20px !important; }
+    
+    /* Settings Grid Layouts */
+    .settings-content > div > div { grid-template-columns: 1fr !important; }
+
+    /* Store Screen */
+    #store-list-view > div:first-child { flex-direction: column; text-align: center; gap: 15px; padding: 20px !important; }
+    #store-buy-perk-panel { flex-direction: column; gap: 10px; text-align: center; font-size: 0.85rem; padding: 15px !important; }
+    #store-app-list > div { grid-template-columns: 1fr !important; }
+    
+    /* Browser Screen */
+    #browser-screen > div:first-child { padding: 10px !important; gap: 5px; }
+    #browser-address { padding: 8px 12px !important; font-size: 0.9rem !important; }
+    #browser-screen button.primary { padding: 8px 15px !important; }
+    #browser-home h1 { font-size: 3rem !important; }
+    #browser-home-search { padding: 12px 12px 12px 40px !important; }
+    
+    /* Input Adjustments */
+    input[type="text"], input[type="password"], input[type="email"], select {
+        font-size: 16px !important; /* Prevents iOS auto-zoom on form inputs */
+    }
 }
