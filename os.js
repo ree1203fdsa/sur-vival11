@@ -96,7 +96,95 @@ const app = window.app = {
     },
     // 시작 메뉴 토글
     toggleStartMenu: () => {
-        document.getElementById('start-menu').classList.toggle('active');
+        const menu = document.getElementById('start-menu');
+        if (menu) menu.classList.toggle('active');
+    },
+    // ---- [ ANDROID NAVIGATION FUNCTIONS ] ---- //
+    closeAllWindows: () => {
+        // [HOME BUTTON]
+        document.querySelectorAll('.window').forEach(w => w.classList.add('hidden'));
+        app.toggleStartMenu(); // Hide start menu if open
+        const menu = document.getElementById('start-menu');
+        if(menu) menu.classList.remove('active');
+    },
+    closeTopWindow: () => {
+        // [BACK BUTTON]
+        // Get all visible windows and close the top-most one (highest z-index or last in DOM)
+        const visibleWindows = Array.from(document.querySelectorAll('.window:not(.hidden)'));
+        if (visibleWindows.length > 0) {
+            visibleWindows.sort((a,b) => (parseInt(a.style.zIndex||0) - parseInt(b.style.zIndex||0)));
+            visibleWindows.pop().classList.add('hidden'); // Close the top one
+        } else {
+            // If no windows, maybe close start menu
+            const menu = document.getElementById('start-menu');
+            if(menu) menu.classList.remove('active');
+        }
+    },
+    // ---- [ SETTINGS FUNCTIONS ] ---- //
+    downloadLanguage: (langName) => {
+        showToast(`${langName} 언어 팩 파일을 서버에서 다운로드합니다... (0%)`, 'info');
+        setTimeout(() => {
+            showToast(`${langName} 다운로드 중... (45%)`, 'info');
+            setTimeout(() => {
+                showToast(`${langName} 언어 팩 적용 완료! 시스템 재시작 대기중.`, 'success');
+            }, 1500);
+        }, 1500);
+    },
+    // ---- [ QR CROSS-DEVICE LOGIN ] ---- //
+    qrListener: null,
+    showQRLogin: () => {
+        const modal = document.getElementById('qr-scan-modal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        
+        // 1. 보안용 실시간 고유 토큰 생성
+        const qrToken = 'qr_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+        const loginUrl = window.location.origin + window.location.pathname + '?qrToken=' + qrToken;
+        
+        // 2. 화면에 표시할 QR 이미지 업데이트 (설정된 URL 포함)
+        document.getElementById('qr-img').src = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(loginUrl);
+        
+        // 3. 애니메이션 시작
+        let isDown = true;
+        const line = document.getElementById('qr-scan-line');
+        const interval = setInterval(() => {
+            line.style.top = isDown ? '200px' : '0px';
+            isDown = !isDown;
+        }, 1000);
+
+        // 4. 파이어베이스 실시간 대기열 개통
+        if (typeof db !== 'undefined' && db) {
+            db.ref('qr_auth/' + qrToken).set({ status: 'pending' });
+            
+            // 승인 여부 실시간 리스너 장착
+            app.qrListener = db.ref('qr_auth/' + qrToken).on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data && data.status === 'approved' && data.user) {
+                    clearInterval(interval);
+                    modal.style.display = 'none';
+                    
+                    // 기기 동기화 성공! 다른 기기(폰)에서 보낸 계정 정보로 로그인
+                    STATE.currentUser = data.user;
+                    saveData(); updateUI(); app.updateDesktop(); showScreen('menu-screen');
+                    showToast(`📷 모바일 연동 완료! 환영합니다, ${data.user.username}님!`, 'success');
+                    
+                    // 보안을 위해 리스너 해제 및 디비 파기
+                    db.ref('qr_auth/' + qrToken).off('value', app.qrListener);
+                    db.ref('qr_auth/' + qrToken).remove();
+                }
+            });
+        } else {
+            showToast("네트워크 데이터베이스 연결이 끊겨 QR 생성에 실패했습니다.", "error");
+            modal.style.display = 'none';
+            clearInterval(interval);
+        }
+        
+        // 5. 모달 닫기 버튼 이벤트 재할당 (리스너 클리어)
+        document.getElementById('btn-close-qr').onclick = () => {
+            modal.style.display = 'none';
+            clearInterval(interval);
+            if (typeof db !== 'undefined' && db && app.qrListener) db.ref('qr_auth/' + qrToken).off('value', app.qrListener);
+        };
     },
     // 바탕화면 아이콘 업데이트
     updateDesktop: () => {

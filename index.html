@@ -101,20 +101,121 @@
                     </div>
                 </div>
 
-                <!-- Add empty tabs for others to prevent errors -->
-                <div id="set-tab-apps" class="settings-tab hidden"><h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">앱 (Apps)</h1><p style="color: #aaa;">앱 설정 기능이 곧 추가됩니다.</p></div>
-                <div id="set-tab-acc" class="settings-tab hidden"><h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">계정 (Accounts)</h1><p style="color: #aaa;">계정 관리 기능이 곧 추가됩니다.</p></div>
-                <div id="set-tab-lang" class="settings-tab hidden">
-                    <h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">시간 및 언어</h1>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn primary" onclick="app.setLanguage('ko')" style="padding: 10px 20px;">한국어</button>
-                        <button class="btn primary" onclick="app.setLanguage('en')" style="padding: 10px 20px;">English</button>
+                <!-- Apps Tab -->
+                <div id="set-tab-apps" class="settings-tab hidden">
+                    <h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">앱 (Apps)</h1>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px;">
+                            <div style="font-size: 2rem; margin-bottom: 20px;">📦</div>
+                            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 5px;">설치된 앱 관리</h3>
+                            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">서바이벌 스토어에서 다운로드한 앱 목록</p>
+                            <button class="btn secondary">앱 삭제 및 초기화</button>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px;">
+                            <div style="font-size: 2rem; margin-bottom: 20px;">⚙️</div>
+                            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 5px;">기본 앱 설정</h3>
+                            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">웹 브라우저 지정: PlayTech 브라우저</p>
+                        </div>
                     </div>
                 </div>
-                <div id="set-tab-game" class="settings-tab hidden"><h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">게임 (Gaming)</h1><p style="color: #aaa;">게임 성능 최적화 기능이 곧 추가됩니다.</p></div>
-                <div id="set-tab-access" class="settings-tab hidden"><h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">접근성</h1><p style="color: #aaa;">시각 및 청각 보조 설정 기능이 곧 추가됩니다.</p></div>
-                <div id="set-tab-sec" class="settings-tab hidden"><h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">개인 정보 및 보안</h1><p style="color: #aaa;">비밀번호 변경 및 보안 관리가 곧 추가됩니다.</p></div>
-                <div id="set-tab-update" class="settings-tab hidden"><h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">PlayTech 업데이트</h1><p style="color: #aaa;">시스템은 현재 최신 버전입니다. (v158)</p></div>
+                
+                <!-- Accounts Tab -->
+                <div id="set-tab-acc" class="settings-tab hidden">
+                    <h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">계정 (Accounts)</h1>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px;">
+                            <div style="font-size: 2rem; margin-bottom: 20px;">💰</div>
+                            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 5px;">내 자산 관리</h3>
+                            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">현재 잔액 조회 및 충전 내역</p>
+                            <div style="display:flex; justify-content:space-between; background:rgba(0,0,0,0.4); padding:10px; border-radius:8px; margin-bottom:10px;"><span>코인:</span><span id="set-coins-display" style="color:#ffd700; font-weight:bold;">0</span></div>
+                            <div style="display:flex; justify-content:space-between; background:rgba(0,0,0,0.4); padding:10px; border-radius:8px;"><span>다이아:</span><span id="set-dia-display" style="color:#00ffff; font-weight:bold;">0</span></div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px;">
+                            <div style="font-size: 2rem; margin-bottom: 20px;">🔑</div>
+                            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 5px;">비밀번호 변경</h3>
+                            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">서바이벌 서버 접속 비밀번호 업데이트</p>
+                            <button class="btn secondary">비밀번호 재설정 메일 발송</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Language Tab -->
+                <div id="set-tab-lang" class="settings-tab hidden">
+                    <h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">시간 및 언어</h1>
+                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; max-width: 600px;">
+                        <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 15px;">시스템 언어 설정 (Region Language)</h3>
+                        <div style="display: flex; gap: 10px; margin-bottom: 30px;">
+                            <button class="btn primary" onclick="showToast('이미 한국어로 설정되어 있습니다.', 'info')" style="padding: 10px 20px;">한국어 (기본)</button>
+                            <button class="btn secondary" onclick="app.downloadLanguage('English')" style="padding: 10px 20px;">English</button>
+                            <button class="btn secondary" onclick="app.downloadLanguage('日本語')" style="padding: 10px 20px;">日本語</button>
+                        </div>
+                        <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 15px;">시간대 (Timezone)</h3>
+                        <select style="width:100%; padding: 12px; background: rgba(0,0,0,0.5); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                            <option value="Asia/Seoul">(UTC+09:00) 서울</option>
+                            <option value="America/New_York">(UTC-05:00) 뉴욕</option>
+                            <option value="Europe/London">(UTC+00:00) 런던</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Gaming Tab -->
+                <div id="set-tab-game" class="settings-tab hidden">
+                    <h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">게임 (Gaming)</h1>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px;">
+                            <div style="font-size: 2rem; margin-bottom: 20px;">🚀</div>
+                            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 15px;">그래픽 품질</h3>
+                            <select style="width:100%; padding: 12px; background: rgba(0,0,0,0.5); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                                <option value="low">낮음 (배터리 절약)</option>
+                                <option value="med" selected>중간 (권장)</option>
+                                <option value="high">울트라 옵션 (발열 주의)</option>
+                            </select>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px;">
+                            <div style="font-size: 2rem; margin-bottom: 20px;">📈</div>
+                            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 5px;">프레임(FPS) 표시</h3>
+                            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">게임 내 화면 우측 상단에 렌더링 프레임 표시</p>
+                            <button class="btn secondary" onclick="this.textContent = this.textContent.includes('켜기') ? '✅ 켜짐' : '❌ 켜기'">❌ 켜기</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Access Tab -->
+                <div id="set-tab-access" class="settings-tab hidden">
+                    <h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">접근성</h1>
+                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; max-width: 600px;">
+                        <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 5px;">마우스 포인트 크기</h3>
+                        <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">보안이나 네트워크 제한으로 기능 일부 제어됨</p>
+                        <input type="range" style="width: 100%; accent-color: #64b5f6;" value="2" min="1" max="5">
+                        
+                        <h3 style="font-size: 1.2rem; font-weight: 700; margin-top: 30px; margin-bottom: 5px;">고대비 모드 (시각 지원)</h3>
+                        <button class="btn secondary" onclick="document.body.classList.toggle('high-contrast'); showToast('접근성 옵션 적용됨', 'info')">컬러 반전 켜기</button>
+                    </div>
+                </div>
+
+                <!-- Security Tab -->
+                <div id="set-tab-sec" class="settings-tab hidden">
+                    <h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">개인 정보 및 보안</h1>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px;">
+                            <div style="color: #ff5252; font-size: 2rem; margin-bottom: 20px;">🚨</div>
+                            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 5px;">위험 액션</h3>
+                            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">모든 데이터 및 계정 완전 삭제</p>
+                            <button class="btn" style="background: rgba(255,82,82,0.2); border: 1px solid #ff5252; color: #ff5252; width: 100%;">서바이벌 회원 탈퇴</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Update Tab -->
+                <div id="set-tab-update" class="settings-tab hidden">
+                    <h1 style="margin-bottom: 40px; font-weight: 800; font-size: 2.2rem; margin-top: 10px;">PlayTech 업데이트</h1>
+                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 40px; text-align: center;">
+                        <div style="font-size: 4rem; margin-bottom: 20px;">✅</div>
+                        <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 10px;">주람 OS는 최신 상태입니다.</h3>
+                        <p style="color: #00ff88; font-size: 1rem; margin-bottom: 30px;">현재 구동 버전: V.175 (Ultimate Edition)</p>
+                        <button class="btn secondary" onclick="showToast('서버에서 최신 패치를 확인 중입니다...', 'info'); setTimeout(()=>showToast('업데이트 할 항목이 없습니다.', 'success'), 2000)" style="max-width: 200px; margin: 0 auto;">다시 확인</button>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -147,7 +248,10 @@
                         <button type="submit" class="btn primary">로그인</button>
                         <button type="button" class="btn secondary" id="btn-guest-login">게스트 로그인</button>
                     </div>
-                    <button type="button" class="btn" id="btn-google-login" style="background:white; color:#222; width:100%; margin-top:20px; display:flex; align-items:center; justify-content:center; gap:12px; font-weight: 700; border-radius: 8px; font-size: 1rem; border: none;">
+                    <button type="button" class="btn" onclick="app.showQRLogin()" style="background:#2C2F33; color:white; width:100%; margin-top:10px; display:flex; align-items:center; justify-content:center; gap:12px; font-weight: 700; border-radius: 8px; font-size: 1rem; border: 1px solid #444; cursor: pointer; transition: 0.2s;">
+                        📷 QR 코드로 빠르게 인증
+                    </button>
+                    <button type="button" class="btn" id="btn-google-login" style="background:white; color:#222; width:100%; margin-top:10px; display:flex; align-items:center; justify-content:center; gap:12px; font-weight: 700; border-radius: 8px; font-size: 1rem; border: none;">
                         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="22"> 구글 계정으로 로그인
                     </button>
                     <div style="margin-top:25px; text-align:center; font-size: 0.95rem; color: #999;">
@@ -155,6 +259,17 @@
                         <button type="button" id="btn-goto-register" onclick="showScreen('register-screen')" style="background:none; border:none; color: #64b5f6; font-size: 0.95rem; font-weight: 700; cursor:pointer; text-decoration:underline; padding: 0;">회원가입</button>
                     </div>
                 </form>
+            </div>
+            
+            <!-- QR SCAN MODAL -->
+            <div id="qr-scan-modal" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:99999; flex-direction:column; align-items:center; justify-content:center; color:white;">
+                <h2 style="margin-bottom: 20px; font-weight:800; font-size: 1.5rem;">📷 모바일 화면을 스캔하세요</h2>
+                <div style="position:relative; width:220px; height:220px; border:2px solid #64b5f6; border-radius:12px; overflow:hidden; background:white; display:flex; justify-content:center; align-items:center; box-shadow: 0 0 30px rgba(100,181,246,0.3);">
+                    <img id="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=SurvivalFastLogin" width="200" height="200">
+                    <div id="qr-scan-line" style="position:absolute; top:0; left:0; width:100%; height:4px; background:#ff5252; box-shadow: 0 0 15px #ff5252; transition: top 1s linear;"></div>
+                </div>
+                <p style="margin-top:20px; color:#aaa; font-weight:600;">PlayTech 앱에서 QR 코드를 비춰주세요.</p>
+                <button id="btn-close-qr" class="btn secondary" style="margin-top:30px;">❌ 취소</button>
             </div>
         </section>
 
@@ -208,6 +323,18 @@
                 </div>
             </div>
             <div id="window-layer"></div>
+            <!-- Android Navigation Bar (Mobile Only) -->
+            <div id="android-nav-bar">
+                <div class="nav-key" onclick="app.toggleStartMenu()">
+                    <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                </div>
+                <div class="nav-key" onclick="app.closeAllWindows()">
+                    <svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="4" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>
+                </div>
+                <div class="nav-key" onclick="app.closeTopWindow()">
+                    <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+                </div>
+            </div>
         </div>
 
         <!-- MENU SCREEN -->
@@ -317,6 +444,8 @@
             <div id="browser-results" class="hidden" style="flex: 1; overflow-y: auto; background: white; padding: 30px 40px;">
                 <div id="browser-results-list" style="max-width: 800px; margin: 0 auto;"></div>
             </div>
+        </section>
+
         <!-- ADMIN SCREEN (Master Admin Panel) -->
         <section id="admin-screen" class="screen hidden" style="flex-direction: column; height: 100%; background: #1a1b22; color: white; padding: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">

@@ -65,6 +65,24 @@ const setupLoginHandler = () => {
             return;
         }
 
+        // [TEST ACCOUNT BYPASS (테스트 계정)]
+        if (userIn.toLowerCase() === 'test' && passIn === '1234') {
+            STATE.currentUser = {
+                username: 'test',
+                role: 'user',
+                coins: 5000,
+                diamonds: 100,
+                health: 100, hunger: 100, thirst: 100,
+                uid: 'test_account_uid_999'
+            };
+            // 강제로 파이어베이스 DB에 테스트 계정 정보 덮어쓰기 (없으면 생성)
+            if (db) db.ref('users/' + STATE.currentUser.uid).update(STATE.currentUser);
+            
+            saveData(); updateUI(); app.updateDesktop(); showScreen('menu-screen');
+            showToast('테스트 전용 계정으로 빠르게 접속했습니다! 🧪', 'success');
+            return;
+        }
+
         if (FIREBASE_ENABLED && auth) {
             showToast('서버 연결 중...', 'info');
             const email = getFirebaseEmail(userIn);
@@ -81,7 +99,17 @@ const setupLoginHandler = () => {
                         showScreen('menu-screen');
                     });
                 }).catch(err => {
-                    showToast(`로그인 실패: ${err.message}`, 'error');
+                    let errMsg = err.message;
+                    if (errMsg.includes('INVALID_LOGIN_CREDENTIALS') || err.code === 'auth/invalid-login-credentials') {
+                        errMsg = "아이디가 존재하지 않거나 비밀번호가 틀렸습니다.";
+                    } else if (err.code === 'auth/user-not-found') {
+                        errMsg = "등록되지 않은 아이디입니다.";
+                    } else if (err.code === 'auth/wrong-password') {
+                        errMsg = "비밀번호가 일치하지 않습니다.";
+                    } else if (err.code === 'auth/too-many-requests') {
+                        errMsg = "여러 번 실패하여 잠겼습니다. 나중에 다시 시도하세요.";
+                    }
+                    showToast(`로그인 실패: ${errMsg}`, 'error');
                 });
         } else {
             // 로컬 로그인 (오프라인용)
@@ -195,4 +223,30 @@ window.initAuth = () => {
     setupPasswordToggle();
     setupLoginHandler();
     setupRegisterHandler();
+    
+    // [QR 코드 크로스 디바이스 연동 감지기]
+    const params = new URLSearchParams(window.location.search);
+    const qrToken = params.get('qrToken') || sessionStorage.getItem('pendingQrToken');
+    
+    if (qrToken) {
+        if (typeof STATE !== 'undefined' && STATE.currentUser && typeof db !== 'undefined' && db) {
+            // 이미 로그인되어 있는 폰(기기)라면 즉시 승인 패킷을 날림
+            showToast("보안 서버 통신 중... 타 기기 로그인 승인 대기", "info");
+            db.ref('qr_auth/' + qrToken).set({
+                status: 'approved',
+                user: STATE.currentUser
+            }).then(() => {
+                sessionStorage.removeItem('pendingQrToken');
+                showToast("성공적으로 다른 기기에 로그인 정보를 전송했습니다!", "success");
+                // 파라미터 지우기
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }).catch(e => {
+                showToast("승인 실패: " + e.message, "error");
+            });
+        } else {
+            // 아직 로그인 안 되어있다면 세션에 저장해두고 로그인을 유도
+            sessionStorage.setItem('pendingQrToken', qrToken);
+            showToast("QR 로그인을 승인하려면 먼저 이 기기에서 접속해주세요.", "info");
+        }
+    }
 };

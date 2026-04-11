@@ -1,4 +1,5 @@
 /* --- MOBILE RESPONSIVE JURAM OS (v164) --- */
+#android-nav-bar { display: none; }
 @media (max-width: 768px) {
     /* OS Container & Window Rules */
     .os-container { background-size: cover !important; background-position: center !important; }
@@ -12,6 +13,37 @@
         transform: none !important;
     }
     .window-header { height: 45px; padding: 0 10px; }
+    
+    /* Android Style Navigation Bar */
+    .taskbar { display: none !important; }
+    #android-nav-bar { 
+        display: flex; 
+        position: fixed; 
+        bottom: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 50px; 
+        background: #f1f1f1; 
+        color: #9aa0a6; 
+        z-index: 10000; 
+        justify-content: space-around; 
+        align-items: center; 
+        border-top: 1px solid #dfe1e5;
+    }
+    .os-container.dark-mode #android-nav-bar { background: #000; color: #5f6368; border-top: 1px solid #202124; }
+    #android-nav-bar .nav-key { 
+        flex: 1; 
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        height: 100%; 
+        cursor: pointer; 
+    }
+    #android-nav-bar .nav-key svg { width: 20px; height: 20px; opacity: 0.8; }
+    #android-nav-bar .nav-key:active { background: rgba(0,0,0,0.1); }
+    
+    /* Make desktop avoid the bottom bar */
+    .desktop { padding-bottom: 60px !important; }
     
     /* Desktop Area (Smartphone App Grid Style) */
     .desktop { 
