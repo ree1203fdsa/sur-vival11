@@ -10,7 +10,8 @@ const app = window.app = {
         'win-settings': { title: '설정', icon: '⚙️', screenId: 'settings-screen' },
         'win-store': { title: '주람 스토어', icon: '🛍️', screenId: 'store-screen' },
         'win-browser': { title: 'PlayTech 브라우저', icon: '🌐', screenId: 'browser-screen' },
-        'win-scanner': { title: '쾌속 로그인', icon: '📷', screenId: 'scanner-screen' }
+        'win-scanner': { title: '쾌속 로그인', icon: '📷', screenId: 'scanner-screen' },
+        'win-mail': { title: 'RamMail', icon: '📧', screenId: 'rammail-screen' }
     },
     // 테마 설정
     setTheme: (theme) => {
@@ -63,6 +64,8 @@ const app = window.app = {
         if (winId === 'win-store') app.initStore();
         // 스캐너 열 때 카메라 구동
         if (winId === 'win-scanner') setTimeout(() => app.startScanner(), 500);
+        // 메일 열 때 로딩
+        if (winId === 'win-mail') app.switchMailView('inbox');
     },
     // 창 닫기
     closeWindow: (winId) => {
@@ -241,6 +244,120 @@ const app = window.app = {
             }).catch(err => console.error("스캐너 정지 오류", err));
         }
     },
+    // ---- [ RAMMAIL SYSTEM ] ---- //
+    switchMailView: (view) => {
+        const views = ['mail-list-view', 'mail-compose-view', 'mail-read-view'];
+        views.forEach(v => {
+            const el = document.getElementById(v);
+            if(el) el.classList.add('hidden');
+        });
+        const target = document.getElementById(`mail-${view}-view`);
+        if(target) target.classList.remove('hidden');
+        
+        // Update nav active state
+        document.querySelectorAll('.mail-nav-item').forEach(item => {
+            const onclick = item.getAttribute('onclick');
+            if (onclick && onclick.includes(view)) {
+                item.classList.add('active');
+                item.style.background = '#feebeb';
+            } else {
+                item.classList.remove('active');
+                item.style.background = 'transparent';
+            }
+        });
+        
+        if (view === 'inbox' || view === 'sent') app.loadMails(view);
+    },
+    sendMail: () => {
+        const to = document.getElementById('mail-to').value.trim();
+        const subject = document.getElementById('mail-subject').value.trim();
+        const body = document.getElementById('mail-body').value.trim();
+        
+        if (!to || !subject || !body) {
+            showToast("모든 항목을 입력해주세요.", "error");
+            return;
+        }
+        
+        if (typeof db === 'undefined' || !db) { showToast("데이터베이스 연결이 없습니다.", "error"); return; }
+        
+        showToast("메일 전송 중...", "info");
+        db.ref('users').once('value').then(snap => {
+            const users = snap.val() || {};
+            const recipientEntry = Object.entries(users).find(([uid, data]) => data.username === to);
+            
+            if (!recipientEntry) {
+                showToast("해당 아이디를 가진 사용자가 없습니다.", "error");
+                return;
+            }
+            
+            const recipientUid = recipientEntry[0];
+            const mailData = {
+                sender: STATE.currentUser.username,
+                recipient: to,
+                subject,
+                body,
+                timestamp: Date.now(),
+                read: false
+            };
+            
+            // Send to recipient's inbox
+            db.ref(`rammail/${recipientUid}/inbox`).push(mailData);
+            // Save to sender's sent box
+            db.ref(`rammail/${STATE.currentUser.uid}/sent`).push(mailData);
+            
+            showToast(`${to}님께 메일을 보냈습니다!`, "success");
+            app.switchMailView('sent');
+        }).catch(err => showToast("서버 오류: " + err.message, "error"));
+    },
+    loadMails: (folder = 'inbox') => {
+        const container = document.getElementById('mail-items-container');
+        if(!container) return;
+        container.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">로딩 중...</div>';
+        
+        if (typeof db === 'undefined' || !db || !STATE.currentUser) return;
+        
+        db.ref(`rammail/${STATE.currentUser.uid}/${folder}`).once('value').then(snap => {
+            const mails = snap.val() || {};
+            const mailArr = Object.entries(mails).map(([id, data]) => ({ id, ...data }));
+            mailArr.sort((a,b) => b.timestamp - a.timestamp);
+            
+            container.innerHTML = '';
+            if (mailArr.length === 0) {
+                container.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">표시할 메일이 없습니다.</div>';
+                return;
+            }
+            
+            mailArr.forEach(m => {
+                const item = document.createElement('div');
+                item.style.cssText = `padding: 15px 25px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; align-items: center; background: ${(!m.read && folder==='inbox') ? '#f2f6ff' : 'white'}; transition: background 0.2s;`;
+                item.onmouseover = () => item.style.background = '#f1f3f4';
+                item.onmouseout = () => item.style.background = (!m.read && folder==='inbox') ? '#f2f6ff' : 'white';
+                item.onclick = () => app.readMail(m, folder);
+                
+                const date = new Date(m.timestamp).toLocaleDateString();
+                item.innerHTML = `
+                    <div style="width: 140px; font-weight: 800; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${folder === 'inbox' ? m.sender : '받는이: ' + m.recipient}</div>
+                    <div style="flex: 1; font-weight: ${(!m.read && folder==='inbox') ? '800' : '400'}; color: #202124; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.subject}</div>
+                    <div style="width: 100px; text-align: right; color: #9aa0a6; font-size: 0.82rem;">${date}</div>
+                `;
+                container.appendChild(item);
+            });
+        }).catch(err => {
+            container.innerHTML = '<div style="padding: 40px; text-align: center; color: #ff5252;">데이터 로드 실패</div>';
+        });
+    },
+    readMail: (mail, folder) => {
+        app.switchMailView('read');
+        document.getElementById('read-mail-subject').textContent = mail.subject;
+        document.getElementById('read-mail-sender').textContent = folder === 'inbox' ? mail.sender : `받는이: ${mail.recipient}`;
+        document.getElementById('read-mail-date').textContent = new Date(mail.timestamp).toLocaleString();
+        document.getElementById('read-mail-body').textContent = mail.body;
+        
+        // Mark as read in DB
+        if (folder === 'inbox' && !mail.read && typeof db !== 'undefined' && db) {
+            db.ref(`rammail/${STATE.currentUser.uid}/inbox/${mail.id}`).update({ read: true });
+        }
+    },
     // 바탕화면 아이콘 업데이트
     updateDesktop: () => {
         const desktopEl = document.getElementById('desktop');
@@ -266,6 +383,10 @@ const app = window.app = {
             <div class="desktop-icon" onclick="app.openWindow('win-scanner')">
                 <div class="icon" style="filter: drop-shadow(0 0 5px #64b5f6);">📷</div>
                 <div class="label">쾌속 로그인</div>
+            </div>
+            <div class="desktop-icon" onclick="app.openWindow('win-mail')">
+                <div class="icon" style="filter: drop-shadow(0 0 8px rgba(234, 67, 53, 0.4));">📧</div>
+                <div class="label">RamMail</div>
             </div>
             ${adminIcon}
         `;

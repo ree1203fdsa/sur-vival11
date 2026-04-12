@@ -292,7 +292,7 @@
                         </div>
                     </div>
                     <div class="input-group">
-                        <label>안전한 비밀번호 (영문 대소문자, 숫자, 기호 포함 8자 이상)</label>
+                        <label>비밀번호 (6자 이상 입력)</label>
                         <input type="password" id="reg-new-password" placeholder="강력한 비밀번호 입력" style="width:100%; padding:12px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px; font-size:16px; margin-bottom: 8px;" required>
                     </div>
                     <div class="input-group">
@@ -463,6 +463,56 @@
             <div id="qr-reader" style="flex: 1; width: 100%;"></div>
             <div id="qr-reader-results" style="padding: 20px; background: rgba(0,0,0,0.8); text-align: center; border-top: 1px solid #333;">
                 <button class="btn secondary" onclick="app.stopScanner(); app.closeWindow('win-scanner')">❌ 스캐너 끄기</button>
+            </div>
+        </section>
+
+        <!-- RAMMAIL SCREEN (OS Internal Email) -->
+        <section id="rammail-screen" class="screen hidden" style="flex-direction: row; height: 100%; background: #ffffff; color: #333;">
+            <!-- Mail Sidebar -->
+            <div style="width: 240px; background: #f8f9fa; border-right: 1px solid #ddd; display: flex; flex-direction: column; padding: 20px 10px;">
+                <button class="btn primary" onclick="app.switchMailView('compose')" style="margin-bottom: 20px; background: #ea4335; border: none; font-weight: 800; border-radius: 24px; padding: 12px;">✉️ 편지 쓰기</button>
+                <div class="mail-nav-item active" onclick="app.switchMailView('inbox')" style="padding: 10px 15px; border-radius: 0 20px 20px 0; cursor: pointer; display: flex; align-items: center; gap: 12px; font-weight: 600; color: #5f6368; background: #feebeb;">📥 받은 편지함</div>
+                <div class="mail-nav-item" onclick="app.switchMailView('sent')" style="padding: 10px 15px; border-radius: 0 20px 20px 0; cursor: pointer; display: flex; align-items: center; gap: 12px; font-weight: 600; color: #5f6368;">📤 보낸 편지함</div>
+            </div>
+            
+            <!-- Mail List & Content -->
+            <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                <!-- List View -->
+                <div id="mail-list-view" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column;">
+                    <div style="padding: 15px 25px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                        <h2 id="mail-view-title" style="font-size: 1.2rem; font-weight: 800;">받은 편지함</h2>
+                        <button class="btn secondary" onclick="app.loadMails()" style="border: none; padding: 5px 10px; font-size: 0.8rem;">🔄 새로고침</button>
+                    </div>
+                    <div id="mail-items-container">
+                        <!-- Mails appear here -->
+                        <div style="padding: 40px; text-align: center; color: #999;">편지를 불러오는 중...</div>
+                    </div>
+                </div>
+                
+                <!-- Compose View -->
+                <div id="mail-compose-view" class="hidden" style="flex: 1; padding: 30px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;">
+                    <input type="text" id="mail-to" placeholder="받는 사람 (@rammail.com 제외 아이디만)" style="padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                    <input type="text" id="mail-subject" placeholder="제목" style="padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                    <textarea id="mail-body" placeholder="내용을 입력하세요" style="flex: 1; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; min-height: 200px; resize: none;"></textarea>
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button class="btn primary" onclick="app.sendMail()" style="padding: 12px 30px; background: #1a73e8; border: none; font-weight: bold;">전송</button>
+                        <button class="btn secondary" onclick="app.switchMailView('inbox')" style="padding: 12px 20px;">취소</button>
+                    </div>
+                </div>
+                
+                <!-- Read View -->
+                <div id="mail-read-view" class="hidden" style="flex: 1; padding: 40px; display: flex; flex-direction: column; overflow-y: auto;">
+                    <button class="btn secondary" onclick="app.switchMailView('inbox')" style="align-self: flex-start; margin-bottom: 20px; padding: 5px 15px;">← 목록으로</button>
+                    <h2 id="read-mail-subject" style="font-size: 1.8rem; font-weight: 800; margin-bottom: 10px;">제목</h2>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 20px;">
+                        <div>
+                            <span id="read-mail-sender" style="font-weight: 800;">보낸이</span>
+                            <span style="color: #666; font-size: 0.9rem;">(@rammail.com)</span>
+                        </div>
+                        <div id="read-mail-date" style="color: #999; font-size: 0.85rem;">2024-01-01</div>
+                    </div>
+                    <div id="read-mail-body" style="line-height: 1.6; font-size: 1.05rem; white-space: pre-wrap;">내용</div>
+                </div>
             </div>
         </section>
 

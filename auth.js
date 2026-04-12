@@ -173,10 +173,9 @@ const setupRegisterHandler = () => {
             return;
         }
         
-        // 강력한 비밀번호 검증 (8자 이상, 대소문자, 숫자, 특수문자 모두 포함)
-        const strongRegex = new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})");
-        if (!strongRegex.test(passIn)) {
-            errEl.textContent = '경고: 영문 대/소문자, 숫자, 특수기호(!@#$%^&*)를 모두 포함하여 8자 이상 안전하게 설정해야 합니다.';
+        // 최소 비밀번호 길이 검증 (6자 이상)
+        if (passIn.length < 6) {
+            errEl.textContent = '비밀번호는 최소 6자 이상이어야 합니다.';
             return;
         }
 
