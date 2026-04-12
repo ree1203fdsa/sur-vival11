@@ -84,39 +84,72 @@
     .menu-card { padding: 1.5rem 1rem; }
     .menu-card h3 { font-size: 1.1rem; }
 
-    /* Settings Screen overhaul (Vertical to Horizontal Tabs) */
-    .settings-screen { flex-direction: column !important; }
+    /* Settings Screen overhaul (Fast & Fluid Mobile UI) */
+    .settings-screen { 
+        flex-direction: column !important; 
+        background: #000 !important; /* True black for OLED mobile screens */
+    }
     .settings-sidebar { 
         width: 100% !important; 
-        height: 65px !important;
-        max-height: none !important;
+        height: 55px !important;
+        min-height: 55px !important;
         flex-direction: row !important; 
         flex-wrap: nowrap !important;
         overflow-x: auto !important; 
         overflow-y: hidden !important;
-        padding: 10px !important;
+        padding: 5px 10px !important;
+        background: rgba(255,255,255,0.03) !important;
         border-right: none !important;
-        border-bottom: 1px solid rgba(255,255,255,0.1) !important;
-        -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+        border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+        gap: 5px !important;
+        -webkit-overflow-scrolling: touch;
     }
-    .settings-sidebar::-webkit-scrollbar { display: none; /* Hide scrollbar */ }
+    .settings-sidebar::-webkit-scrollbar { display: none; }
     
-    .settings-sidebar > div:first-child { display: none !important; } /* Hide user profile on mobile sidebar */
+    .settings-sidebar > div:first-child { display: none !important; } 
     
     .settings-sidebar .settings-item { 
         flex: 0 0 auto !important;
-        width: auto !important;
-        padding: 8px 15px !important; 
-        font-size: 0.9rem !important;
-        justify-content: center !important;
-        margin-right: 10px !important;
-        white-space: nowrap !important;
+        padding: 6px 14px !important; 
+        border-radius: 20px !important; /* Pill style buttons for mobile */
+        font-size: 0.85rem !important;
+        background: rgba(255,255,255,0.05) !important;
+        color: #ddd !important;
+        margin-right: 5px !important;
+        display: flex !important;
+        align-items: center !important;
     }
-    .settings-content { padding: 20px !important; flex: 1 !important; }
-    .settings-content h1 { font-size: 1.6rem !important; margin-bottom: 20px !important; }
+    .settings-sidebar .settings-item.active {
+        background: #64b5f6 !important;
+        color: #000 !important;
+        font-weight: 800 !important;
+    }
     
-    /* Settings Grid Layouts */
-    .settings-content > div > div { grid-template-columns: 1fr !important; }
+    .settings-content { 
+        padding: 20px 15px !important; 
+        flex: 1 !important; 
+        background: transparent !important;
+        overflow-y: auto !important;
+    }
+    .settings-content h1 { 
+        font-size: 1.5rem !important; 
+        margin-bottom: 25px !important; 
+        margin-top: 0 !important;
+        font-weight: 900 !important;
+    }
+    
+    /* Responsive Settings Grids */
+    .settings-content .settings-tab > div { 
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important; 
+    }
+    .settings-content .settings-tab > div > div {
+        width: 100% !important;
+        padding: 15px !important;
+        border-radius: 12px !important;
+    }
+    .settings-content input[type="range"] { margin-top: 10px; }
 
     /* Store Screen */
     #store-list-view > div:first-child { flex-direction: column; text-align: center; gap: 15px; padding: 20px !important; }
