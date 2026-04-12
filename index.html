@@ -12,6 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@500;700;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 
 <body>
@@ -443,6 +444,20 @@
             <!-- Results View -->
             <div id="browser-results" class="hidden" style="flex: 1; overflow-y: auto; background: white; padding: 30px 40px;">
                 <div id="browser-results-list" style="max-width: 800px; margin: 0 auto;"></div>
+            </div>
+        </section>
+
+        </section>
+
+        <!-- SCANNER SCREEN (Fast Login Scanner App) -->
+        <section id="scanner-screen" class="screen hidden" style="flex-direction: column; height: 100%; background: #000; color: white; display: flex;">
+            <div style="padding: 20px; text-align: center; background: #1a1b22; border-bottom: 1px solid #333;">
+                <h2 style="font-weight: 800; font-size: 1.5rem; color: #64b5f6;">📷 쾌속 로그인 스캐너</h2>
+                <p style="color: #aaa; font-size: 0.9rem;">다른 기기의 QR 코드를 인식시켜 주세요</p>
+            </div>
+            <div id="qr-reader" style="flex: 1; width: 100%;"></div>
+            <div id="qr-reader-results" style="padding: 20px; background: rgba(0,0,0,0.8); text-align: center; border-top: 1px solid #333;">
+                <button class="btn secondary" onclick="app.stopScanner(); app.closeWindow('win-scanner')">❌ 스캐너 끄기</button>
             </div>
         </section>
 

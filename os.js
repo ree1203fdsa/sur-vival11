@@ -9,7 +9,8 @@ const app = window.app = {
         'win-admin': { title: '관리자 모드', icon: '🛡️', screenId: 'admin-screen' },
         'win-settings': { title: '설정', icon: '⚙️', screenId: 'settings-screen' },
         'win-store': { title: '주람 스토어', icon: '🛍️', screenId: 'store-screen' },
-        'win-browser': { title: 'PlayTech 브라우저', icon: '🌐', screenId: 'browser-screen' }
+        'win-browser': { title: 'PlayTech 브라우저', icon: '🌐', screenId: 'browser-screen' },
+        'win-scanner': { title: '쾌속 로그인', icon: '📷', screenId: 'scanner-screen' }
     },
     // 테마 설정
     setTheme: (theme) => {
@@ -60,6 +61,8 @@ const app = window.app = {
 
         // 스토어 열 때 데이터베이스 연결
         if (winId === 'win-store') app.initStore();
+        // 스캐너 열 때 카메라 구동
+        if (winId === 'win-scanner') setTimeout(() => app.startScanner(), 500);
     },
     // 창 닫기
     closeWindow: (winId) => {
@@ -186,6 +189,58 @@ const app = window.app = {
             if (typeof db !== 'undefined' && db && app.qrListener) db.ref('qr_auth/' + qrToken).off('value', app.qrListener);
         };
     },
+    // ---- [ QR SCANNER APP LOGIC ] ---- //
+    html5QrCode: null,
+    startScanner: () => {
+        if (!document.getElementById("qr-reader")) return;
+        app.html5QrCode = new Html5Qrcode("qr-reader");
+        const config = { fps: 15, qrbox: { width: 250, height: 250 } };
+        
+        app.html5QrCode.start(
+            { facingMode: "environment" }, 
+            config,
+            (decodedText) => {
+                // QR 코드 인식 성공 시
+                app.stopScanner();
+                app.closeWindow('win-scanner');
+                
+                if (decodedText.includes('qrToken=')) {
+                    showToast("로그인 QR 감지! 승인 중...", "info");
+                    try {
+                        const url = new URL(decodedText);
+                        const token = url.searchParams.get('qrToken');
+                        if (token && typeof db !== 'undefined' && db && STATE.currentUser) {
+                            db.ref('qr_auth/' + token).set({
+                                status: 'approved',
+                                user: STATE.currentUser
+                            }).then(() => {
+                                showToast("로그인 승인 완료! 다른 기기에서 접속됩니다.", "success");
+                            });
+                        } else if (!STATE.currentUser) {
+                            showToast("로그인이 되어있지 않아 승인할 수 없습니다.", "error");
+                        }
+                    } catch(e) {
+                        showToast("잘못된 QR 데이터입니다.", "error");
+                    }
+                } else {
+                    showToast("서바이벌 로그인용 QR이 아닙니다.", "warning");
+                }
+            },
+            (errorMessage) => { /* 스캔 중 에러는 무시 (반복 실행됨) */ }
+        ).catch((err) => {
+            showToast("카메라 권한이 없거나 장치를 찾을 수 없습니다.", "error");
+            console.error(err);
+        });
+    },
+    stopScanner: () => {
+        if (app.html5QrCode) {
+            app.html5QrCode.stop().then(() => {
+                app.html5QrCode = null;
+                const reader = document.getElementById("qr-reader");
+                if (reader) reader.innerHTML = "";
+            }).catch(err => console.error("스캐너 정지 오류", err));
+        }
+    },
     // 바탕화면 아이콘 업데이트
     updateDesktop: () => {
         const desktopEl = document.getElementById('desktop');
@@ -207,6 +262,10 @@ const app = window.app = {
             <div class="desktop-icon" onclick="app.openWindow('win-browser')">
                 <div class="icon">🌐</div>
                 <div class="label" style="line-height:1.2;">PlayTech 브라우저</div>
+            </div>
+            <div class="desktop-icon" onclick="app.openWindow('win-scanner')">
+                <div class="icon" style="filter: drop-shadow(0 0 5px #64b5f6);">📷</div>
+                <div class="label">쾌속 로그인</div>
             </div>
             ${adminIcon}
         `;
