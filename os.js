@@ -545,7 +545,50 @@ const app = window.app = {
             STATE.currentUser = null;
             location.reload();
         }
+    },
+    // ---- [ TOUCH GESTURES (ANDROID APP DRAWER) ] ---- //
+    touchStartY: 0,
+    initTouchGestures: () => {
+        const layer = document.getElementById('os-layer');
+        if (!layer) return;
+
+        layer.addEventListener('touchstart', (e) => {
+            app.touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        layer.addEventListener('touchend', (e) => {
+            const endY = e.changedTouches[0].clientY;
+            const diffY = app.touchStartY - endY;
+
+            // 위로 스와이프 (Android App Drawer 열기)
+            if (diffY > 100) {
+                const menu = document.getElementById('start-menu');
+                if (menu && !menu.classList.contains('active')) {
+                    app.toggleStartMenu(true);
+                }
+            }
+            // 아래로 스와이프 (Drawer 닫기)
+            if (diffY < -100) {
+                const menu = document.getElementById('start-menu');
+                if (menu && menu.classList.contains('active')) {
+                    app.toggleStartMenu(false);
+                }
+            }
+        }, { passive: true });
+        
+        console.log("모바일 스와이프 드로워 시스템 활성화됨.");
+    },
+    
+    toggleStartMenu: (forceState) => {
+        const menu = document.getElementById('start-menu');
+        if (!menu) return;
+        
+        if (forceState === true) menu.classList.add('active');
+        else if (forceState === false) menu.classList.remove('active');
+        else menu.classList.toggle('active');
     }
 };
 
 window.app = app;
+// OS 초기화 시 제스처 구동
+setTimeout(() => { if(window.app && window.app.initTouchGestures) window.app.initTouchGestures(); }, 1000);
