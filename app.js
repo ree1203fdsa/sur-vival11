@@ -59,18 +59,5 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 실시간 사용자 상태(차단 등) 모니터링
-        if (STATE.currentUser && db) {
-            db.ref(`users/${STATE.currentUser.uid}/restrictions`).on('value', snap => {
-                const res = snap.val() || {};
-                if (res.banned) {
-                    alert("🚫 당신의 계정이 관리자에 의해 영구 차단되었습니다.");
-                    app.logout();
-                }
-                // 실시간 로컬 데이터 갱신
-                if (STATE.currentUser) STATE.currentUser.restrictions = res;
-            });
-        }
-
         console.log("Juram OS 모듈 시스템 v157 초기화 완료.");
 });

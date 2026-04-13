@@ -94,8 +94,21 @@ const setupLoginHandler = () => {
                         STATE.currentUser = { ...(userData || {}), uid: user.uid, username: userIn };
                         if (isCreator) STATE.currentUser.role = 'creator';
                         
+                        // [FIREBASE REAL-TIME ENFORCEMENT]
+                        // 계정 상태(차단 등) 실시간 모니터링 시작
+                        db.ref(`users/${user.uid}/restrictions`).on('value', snap => {
+                            const res = snap.val() || {};
+                            if (res.banned) {
+                                alert("🚫 당신의 계정이 관리자에 의해 영구 차단되었습니다.");
+                                if(window.app && app.logout) app.logout();
+                                else location.reload();
+                            }
+                            if (STATE.currentUser) STATE.currentUser.restrictions = res;
+                        });
+                        
                         showToast(`환영합니다, ${STATE.currentUser.username}님!`, 'success');
-                        saveData(); updateUI(); app.updateDesktop();
+                        saveData(); updateUI();
+                        if (window.app && app.updateDesktop) app.updateDesktop();
                         showScreen('menu-screen');
                     });
                 }).catch(err => {

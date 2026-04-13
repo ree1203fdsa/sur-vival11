@@ -192,21 +192,58 @@
     #browser-home h1 { font-size: 2.5rem !important; margin-bottom: 20px !important; }
     #browser-home-search { padding: 12px 12px 12px 40px !important; }
     
-    /* Admin Screen layout overrides for mobile */
-    #admin-screen > div:nth-child(2) { flex-direction: column !important; overflow: visible !important; }
-    #admin-screen > div:nth-child(2) > div:first-child { min-height: 50vh !important; flex: none !important; }
-    #admin-user-list { padding: 5px !important; }
-    #admin-editor-panel { margin-top: 15px; flex: none !important; }
-
-    /* Input Adjustments & Form Scaling */
-    input[type="text"], input[type="password"], input[type="email"], select, input[type="number"] {
-        font-size: 16px !important; /* Prevents iOS auto-zoom on form inputs */
-        padding: 10px !important;
-    }
-
-    /* Global Responsive Limits (Images & Buttons) */
-    img { max-width: 100%; height: auto; }
-    button, .btn { width: 100%; margin-bottom: 5px; text-align: center; justify-content: center; word-break: keep-all; font-size: 0.95rem !important; }
     .btn-group { flex-direction: column; gap: 5px; }
     .btn-group button { width: 100% !important; margin: 0 !important; }
+
+    /* --- ADMIN CENTER MOBILE REFINEMENT --- */
+    #admin-screen { height: calc(100% - 50px) !important; }
+    #admin-screen > div:first-child { 
+        flex-direction: column !important; 
+        padding: 0 !important;
+        background: #111 !important;
+    }
+    #admin-screen > div:first-child > div:first-child { 
+        padding: 15px 20px !important; 
+        margin-right: 0 !important;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    #admin-screen > div:first-child > div:nth-child(2) {
+        width: 100%;
+        overflow-x: auto !important;
+        overflow-y: hidden;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        padding: 0 10px !important;
+        gap: 0 !important;
+    }
+    #admin-screen > div:first-child > div:nth-child(2) .admin-tab {
+        padding: 12px 15px !important;
+        font-size: 0.8rem !important;
+        flex-shrink: 0;
+    }
+    #admin-screen #admin-main-view { padding: 15px !important; }
+    
+    /* Admin Grid/Columns Fix */
+    .admin-content-panel .glass-panel { padding: 15px !important; margin-bottom: 15px; }
+    #admin-tab-users > div { flex-direction: column !important; min-height: auto !important; }
+    #admin-tab-economy > div { grid-template-columns: 1fr !important; }
+    #admin-tab-users > div > div:first-child { min-height: 350px !important; }
+    
+    /* Store App Table for Mobile */
+    #admin-tab-store table, #admin-tab-store thead, #admin-tab-store tbody, #admin-tab-store th, #admin-tab-store td, #admin-tab-store tr { 
+        display: block; 
+    }
+    #admin-tab-store thead tr { position: absolute; top: -9999px; left: -9999px; }
+    #admin-tab-store td { border: none; border-bottom: 1px solid rgba(255,255,255,0.05); position: relative; padding-left: 45% !important; padding-top: 12px !important; padding-bottom: 12px !important; }
+    #admin-tab-store td:before { 
+        position: absolute; left: 15px; width: 40%; font-weight: 800; color: #ff5252;
+    }
+    #admin-tab-store td:nth-of-type(1):before { content: "이름"; }
+    #admin-tab-store td:nth-of-type(2):before { content: "제작자"; }
+    #admin-tab-store td:nth-of-type(3):before { content: "카테고리"; }
+    #admin-tab-store td:nth-of-type(4):before { content: "동작"; padding-top: 0; }
+    #admin-tab-store td:nth-of-type(4) { border-bottom: 3px solid #ff5252; margin-bottom: 15px; }
+
+    /* Security Console Fix */
+    #admin-log-console { font-size: 0.75rem !important; height: 300px !important; }
 }
