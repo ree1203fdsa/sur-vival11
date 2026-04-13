@@ -32,6 +32,13 @@ const app = window.app = {
     },
     // 창 열기
     openWindow: (winId) => {
+        if (STATE.currentUser && STATE.currentUser.restrictions) {
+            const res = STATE.currentUser.restrictions;
+            if (winId === 'win-store' && res.noStore) {
+                return showToast('🚫 스토어 접근 권한이 정지되었습니다.', 'error');
+            }
+        }
+
         if (app.activeWindows.has(winId)) { app.focusWindow(winId); return; }
         const config = app.windowConfigs[winId];
         if (!config) return;
@@ -66,6 +73,8 @@ const app = window.app = {
         if (winId === 'win-scanner') setTimeout(() => app.startScanner(), 500);
         // 메일 열 때 로딩
         if (winId === 'win-mail') app.switchMailView('inbox');
+        // 관리자 열 때 데이터 로드
+        if (winId === 'win-admin') app.loadAdminData();
     },
     // 창 닫기
     closeWindow: (winId) => {
@@ -408,6 +417,8 @@ const app = window.app = {
                 item.style.color = '#ccc';
             }
         });
+
+        if (tabId === 'parental') app.updateParentalUI();
     },
     // 전체화면 토글
     toggleFullScreen: () => {
@@ -451,7 +462,7 @@ const app = window.app = {
                         <div style="font-size: 2.8rem; margin-bottom: 12px; height: 60px; display:flex; align-items:center;">${emj}</div>
                         <h3 style="font-size: 1.25rem; font-weight: 800; color:#fff; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${appData.title}</h3>
                         <p style="color: #68f7b5; font-size: 0.85rem; font-weight:600; margin-bottom: 15px;">👤 ${appData.creator} <span style="color:#aaa; font-weight:400;">• ${appData.category}</span></p>
-                        <button class="btn primary" onclick="window.open('${appData.url}', '_blank')" style="border-radius: 8px; font-weight: 800; width: 100%; border: none; padding: 12px;">다운로드 (실행)</button>
+                        <button class="btn primary" onclick="app.secureStoreOpen('${appData.url}')" style="border-radius: 8px; font-weight: 800; width: 100%; border: none; padding: 12px;">다운로드 (실행)</button>
                     `;
                     listEl.appendChild(card);
                 });
@@ -624,6 +635,12 @@ const app = window.app = {
         document.getElementById('admin-ed-coins').value = u.coins || 0;
         document.getElementById('admin-ed-diamonds').value = u.diamonds || 0;
         
+        // 제한 사항(Restrictions) 로드
+        const res = u.restrictions || {};
+        document.getElementById('admin-ed-ban').checked = res.banned || false;
+        document.getElementById('admin-ed-nochat').checked = res.noChat || false;
+        document.getElementById('admin-ed-nostore').checked = res.noStore || false;
+        
         // 모바일 화면을 위해 부드럽게 스크롤 내리기
         if (window.innerWidth <= 768) {
             setTimeout(() => {
@@ -639,8 +656,19 @@ const app = window.app = {
         const coins = parseInt(document.getElementById('admin-ed-coins').value) || 0;
         const dia = parseInt(document.getElementById('admin-ed-diamonds').value) || 0;
         
+        const restrictions = {
+            banned: document.getElementById('admin-ed-ban').checked,
+            noChat: document.getElementById('admin-ed-nochat').checked,
+            noStore: document.getElementById('admin-ed-nostore').checked
+        };
+        
         showToast('데이터 강제 덮어쓰기 중...', 'info');
-        db.ref(`users/${uid}`).update({ role: role, coins: coins, diamonds: dia }).then(() => {
+        db.ref(`users/${uid}`).update({ 
+            role: role, 
+            coins: coins, 
+            diamonds: dia,
+            restrictions: restrictions 
+        }).then(() => {
             showToast('데이터가 완벽히 수정되었습니다!', 'success');
             app.loadAdminUsers(); // 리스트 갱신
             document.getElementById('admin-editor-panel').style.display = 'none';
@@ -707,6 +735,258 @@ const app = window.app = {
         if (forceState === true) menu.classList.add('active');
         else if (forceState === false) menu.classList.remove('active');
         else menu.classList.toggle('active');
+    },
+
+    // ---- [ MASTER ADMIN EXTENSION ] ---- //
+    switchAdminTab: (tabId) => {
+        document.querySelectorAll('.admin-content-panel').forEach(p => p.classList.add('hidden'));
+        document.querySelectorAll('.admin-tab').forEach(t => {
+            t.classList.remove('active');
+            t.style.borderBottomColor = 'transparent';
+            t.style.color = '#aaa';
+        });
+
+        const target = document.getElementById(`admin-tab-${tabId}`);
+        const btn = document.getElementById(`tab-btn-${tabId}`);
+        if (target) target.classList.remove('hidden');
+        if (btn) {
+            btn.classList.add('active');
+            btn.style.borderBottomColor = '#ff5252';
+            btn.style.color = '#fff';
+        }
+        
+        if (tabId === 'store') app.renderAdminStoreList();
+        if (tabId === 'security') app.initAdminLogs();
+    },
+
+    loadAdminData: () => {
+        app.loadAdminUsers();
+        app.checkMaintenanceStatus();
+        showToast('전역 마스터 데이터 동기화 중...', 'info');
+    },
+
+    broadcastAdminMessage: () => {
+        const msg = document.getElementById('admin-broadcast-msg').value.trim();
+        if (!msg || !db) return;
+        
+        db.ref('server/broadcast').set({
+            message: msg,
+            sender: STATE.currentUser.username,
+            timestamp: Date.now()
+        }).then(() => {
+            showToast('전역 공지사항이 즉시 발송되었습니다.', 'success');
+            document.getElementById('admin-broadcast-msg').value = '';
+        });
+    },
+
+    checkMaintenanceStatus: () => {
+        if (!db) return;
+        db.ref('server/maintenance').on('value', snap => {
+            const isMain = snap.val();
+            const btn = document.getElementById('admin-btn-maintenance');
+            if (btn) {
+                btn.textContent = isMain ? 'ON (발동 중)' : 'OFF';
+                btn.style.background = isMain ? '#ff5252' : '#444';
+            }
+        });
+    },
+
+    toggleMaintenance: () => {
+        if (!db) return;
+        db.ref('server/maintenance').once('value').then(snap => {
+            const current = snap.val() || false;
+            db.ref('server/maintenance').set(!current);
+            showToast(`점검 모드를 ${!current ? '활성화' : '비활성화'} 했습니다.`, 'info');
+        });
+    },
+
+    createCoupon: () => {
+        const code = document.getElementById('admin-coupon-code').value.trim().toUpperCase();
+        const coins = parseInt(document.getElementById('admin-coupon-coin').value) || 0;
+        const dia = parseInt(document.getElementById('admin-coupon-dia').value) || 0;
+        
+        if (!code || !db) return showToast('코드를 입력하세요.', 'error');
+        
+        db.ref(`server/coupons/${code}`).set({
+            coins, diamonds: dia, active: true, createdAt: Date.now()
+        }).then(() => {
+            showToast(`쿠폰 [${code}] 이(가) 정식 발행되었습니다.`, 'success');
+            document.getElementById('admin-coupon-code').value = '';
+        });
+    },
+
+    renderAdminStoreList: () => {
+        if (!db) return;
+        db.ref('store_apps').once('value').then(snap => {
+            const apps = snap.val() || {};
+            const listEl = document.getElementById('admin-store-list');
+            if (!listEl) return;
+            listEl.innerHTML = '';
+            
+            Object.entries(apps).forEach(([id, data]) => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                tr.innerHTML = `
+                    <td style="padding: 15px; font-weight:800;">${data.title}</td>
+                    <td style="padding: 15px; color:#aaa;">${data.creator}</td>
+                    <td style="padding: 15px;"><span style="background:#333; padding:2px 8px; border-radius:4px; font-size:0.75rem;">${data.category}</span></td>
+                    <td style="padding: 15px;">
+                        <button class="btn" style="background:rgba(255,82,82,0.1); color:#ff5252; border:1px solid #ff5252; padding:4px 10px; font-size:0.75rem;" onclick="app.deleteStoreApp('${id}')">삭제</button>
+                    </td>
+                `;
+                listEl.appendChild(tr);
+            });
+        });
+    },
+
+    deleteStoreApp: (id) => {
+        if (confirm('이 앱을 스토어에서 영구 삭제할까요?') && db) {
+            db.ref(`store_apps/${id}`).remove().then(() => {
+                showToast('앱이 삭제되었습니다.', 'success');
+                app.renderAdminStoreList();
+            });
+        }
+    },
+
+    initAdminLogs: () => {
+        if (!db || app.logsInitialized) return;
+        const logEl = document.getElementById('admin-log-console');
+        
+        // Listen for all chats
+        db.ref('chats').limitToLast(20).on('child_added', snap => {
+            const data = snap.val();
+            const time = new Date(data.timestamp).toLocaleTimeString();
+            const p = document.createElement('div');
+            p.style.marginBottom = '4px';
+            p.innerHTML = `<span style="color:#888;">[${time}]</span> <span style="color:#64b5f6;">${data.user}:</span> ${data.text}`;
+            logEl.appendChild(p);
+            logEl.scrollTop = logEl.scrollHeight;
+        });
+
+        // Listen for logins (if presence is used)
+        db.ref('presence').on('child_added', snap => {
+            const p = document.createElement('div');
+            p.style.color = '#ffeb3b';
+            p.innerHTML = `> [LOGIN] ${snap.key} 계정 접속 감지`;
+            logEl.appendChild(p);
+            logEl.scrollTop = logEl.scrollHeight;
+        });
+        
+        app.logsInitialized = true;
+    },
+
+    clearAdminLogs: () => {
+        const logEl = document.getElementById('admin-log-console');
+        if (logEl) logEl.innerHTML = '[SYSTEM] 로그 버퍼가 초기화되었습니다.<br>';
+    },
+
+    // ---- [ USER REDEEM SYSTEM ] ---- //
+    redeemCoupon: () => {
+        const input = document.getElementById('user-coupon-input');
+        const code = input.value.trim().toUpperCase();
+        if (!code) return;
+
+        if (!db || !STATE.currentUser) return showToast('서버 연결이 필요합니다.', 'error');
+        if (STATE.currentUser.isGuest) return showToast('게스트는 쿠폰을 사용할 수 없습니다.', 'warning');
+
+        showToast('코드 확인 중...', 'info');
+        db.ref(`server/coupons/${code}`).once('value').then(snap => {
+            const coupon = snap.val();
+            if (!coupon || !coupon.active) return showToast('유효하지 않거나 만료된 코드입니다.', 'error');
+
+            // 이미 사용했는지 체크 (사용자 필드에 기록)
+            const usedRef = db.ref(`users/${STATE.currentUser.uid}/used_coupons/${code}`);
+            usedRef.once('value').then(usedSnap => {
+                if (usedSnap.exists()) return showToast('이미 사용한 코드입니다.', 'warning');
+
+                // 보상 지급
+                STATE.currentUser.coins = (STATE.currentUser.coins || 0) + (coupon.coins || 0);
+                STATE.currentUser.diamonds = (STATE.currentUser.diamonds || 0) + (coupon.diamonds || 0);
+
+                // 기록 저장
+                usedRef.set(true);
+                saveData(); updateUI();
+                input.value = '';
+                showToast(`🧧 쿠폰 적용 성공! 🪙+${coupon.coins} 💎+${coupon.diamonds}`, 'success');
+            });
+        });
+    },
+
+    // ---- [ PARENTAL CONTROL SYSTEM ] ---- //
+    secureStoreOpen: (url) => {
+        const settings = STATE.currentUser.settings || {};
+        if (settings.parentalEnabled && settings.parentalPin) {
+            const inputPin = prompt("🧒 자녀 보호 기능이 활성화되어 있습니다.\n승인을 위해 PIN 번호 4자리를 입력하세요:");
+            if (inputPin === settings.parentalPin) {
+                window.open(url, '_blank');
+            } else {
+                showToast("PIN 번호가 일치하지 않습니다. 접근이 차단되었습니다.", "error");
+            }
+        } else {
+            window.open(url, '_blank');
+        }
+    },
+
+    toggleParentalControl: () => {
+        if (!STATE.currentUser) return;
+        const current = (STATE.currentUser.settings && STATE.currentUser.settings.parentalEnabled) || false;
+        
+        if (!current) {
+            // 켜려고 할 때
+            document.getElementById('parental-pin-setup').classList.remove('hidden');
+            showToast("보호 기능을 켜려면 먼저 4자리 PIN을 설정해주세요.", "info");
+        } else {
+            // 끄려고 할 때
+            const pin = prompt("보호 기능을 해제하려면 기존 PIN 번호를 입력하세요:");
+            if (pin === STATE.currentUser.settings.parentalPin) {
+                STATE.currentUser.settings.parentalEnabled = false;
+                app.saveParentalSettings();
+                showToast("자녀 보호 기능이 해제되었습니다.", "success");
+            } else {
+                showToast("PIN 번호가 틀렸습니다.", "error");
+            }
+        }
+    },
+
+    saveParentalPin: () => {
+        const pin = document.getElementById('parental-pin-input').value;
+        if (!/^\d{4}$/.test(pin)) {
+            return showToast("PIN 번호는 숫자 4자리여야 합니다.", "error");
+        }
+        
+        if (!STATE.currentUser.settings) STATE.currentUser.settings = {};
+        STATE.currentUser.settings.parentalPin = pin;
+        STATE.currentUser.settings.parentalEnabled = true;
+        
+        app.saveParentalSettings();
+        document.getElementById('parental-pin-setup').classList.add('hidden');
+        document.getElementById('parental-pin-input').value = '';
+        showToast("자녀 보호 PIN 설정 및 보호 활성화 완료!", "success");
+    },
+
+    saveParentalSettings: () => {
+        if (db && STATE.currentUser) {
+            db.ref(`users/${STATE.currentUser.uid}/settings`).update({
+                parentalEnabled: STATE.currentUser.settings.parentalEnabled,
+                parentalPin: STATE.currentUser.settings.parentalPin
+            });
+        }
+        app.updateParentalUI();
+    },
+
+    updateParentalUI: () => {
+        const settings = (STATE.currentUser && STATE.currentUser.settings) || {};
+        const isEn = settings.parentalEnabled;
+        const statusText = document.getElementById('parental-status-text');
+        const toggleBtn = document.getElementById('btn-toggle-parental');
+        
+        if (statusText) {
+            statusText.textContent = isEn ? "현재 켜짐 (스토어 보호 중)" : "현재 꺼져 있음 (보호 미작동)";
+            statusText.style.color = isEn ? "#00ff88" : "#ff5252";
+        }
+        if (toggleBtn) {
+            toggleBtn.textContent = isEn ? "보호 끄기" : "보호 켜기";
+        }
     }
 };
 
