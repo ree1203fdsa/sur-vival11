@@ -246,4 +246,38 @@
 
     /* Security Console Fix */
     #admin-log-console { font-size: 0.75rem !important; height: 300px !important; }
+
+    /* --- NEW APP MOBILE STYLES --- */
+    /* JuRam-gram Mobile */
+    #gram-feed div { max-width: 100% !important; margin: 0 !important; border-radius: 0 !important; }
+
+    /* Open Chat Mobile (Stack sidebar and message area) */
+    #openchat-screen { flex-direction: column !important; }
+    #openchat-screen > div:first-child { 
+        width: 100% !important; 
+        height: 60px !important; 
+        flex-direction: row !important; 
+        overflow-x: auto; 
+        overflow-y: hidden;
+        display: flex !important;
+        border-bottom: 2px solid rgba(0,0,0,0.1);
+    }
+    #openchat-room-list { display: flex !important; flex-direction: row !important; height: 100% !important; }
+    #openchat-room-list .chat-room-item { 
+        padding: 5px 15px !important; 
+        font-size: 0.8rem !important; 
+        white-space: nowrap !important; 
+        display: flex !important;
+        align-items: center !important;
+        border-right: 1px solid rgba(255,255,255,0.05);
+    }
+    #openchat-screen > div:first-child > div:first-child { display: none !important; } /* Hide 'Room List' title */
+
+    /* Painting Canvas Mobile Fix */
+    #paint-canvas { width: 100% !important; height: auto !important; max-height: 80vh; }
+    #paint-screen > div:first-child { overflow-x: auto; gap: 10px; }
+
+    /* AI Chatbot Mobile */
+    #ai-messages { padding: 15px !important; }
+    #ai-messages > div { max-width: 90% !important; font-size: 0.85rem !important; }
 }

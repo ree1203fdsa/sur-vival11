@@ -4,14 +4,18 @@ const app = window.app = {
     windowConfigs: {
         'win-play': { title: '생존 시작', icon: '⛺', screenId: 'menu-screen' },
         'win-shop': { title: '상점', icon: '💰', screenId: 'shop-screen' },
-        'win-chat': { title: '전체 채팅', icon: '💬', screenId: 'chat-screen' },
         'win-quests': { title: '퀘스트', icon: '📜', screenId: 'quest-screen' },
-        'win-admin': { title: '관리자 모드', icon: '🛡️', screenId: 'admin-screen' },
         'win-settings': { title: '설정', icon: '⚙️', screenId: 'settings-screen' },
         'win-store': { title: '주람 스토어', icon: '🛍️', screenId: 'store-screen' },
-        'win-browser': { title: 'PlayTech 브라우저', icon: '🌐', screenId: 'browser-screen' },
-        'win-scanner': { title: '쾌속 로그인', icon: '📷', screenId: 'scanner-screen' },
-        'win-mail': { title: 'RamMail', icon: '📧', screenId: 'rammail-screen' }
+        'win-scanner': { title: '스캐너', icon: '🔍', screenId: 'scanner-screen' },
+        'win-mail': { title: '메일', icon: '✉️', screenId: 'mail-screen' },
+        'win-admin': { title: '마스터 센터', icon: '🛡️', screenId: 'admin-screen' },
+        'win-chat': { title: '전체 채팅', icon: '💬', screenId: 'chat-screen' },
+        'win-browser': { title: '브라우저', icon: '🌐', screenId: 'browser-screen' },
+        'win-gram': { title: '주람스타그램', icon: '📷', screenId: 'gram-screen' },
+        'win-openchat': { title: '오픈채팅', icon: '💬', screenId: 'openchat-screen' },
+        'win-paint': { title: '페인팅', icon: '🎨', screenId: 'paint-screen' },
+        'win-ai': { title: '주람 AI', icon: '🤖', screenId: 'ai-screen' }
     },
     // 테마 설정
     setTheme: (theme) => {
@@ -75,6 +79,12 @@ const app = window.app = {
         if (winId === 'win-mail') app.switchMailView('inbox');
         // 관리자 열 때 데이터 로드
         if (winId === 'win-admin') app.loadAdminData();
+        // 주람스타그램 초기화
+        if (winId === 'win-gram') app.initGram();
+        // 오픈채팅 초기화
+        if (winId === 'win-openchat') app.joinChatRoom('global');
+        // 페인팅 초기화
+        if (winId === 'win-paint') app.initPaint();
     },
     // 창 닫기
     closeWindow: (winId) => {
@@ -397,6 +407,22 @@ const app = window.app = {
                 <div class="icon" style="filter: drop-shadow(0 0 8px rgba(234, 67, 53, 0.4));">📧</div>
                 <div class="label">RamMail</div>
             </div>
+            <div class="desktop-icon" onclick="app.openWindow('win-gram')">
+                <div class="icon">📷</div>
+                <div class="label">주람스타그램</div>
+            </div>
+            <div class="desktop-icon" onclick="app.openWindow('win-openchat')">
+                <div class="icon">💬</div>
+                <div class="label">오픈채팅</div>
+            </div>
+            <div class="desktop-icon" onclick="app.openWindow('win-paint')">
+                <div class="icon">🎨</div>
+                <div class="label">페인팅</div>
+            </div>
+            <div class="desktop-icon" onclick="app.openWindow('win-ai')">
+                <div class="icon">🤖</div>
+                <div class="label">주람 AI</div>
+            </div>
             ${adminIcon}
         `;
     },
@@ -405,7 +431,8 @@ const app = window.app = {
         // Hide all tabs
         document.querySelectorAll('.settings-tab').forEach(t => t.classList.add('hidden'));
         const target = document.getElementById(`set-tab-${tabId}`);
-        if (target) target.classList.remove('hidden');
+        if (target) target.classList.remove( 'hidden');
+        if (tabId === 'coupons') app.updateCouponUI();
         
         // Update Sidebar Active Style
         document.querySelectorAll('.settings-item').forEach(item => {
@@ -912,6 +939,185 @@ const app = window.app = {
         });
     },
 
+    // ---- [ JURAM-GRAM LOGIC ] ---- //
+    initGram: () => {
+        if (!db) return;
+        db.ref('gram_posts').on('value', snap => {
+            const posts = snap.val() || {};
+            const feed = document.getElementById('gram-feed');
+            if (!feed) return;
+            feed.innerHTML = '';
+            Object.entries(posts).reverse().forEach(([id, p]) => {
+                const item = document.createElement('div');
+                item.style.cssText = 'width: 100%; max-width: 450px; background: #000; border: 1px solid #222; border-radius: 8px; overflow: hidden;';
+                item.innerHTML = `
+                    <div style="padding: 12px; display: flex; align-items: center; gap: 10px;">
+                        <div style="width:32px; height:32px; background:#444; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.8rem;">👤</div>
+                        <div style="font-weight: 700; font-size: 0.9rem;">${p.user}</div>
+                    </div>
+                    <img src="${p.imageUrl}" style="width: 100%; display: block; background: #111;">
+                    <div style="padding: 12px;">
+                        <div style="display: flex; gap: 15px; margin-bottom: 10px; font-size: 1.2rem;">
+                            <span style="cursor: pointer;" onclick="app.likeGramPost('${id}')">❤️</span> 💬 ✈️
+                        </div>
+                        <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 5px;">좋아요 ${p.likes || 0}개</div>
+                        <div style="font-size: 0.9rem;"><span style="font-weight: 700;">${p.user}</span> ${p.caption}</div>
+                    </div>
+                `;
+                feed.appendChild(item);
+            });
+        });
+    },
+    openGramUpload: () => document.getElementById('gram-upload-modal').classList.remove('hidden'),
+    postToGram: () => {
+        const url = document.getElementById('gram-img-url').value.trim();
+        const cap = document.getElementById('gram-caption').value.trim();
+        if (!url || !db) return showToast('이미지 URL을 입력하세요.', 'error');
+        db.ref('gram_posts').push({
+            user: STATE.currentUser.username,
+            imageUrl: url,
+            caption: cap,
+            likes: 0,
+            timestamp: Date.now()
+        }).then(() => {
+            document.getElementById('gram-upload-modal').classList.add('hidden');
+            document.getElementById('gram-img-url').value = '';
+            document.getElementById('gram-caption').value = '';
+            showToast('성공적으로 포스팅되었습니다!', 'success');
+        });
+    },
+    likeGramPost: (id) => {
+        if (!db) return;
+        db.ref(`gram_posts/${id}/likes`).transaction(c => (c || 0) + 1);
+    },
+
+    // ---- [ OPEN CHAT LOGIC ] ---- //
+    currentChatRoom: 'global',
+    joinChatRoom: (roomId) => {
+        app.currentChatRoom = roomId;
+        const titles = { 'global': '🌐 전역 로비', 'trade': '⚖️ 거래/장터', 'build': '🏗️ 건축/노하우' };
+        document.getElementById('openchat-active-title').textContent = titles[roomId] || roomId;
+        
+        document.querySelectorAll('.chat-room-item').forEach(el => {
+            el.classList.remove('active');
+            el.style.background = 'transparent';
+        });
+        // Find and highlight active item (simplified)
+        
+        const msgEnv = document.getElementById('openchat-messages');
+        if (!msgEnv || !db) return;
+        msgEnv.innerHTML = '<div style="text-align:center; color:#888; padding:10px;">채팅방 연결 중...</div>';
+        
+        db.ref(`rooms/${roomId}/messages`).off();
+        db.ref(`rooms/${roomId}/messages`).limitToLast(50).on('value', snap => {
+            msgEnv.innerHTML = '';
+            const msgs = snap.val() || {};
+            Object.values(msgs).forEach(m => {
+                const isMe = m.user === STATE.currentUser.username;
+                const div = document.createElement('div');
+                div.style.cssText = `display: flex; flex-direction: column; align-items: ${isMe?'flex-end':'flex-start'}; margin-bottom: 12px;`;
+                div.innerHTML = `
+                    <div style="font-size: 0.75rem; color: #888; margin: 0 5px 2px;">${m.user}</div>
+                    <div style="max-width: 80%; padding: 8px 15px; border-radius: 15px; font-size: 0.9rem; background: ${isMe?'#007bff':'#fff'}; color: ${isMe?'#fff':'#333'}; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                        ${m.text}
+                    </div>
+                `;
+                msgEnv.appendChild(div);
+            });
+            msgEnv.scrollTop = msgEnv.scrollHeight;
+        });
+    },
+    sendOpenChatMessage: () => {
+        const input = document.getElementById('openchat-input');
+        const text = input.value.trim();
+        if (!text || !db) return;
+        db.ref(`rooms/${app.currentChatRoom}/messages`).push({
+            user: STATE.currentUser.username,
+            text: text,
+            timestamp: Date.now()
+        });
+        input.value = '';
+    },
+
+    // ---- [ JURAM PAINTING LOGIC ] ---- //
+    ctx: null,
+    drawing: false,
+    initPaint: () => {
+        const canvas = document.getElementById('paint-canvas');
+        if (!canvas) return;
+        const container = canvas.parentElement;
+        canvas.width = container.clientWidth * 0.9;
+        canvas.height = container.clientHeight * 0.9;
+        app.ctx = canvas.getContext('2d');
+        app.ctx.lineCap = 'round';
+        app.ctx.lineJoin = 'round';
+
+        const getPos = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (e.clientX || e.touches[0].clientX) - rect.left,
+                y: (e.clientY || e.touches[0].clientY) - rect.top
+            };
+        };
+
+        const start = (e) => { app.drawing = true; draw(e); };
+        const end = () => { app.drawing = false; app.ctx.beginPath(); };
+        const draw = (e) => {
+            if (!app.drawing) return;
+            const pos = getPos(e);
+            app.ctx.lineWidth = document.getElementById('paint-size').value;
+            app.ctx.strokeStyle = document.getElementById('paint-color').value;
+            app.ctx.lineTo(pos.x, pos.y);
+            app.ctx.stroke();
+            app.ctx.beginPath();
+            app.ctx.moveTo(pos.x, pos.y);
+        };
+
+        canvas.onmousedown = start; canvas.ontouchstart = (e) => { e.preventDefault(); start(e); };
+        canvas.onmouseup = end; canvas.ontouchend = end;
+        canvas.onmousemove = draw; canvas.ontouchmove = (e) => { e.preventDefault(); draw(e); };
+    },
+    clearCanvas: () => {
+        if (app.ctx) app.ctx.clearRect(0, 0, 2000, 2000);
+    },
+    saveCanvas: () => {
+        showToast('그림이 주람 갤러리에 저장되었습니다! (데모)', 'success');
+    },
+
+    // ---- [ JURAM AI LOGIC ] ---- //
+    askAI: () => {
+        const input = document.getElementById('ai-input');
+        const text = input.value.trim();
+        if (!text) return;
+
+        const msgEnv = document.getElementById('ai-messages');
+        const userMsg = document.createElement('div');
+        userMsg.style.cssText = 'align-self: flex-end; max-width: 80%; padding: 12px 18px; background: #0084ff; color: white; border-radius: 18px 18px 4px 18px; font-size: 0.95rem;';
+        userMsg.textContent = text;
+        msgEnv.appendChild(userMsg);
+        input.value = '';
+        msgEnv.scrollTop = msgEnv.scrollHeight;
+
+        // AI Response Logic
+        setTimeout(() => {
+            const aiMsg = document.createElement('div');
+            aiMsg.style.cssText = 'align-self: flex-start; max-width: 80%; padding: 12px 18px; background: white; border-radius: 18px 18px 18px 4px; border: 1px solid #ddd; font-size: 0.95rem; line-height: 1.5;';
+            
+            let response = "죄송해요, 그 질문은 잘 이해하지 못했어요. '조합법', '서바이벌 규칙', '운영진' 등에 대해 물어봐 주세요!";
+            const q = text.toLowerCase();
+
+            if (q.includes('조합') || q.includes('아이템')) response = "**아이템 조합 가이드:**<br>1. 돌 도끼: 돌(x3) + 나무(x2)<br>2. 철 곡괭이: 철괴(x3) + 나무(x2)<br>3. 작업대 근처에서 마우스 우클릭으로 제작 가능합니다.";
+            else if (q.includes('규칙') || q.includes('금지')) response = "**서버 주요 규칙:**<br>- 타인 비하 및 욕설 금지<br>- 비인가 프로그램(핵) 사용 금지<br>- 마스터의 지시에 따라 평화롭게 생존하세요!";
+            else if (q.includes('마스터') || q.includes('관리자')) response = "현재 생존 서버의 마스터는 **jur1203**님입니다. 문의사항은 메일을 이용해 주세요.";
+            else if (q.includes('코인') || q.includes('돈')) response = "코인은 광물을 캐거나 나무를 베어 얻을 수 있습니다. 다이아는 아주 깊은 곳에서만 나옵니다!";
+            else if (q.includes('안녕')) response = "반가워요! 저는 주람 OS의 마스코트 AI입니다. 무엇이든 물어보세요!";
+
+            aiMsg.innerHTML = response;
+            msgEnv.appendChild(aiMsg);
+            msgEnv.scrollTop = msgEnv.scrollHeight;
+        }, 800);
+    },
+
     // ---- [ PARENTAL CONTROL SYSTEM ] ---- //
     secureStoreOpen: (url) => {
         const settings = STATE.currentUser.settings || {};
@@ -987,6 +1193,55 @@ const app = window.app = {
         if (toggleBtn) {
             toggleBtn.textContent = isEn ? "보호 끄기" : "보호 켜기";
         }
+    },
+
+    // ---- [ DAILY REWARD SYSTEM ] ---- //
+    claimDailyReward: () => {
+        if (!db || !STATE.currentUser || STATE.currentUser.isGuest) {
+            return showToast('게스트는 보상을 받을 수 없습니다.', 'warning');
+        }
+
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+        
+        db.ref(`users/${STATE.currentUser.uid}/last_daily`).once('value').then(snap => {
+            const lastClaim = snap.val();
+            if (lastClaim === todayStr) {
+                return showToast('이미 오늘의 보상을 받으셨습니다. 내일 다시 와주세요!', 'info');
+            }
+
+            // 보상 지급 (100코인, 1다이아)
+            STATE.currentUser.coins = (STATE.currentUser.coins || 0) + 100;
+            STATE.currentUser.diamonds = (STATE.currentUser.diamonds || 0) + 1;
+            
+            // 기록 저장
+            db.ref(`users/${STATE.currentUser.uid}/last_daily`).set(todayStr);
+            saveData(); updateUI();
+            app.updateCouponUI();
+            
+            showToast('🎁 일일 보상 수령 완료! (100코인, 1다이아)', 'success');
+        });
+    },
+
+    updateCouponUI: () => {
+        if (!db || !STATE.currentUser) return;
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+        
+        db.ref(`users/${STATE.currentUser.uid}/last_daily`).once('value').then(snap => {
+            const btn = document.getElementById('btn-daily-reward');
+            if (!btn) return;
+            if (snap.val() === todayStr) {
+                btn.textContent = '수령 완료';
+                btn.style.background = '#444';
+                btn.style.cursor = 'default';
+                btn.disabled = true;
+            } else {
+                btn.textContent = '보상 받기';
+                btn.style.background = '#ff5252';
+                btn.disabled = false;
+            }
+        });
     }
 };
 
