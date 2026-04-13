@@ -15,7 +15,8 @@ const app = window.app = {
         'win-gram': { title: '주람스타그램', icon: '📷', screenId: 'gram-screen' },
         'win-openchat': { title: '오픈채팅', icon: '💬', screenId: 'openchat-screen' },
         'win-paint': { title: '페인팅', icon: '🎨', screenId: 'paint-screen' },
-        'win-ai': { title: '주람 AI', icon: '🤖', screenId: 'ai-screen' }
+        'win-ai': { title: '주람 AI', icon: '🤖', screenId: 'ai-screen' },
+        'win-bank': { title: '주람 뱅크', icon: '🏦', screenId: 'bank-screen' },
     },
     // 테마 설정
     setTheme: (theme) => {
@@ -85,6 +86,8 @@ const app = window.app = {
         if (winId === 'win-openchat') app.joinChatRoom('global');
         // 페인팅 초기화
         if (winId === 'win-paint') app.initPaint();
+        // 주람 뱅크 초기화
+        if (winId === 'win-bank') app.initBank();
     },
     // 창 닫기
     closeWindow: (winId) => {
@@ -381,6 +384,7 @@ const app = window.app = {
     updateDesktop: () => {
         const desktopEl = document.getElementById('desktop');
         if (!desktopEl) return;
+        
         let adminIcon = '';
         if (STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator' || (STATE.currentUser.username && STATE.currentUser.username.toLowerCase() === 'jur1203'))) {
             adminIcon = `
@@ -390,41 +394,219 @@ const app = window.app = {
             </div>`;
         }
         
-        desktopEl.innerHTML = `
-            <div class="desktop-icon" onclick="app.openWindow('win-store')">
-                <div class="icon">🛍️</div>
-                <div class="label">주람 스토어</div>
-            </div>
-            <div class="desktop-icon" onclick="app.openWindow('win-browser')">
-                <div class="icon">🌐</div>
-                <div class="label" style="line-height:1.2;">PlayTech 브라우저</div>
-            </div>
-            <div class="desktop-icon" onclick="app.openWindow('win-scanner')">
-                <div class="icon" style="filter: drop-shadow(0 0 5px #64b5f6);">📷</div>
-                <div class="label">쾌속 로그인</div>
-            </div>
-            <div class="desktop-icon" onclick="app.openWindow('win-mail')">
-                <div class="icon" style="filter: drop-shadow(0 0 8px rgba(234, 67, 53, 0.4));">📧</div>
-                <div class="label">RamMail</div>
-            </div>
-            <div class="desktop-icon" onclick="app.openWindow('win-gram')">
-                <div class="icon">📷</div>
-                <div class="label">주람스타그램</div>
-            </div>
-            <div class="desktop-icon" onclick="app.openWindow('win-openchat')">
-                <div class="icon">💬</div>
-                <div class="label">오픈채팅</div>
-            </div>
-            <div class="desktop-icon" onclick="app.openWindow('win-paint')">
-                <div class="icon">🎨</div>
-                <div class="label">페인팅</div>
-            </div>
-            <div class="desktop-icon" onclick="app.openWindow('win-ai')">
-                <div class="icon">🤖</div>
-                <div class="label">주람 AI</div>
-            </div>
-            ${adminIcon}
-        `;
+        desktopEl.innerHTML = '';
+        
+        // 아이콘 순서 로드 (없으면 기본 순서)
+        const defaultOrder = ['win-store', 'win-browser', 'win-scanner', 'win-mail', 'win-gram', 'win-openchat', 'win-paint', 'win-ai', 'win-bank'];
+        const savedOrder = localStorage.getItem('desktop_order');
+        let currentOrder = savedOrder ? JSON.parse(savedOrder) : defaultOrder;
+        
+        // 필터링 (유효하지 않은 winId 제거)
+        currentOrder = currentOrder.filter(id => app.windowConfigs[id]);
+        // 누락된 아이콘 추가
+        defaultOrder.forEach(id => { if(!currentOrder.includes(id)) currentOrder.push(id); });
+
+        currentOrder.forEach(winId => {
+            const config = app.windowConfigs[winId];
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'desktop-icon';
+            iconDiv.draggable = true;
+            iconDiv.dataset.id = winId;
+            iconDiv.onclick = () => app.openWindow(winId);
+            
+            // 드래그 앤 드롭 리스너
+            iconDiv.ondragstart = (e) => { e.dataTransfer.setData('text/plain', winId); iconDiv.style.opacity = '0.5'; };
+            iconDiv.ondragend = () => iconDiv.style.opacity = '1';
+            iconDiv.ondragover = (e) => e.preventDefault();
+            iconDiv.ondrop = (e) => {
+                e.preventDefault();
+                const draggedId = e.dataTransfer.getData('text/plain');
+                if (draggedId !== winId) app.reorderIcons(draggedId, winId);
+            };
+
+            iconDiv.innerHTML = `
+                <div class="icon">${config.icon}</div>
+                <div class="label">${config.title}</div>
+            `;
+            desktopEl.appendChild(iconDiv);
+        });
+
+        if (adminIcon) {
+            const wrap = document.createElement('div');
+            wrap.innerHTML = adminIcon;
+            desktopEl.appendChild(wrap.firstElementChild);
+        }
+    },
+    reorderIcons: (fromId, toId) => {
+        const savedOrder = localStorage.getItem('desktop_order');
+        let order = savedOrder ? JSON.parse(savedOrder) : ['win-store', 'win-browser', 'win-scanner', 'win-mail', 'win-gram', 'win-openchat', 'win-paint', 'win-ai', 'win-pass'];
+        const fromIdx = order.indexOf(fromId);
+        const toIdx = order.indexOf(toId);
+        if (fromIdx > -1 && toIdx > -1) {
+            order.splice(fromIdx, 1);
+            order.splice(toIdx, 0, fromId);
+            localStorage.setItem('desktop_order', JSON.stringify(order));
+            app.updateDesktop();
+        }
+    },
+    // ---- [ JURAM BANK SYSTEM 2.0 ] ---- //
+    switchBankTab: (tabId) => {
+        document.querySelectorAll('.bank-tab').forEach(t => t.classList.add('hidden'));
+        const target = document.getElementById(`bank-tab-${tabId}`);
+        if (target) target.classList.remove('hidden');
+        
+        // Update Tab Button Styles
+        document.querySelectorAll('#bank-screen .settings-item').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('onclick').includes(tabId)) btn.classList.add('active');
+        });
+    },
+
+    initBank: () => {
+        if (!db || !STATE.currentUser) return;
+        
+        // 데이터 실시간 동기화
+        db.ref(`users/${STATE.currentUser.uid}/bank`).on('value', snap => {
+            const data = snap.val() || { accounts: [], cards: [], history: [], credit: 650 };
+            
+            // 1. 홈 화면 업데이트
+            document.getElementById('bank-balance-display-modern').textContent = STATE.currentUser.coins.toLocaleString();
+            document.getElementById('bank-credit-score-big').textContent = data.credit || 650;
+            app.updateCreditRank(data.credit || 650);
+
+            // 2. 거래 내역 (History)
+            const historyList = document.getElementById('bank-history-list-modern');
+            if (historyList) {
+                historyList.innerHTML = '';
+                const history = data.history ? Object.values(data.history) : [];
+                history.slice(-4).reverse().forEach(h => {
+                    const div = document.createElement('div');
+                    div.style.cssText = 'display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #f1f5f9; font-size:0.85rem;';
+                    div.innerHTML = `<span>${h.type}</span><span style="font-weight:700; color:${h.amount>0?'#059669':'#dc2626'}">${h.amount>0?'+':''}${h.amount.toLocaleString()}</span>`;
+                    historyList.appendChild(div);
+                });
+            }
+
+            // 3. 계좌/통장 목록 (Accounts)
+            const accList = document.getElementById('bank-accounts-list');
+            if (accList) {
+                accList.innerHTML = '';
+                const accounts = data.accounts || [{ name: '기본 입출금 통장', balance: STATE.currentUser.coins, type: '주거래', id: 'main' }];
+                accounts.forEach(acc => {
+                    const card = document.createElement('div');
+                    card.style.cssText = 'background:#fff; border:1px solid #e2e8f0; border-radius:15px; padding:20px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.02);';
+                    card.innerHTML = `
+                        <div style="font-size:0.75rem; color:#64748b; font-weight:700; margin-bottom:5px;">${acc.type}</div>
+                        <div style="font-weight:800; font-size:1.1rem; margin-bottom:15px;">${acc.name}</div>
+                        <div style="text-align:right; font-size:1.3rem; font-weight:900;">${acc.balance.toLocaleString()} 🪙</div>
+                    `;
+                    accList.appendChild(card);
+                });
+            }
+
+            // 4. 카드 목록 (Cards)
+            const cardList = document.getElementById('bank-cards-list');
+            if (cardList) {
+                const addCardBtn = cardList.querySelector('div[onclick]');
+                cardList.innerHTML = '';
+                const cards = data.cards || [];
+                cards.forEach(c => {
+                    const card = document.createElement('div');
+                    card.style.cssText = `width:320px; height:180px; border-radius:15px; background:${c.color || '#1e293b'}; color:#fff; padding:25px; display:flex; flex-direction:column; justify-content:space-between; position:relative; overflow:hidden; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);`;
+                    card.innerHTML = `
+                        <div style="font-weight:800; font-size:1.2rem; letter-spacing:1px;">JURAM PAY</div>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                            <div>
+                                <div style="font-size:0.9rem; opacity:0.8; letter-spacing:2px;">•••• •••• •••• ${c.last4}</div>
+                                <div style="font-size:0.7rem; margin-top:5px; text-transform:uppercase;">${STATE.currentUser.username}</div>
+                            </div>
+                            <div style="font-size:1.5rem;">${c.type==='visa'?'💳': '💎'}</div>
+                        </div>
+                        <div style="position:absolute; top:-20px; right:-20px; width:100px; height:100px; background:rgba(255,255,255,0.05); border-radius:50%;"></div>
+                    `;
+                    cardList.appendChild(card);
+                });
+                if (addCardBtn) cardList.appendChild(addCardBtn);
+            }
+        });
+    },
+
+    updateCreditRank: (score) => {
+        const rankText = document.getElementById('bank-credit-rank-text');
+        const userRank = document.getElementById('bank-user-credit');
+        let rank = "Silver"; let color = "#94a3b8";
+        if (score >= 900) { rank = "Diamond"; color = "#00ffff"; }
+        else if (score >= 800) { rank = "Platinum"; color = "#e5e7eb"; }
+        else if (score >= 700) { rank = "Gold"; color = "#fbbf24"; }
+        
+        if (rankText) rankText.textContent = `${rank} 등급`;
+        if (rankText) rankText.style.color = color;
+        if (userRank) userRank.textContent = `신용 등급: ${rank} (${score}점)`;
+        if (userRank) userRank.style.color = color;
+    },
+
+    bankTransfer: () => {
+        const recipient = document.getElementById('bank-recipient-modern').value.trim();
+        const amount = parseInt(document.getElementById('bank-amount-modern').value);
+        if (!recipient || isNaN(amount) || amount <= 0) return showToast('송금 정보를 정확히 입력하세요.', 'error');
+        if (STATE.currentUser.coins < amount) return showToast('잔액이 부족합니다.', 'error');
+        if (recipient === STATE.currentUser.username) return showToast('본인에게는 송금할 수 없습니다.', 'error');
+
+        db.ref('users').orderByChild('username').equalTo(recipient).once('value', snap => {
+            if (!snap.exists()) return showToast('존재하지 않는 사용자입니다.', 'error');
+            const targetUid = Object.keys(snap.val())[0];
+
+            // 자산 이동
+            STATE.currentUser.coins -= amount;
+            saveData(); updateUI();
+            db.ref(`users/${targetUid}/coins`).transaction(c => (c || 0) + amount);
+
+            // 거래 기록
+            const time = Date.now();
+            db.ref(`users/${STATE.currentUser.uid}/bank/history`).push({ type: `송금 (${recipient})`, amount: -amount, time });
+            db.ref(`users/${targetUid}/bank/history`).push({ type: `입금 (${STATE.currentUser.username})`, amount, time });
+
+            // 신용 점수 소폭 상승 (거래 실적)
+            db.ref(`users/${STATE.currentUser.uid}/bank/credit`).transaction(s => (s || 650) + 1);
+
+            showToast(`${recipient}님께 ${amount.toLocaleString()}코인 송금 완료!`, 'success');
+            document.getElementById('bank-recipient-modern').value = '';
+            document.getElementById('bank-amount-modern').value = '';
+        });
+    },
+
+    bankCreateAccount: () => {
+        const name = prompt('계좌 이름을 입력하세요 (예: 비상금 통장):');
+        if (!name) return;
+        db.ref(`users/${STATE.currentUser.uid}/bank/accounts`).once('value', snap => {
+            const list = snap.val() || [];
+            list.push({ name, balance: 0, type: '자유적금', id: Date.now() });
+            db.ref(`users/${STATE.currentUser.uid}/bank/accounts`).set(list);
+            showToast('새 계좌가 개설되었습니다!', 'success');
+        });
+    },
+
+    bankIssueCard: () => {
+        if (!confirm('새로운 주람 페이 카드를 발급하시겠습니까? (발급비 100코인)')) return;
+        if (STATE.currentUser.coins < 100) return showToast('발급 비용이 부족합니다.', 'error');
+
+        STATE.currentUser.coins -= 100;
+        saveData(); updateUI();
+
+        const colors = ['#1e293b', '#0f172a', '#334155', '#4b5563', '#1e1b4b'];
+        const newCard = {
+            last4: Math.floor(1000 + Math.random() * 9000),
+            color: colors[Math.floor(Math.random() * colors.length)],
+            type: Math.random() > 0.5 ? 'visa' : 'master',
+            issuedAt: Date.now()
+        };
+
+        db.ref(`users/${STATE.currentUser.uid}/bank/cards`).once('value', snap => {
+            const list = snap.val() || [];
+            list.push(newCard);
+            db.ref(`users/${STATE.currentUser.uid}/bank/cards`).set(list);
+            showToast('주람 페이 카드가 발급되었습니다!', 'success');
+        });
     },
     // 설정 탭 프론트엔드 액션
     switchSettingsTab: (tabId) => {
