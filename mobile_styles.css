@@ -53,6 +53,8 @@
         padding: 30px 15px; 
         gap: 25px 15px; 
         flex: 1;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
     .desktop-icon { width: auto; height: auto; min-height: 80px; }
     .desktop-icon .icon { font-size: 2.2rem; }

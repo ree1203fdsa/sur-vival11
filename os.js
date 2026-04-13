@@ -363,7 +363,7 @@ const app = window.app = {
         const desktopEl = document.getElementById('desktop');
         if (!desktopEl) return;
         let adminIcon = '';
-        if (STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.username === 'jur1203')) {
+        if (STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator' || (STATE.currentUser.username && STATE.currentUser.username.toLowerCase() === 'jur1203'))) {
             adminIcon = `
             <div class="desktop-icon" onclick="app.openWindow('win-admin'); app.loadAdminUsers();">
                 <div class="icon" style="text-shadow: 0 0 10px #ff5252;">🛡️</div>

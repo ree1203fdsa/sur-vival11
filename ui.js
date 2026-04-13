@@ -98,6 +98,15 @@ const updateUI = () => {
         if (el) el.textContent = elements[id];
     }
     
+    
+    // 관리자 버튼 표시 여부
+    const adminBtn = document.getElementById('btn-admin');
+    if (adminBtn) {
+        if (isAD) adminBtn.classList.remove('hidden');
+        else adminBtn.classList.add('hidden');
+        adminBtn.onclick = () => app.openWindow('win-admin');
+    }
+    
     // 작업표시줄 등 업데이트
     if (window.app && app.updateTaskbar) app.updateTaskbar();
 };
