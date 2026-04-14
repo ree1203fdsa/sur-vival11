@@ -280,4 +280,17 @@
     /* AI Chatbot Mobile */
     #ai-messages { padding: 15px !important; }
     #ai-messages > div { max-width: 90% !important; font-size: 0.85rem !important; }
+    /* --- NEW ADMIN CENTER MOBILE REFINEMENT --- */
+    .admin-grid-mobile {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 15px !important;
+    }
+    #admin-editor-panel {
+        width: 100% !important;
+        margin-top: 10px;
+    }
+    #admin-user-list {
+        max-height: 300px;
+    }
 }

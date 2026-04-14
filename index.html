@@ -581,11 +581,11 @@
                     <h1 style="font-size: 1.5rem; font-weight: 900; color: #ff5252; margin: 0; letter-spacing: -1px;">🛡️ MASTER CENTER</h1>
                 </div>
                 <div style="display: flex; gap: 5px; align-items: flex-end;">
-                    <div class="admin-tab active" onclick="app.switchAdminTab('users')" id="tab-btn-users" style="padding: 15px 20px; cursor: pointer; border-bottom: 3px solid #ff5252; font-weight: 800; font-size: 0.9rem; color: #fff;">👥 유저 관리</div>
-                    <div class="admin-tab" onclick="app.switchAdminTab('server')" id="tab-btn-server" style="padding: 15px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 800; font-size: 0.9rem; color: #aaa;">📡 서버/공지</div>
-                    <div class="admin-tab" onclick="app.switchAdminTab('store')" id="tab-btn-store" style="padding: 15px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 800; font-size: 0.9rem; color: #aaa;">🛍️ 스토어 관리</div>
-                    <div class="admin-tab" onclick="app.switchAdminTab('economy')" id="tab-btn-economy" style="padding: 15px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 800; font-size: 0.9rem; color: #aaa;">💰 경제/이벤트</div>
-                    <div class="admin-tab" onclick="app.switchAdminTab('security')" id="tab-btn-security" style="padding: 15px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 800; font-size: 0.9rem; color: #aaa;">🛡️ 보안/기록</div>
+                    <div class="admin-tab active" onclick="app.switchAdminTab('users')" id="adm-btn-users" style="padding: 15px 20px; cursor: pointer; border-bottom: 3px solid #ff5252; font-weight: 800; font-size: 0.9rem; color: #fff;">👥 유저 관리</div>
+                    <div class="admin-tab" onclick="app.switchAdminTab('server')" id="adm-btn-server" style="padding: 15px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 800; font-size: 0.9rem; color: #aaa;">📡 서버/공지</div>
+                    <div class="admin-tab" onclick="app.switchAdminTab('store')" id="adm-btn-store" style="padding: 15px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 800; font-size: 0.9rem; color: #aaa;">🛍️ 스토어 관리</div>
+                    <div class="admin-tab" onclick="app.switchAdminTab('economy')" id="adm-btn-economy" style="padding: 15px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 800; font-size: 0.9rem; color: #aaa;">💰 경제/이벤트</div>
+                    <div class="admin-tab" onclick="app.switchAdminTab('security')" id="adm-btn-security" style="padding: 15px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 800; font-size: 0.9rem; color: #aaa;">🛡️ 보안/기록</div>
                 </div>
                 <div style="flex:1;"></div>
                 <div style="display: flex; align-items: center; gap: 10px; padding-right: 20px;">
@@ -604,9 +604,7 @@
                                 <select id="admin-user-filter" onchange="app.renderAdminUserList()" style="padding: 5px 10px; background: #222; border: 1px solid #444; color: white; border-radius: 6px; font-size: 0.8rem;">
                                     <option value="default">최신 가입순</option>
                                     <option value="guest">게스트만</option>
-                                    <option value="coins">코인 부자순</option>
-                                    <option value="diamonds">다이아 부자순</option>
-                                    <option value="role">등급순</option>
+                                    <option value="coins">코인 보유액</option>
                                 </select>
                             </div>
                             <div id="admin-user-list" style="flex: 1; overflow-y: auto; padding: 10px;">
@@ -702,34 +700,28 @@
 
                 <!-- 4. ECONOMY/EVENT TAB -->
                 <div id="admin-tab-economy" class="admin-content-panel hidden">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 25px;">
+                        <div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05);">
+                            <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 5px;">전역 코인 유통량 (Total Supply)</div>
+                            <div id="adm-stat-total-coins" style="font-size: 1.8rem; font-weight: 900; color: #fbbf24;">0 🪙</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05);">
+                            <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 5px;">누적 다이아 보유량</div>
+                            <div id="adm-stat-total-dia" style="font-size: 1.8rem; font-weight: 900; color: #00ffff;">0 💎</div>
+                        </div>
+                    </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                         <div class="glass-panel" style="padding: 25px;">
                             <h3 style="margin-bottom: 15px; font-weight: 800;">🧧 이벤트 쿠폰 보상 시스템</h3>
                             <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px;">공통으로 사용할 수 있는 보상 코드를 생성합니다.</p>
                             <div class="input-group">
-                                <label style="font-size:0.8rem;">쿠폰 코드</label>
-                                <input type="text" id="admin-coupon-code" placeholder="EX: HELLO2024" style="width:100%; padding:10px; background:rgba(0,0,0,0.3); border:1px solid #444; border-radius:8px; color:white; margin-bottom:10px;">
+                                <input type="text" id="admin-coupon-code" placeholder="쿠폰 코드 입력" style="width:100%; padding:10px; background:rgba(0,0,0,0.3); border:1px solid #444; border-radius:8px; color:white; margin-bottom:10px;">
                             </div>
                             <div style="display:flex; gap:10px;">
-                                <div style="flex:1;">
-                                    <label style="font-size:0.8rem;">코인 🪙</label>
-                                    <input type="number" id="admin-coupon-coin" value="500" style="width:100%; padding:10px; background:rgba(0,0,0,0.3); border:1px solid #444; border-radius:8px; color:white;">
-                                </div>
-                                <div style="flex:1;">
-                                    <label style="font-size:0.8rem;">다이아 💎</label>
-                                    <input type="number" id="admin-coupon-dia" value="10" style="width:100%; padding:10px; background:rgba(0,0,0,0.3); border:1px solid #444; border-radius:8px; color:white;">
-                                </div>
+                                <input type="number" id="admin-coupon-coin" value="500" style="flex:1; padding:10px; background:rgba(0,0,0,0.3); border:1px solid #444; border-radius:8px; color:white;">
+                                <input type="number" id="admin-coupon-dia" value="10" style="flex:1; padding:10px; background:rgba(0,0,0,0.3); border:1px solid #444; border-radius:8px; color:white;">
                             </div>
                             <button class="btn primary" style="width:100%; margin-top:20px; font-weight:800;" onclick="app.createCoupon()">쿠폰 활성화 (발급)</button>
-                        </div>
-                        <div class="glass-panel" style="padding: 25px;">
-                            <h3 style="margin-bottom: 15px; font-weight: 800;">🔔 골든벨 이벤트 모드</h3>
-                            <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px;">모든 기록 측정 시 보너스를 부여하는 모드를 제어합니다.</p>
-                            <div style="background: rgba(255,215,0,0.15); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,215,0,0.3); text-align: center;">
-                                <div style="font-size: 2rem; margin-bottom: 10px;">🌟</div>
-                                <div style="font-weight: 800; font-size: 1.1rem; color: #ffd700;">현재 OFF 상태</div>
-                                <button class="btn" style="background:#ffd700; color:#000; font-weight:800; border:none; margin-top:15px; padding: 10px 30px;" onclick="showToast('이벤트 엔진 준비 중...', 'info')">골든벨 울리기</button>
-                            </div>
                         </div>
                     </div>
                 </div>

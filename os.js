@@ -879,6 +879,7 @@ const app = window.app = {
             restrictions: restrictions 
         }).then(() => {
             showToast('데이터가 완벽히 수정되었습니다!', 'success');
+            app.logAdminAction(`유저 데이터 수정: ${uid} (Role: ${role}, Coins: ${coins})`);
             app.loadAdminUsers(); // 리스트 갱신
             document.getElementById('admin-editor-panel').style.display = 'none';
         });
@@ -891,6 +892,7 @@ const app = window.app = {
         if (confirm(`진짜로 '${u.username}' 계정을 영구 삭제하시겠습니까?\n이 데이터는 다신 복구할 수 없습니다!!`)) {
             db.ref(`users/${uid}`).remove().then(() => {
                 showToast(`💀 계정 '${u.username}' 영구 삭제 됨`, 'success');
+                app.logAdminAction(`유저 영구 삭제: ${u.username} (${uid})`);
                 app.loadAdminUsers(); // 리스트 갱신
                 document.getElementById('admin-editor-panel').style.display = 'none';
             });
@@ -911,10 +913,18 @@ const app = window.app = {
         if (!layer) return;
 
         layer.addEventListener('touchstart', (e) => {
+            // [수정] 배경화면(desktop)에서 시작된 터치인지 확인 + 열린 창이 없을 때만 작동
+            const isDesktop = e.target.id === 'desktop' || e.target.classList.contains('desktop');
+            if (app.activeWindows.size > 0 || !isDesktop) {
+                app.touchStartY = null; // 제스처 취소
+                return;
+            }
             app.touchStartY = e.touches[0].clientY;
         }, { passive: true });
 
         layer.addEventListener('touchend', (e) => {
+            if (app.touchStartY === null) return;
+            
             const endY = e.changedTouches[0].clientY;
             const diffY = app.touchStartY - endY;
 
@@ -932,9 +942,10 @@ const app = window.app = {
                     app.toggleStartMenu(false);
                 }
             }
+            app.touchStartY = null;
         }, { passive: true });
         
-        console.log("모바일 스와이프 드로워 시스템 활성화됨.");
+        console.log("배경화면 전용 스와이프 시스템 활성화됨.");
     },
     
     toggleStartMenu: (forceState) => {
@@ -949,14 +960,14 @@ const app = window.app = {
     // ---- [ MASTER ADMIN EXTENSION ] ---- //
     switchAdminTab: (tabId) => {
         document.querySelectorAll('.admin-content-panel').forEach(p => p.classList.add('hidden'));
-        document.querySelectorAll('.admin-tab').forEach(t => {
+        document.querySelectorAll('#admin-screen .admin-tab').forEach(t => {
             t.classList.remove('active');
             t.style.borderBottomColor = 'transparent';
             t.style.color = '#aaa';
         });
 
         const target = document.getElementById(`admin-tab-${tabId}`);
-        const btn = document.getElementById(`tab-btn-${tabId}`);
+        const btn = document.getElementById(`adm-btn-${tabId}`);
         if (target) target.classList.remove('hidden');
         if (btn) {
             btn.classList.add('active');
@@ -964,8 +975,44 @@ const app = window.app = {
             btn.style.color = '#fff';
         }
         
+        if (tabId === 'users') app.loadAdminUsers();
+        if (tabId === 'economy') app.loadAdminStats();
         if (tabId === 'store') app.renderAdminStoreList();
         if (tabId === 'security') app.initAdminLogs();
+    },
+
+    loadAdminStats: () => {
+        if (!db) return;
+        db.ref('users').once('value').then(snap => {
+            const users = snap.val() || {};
+            let totalCoins = 0;
+            let totalDia = 0;
+            let count = 0;
+
+            Object.values(users).forEach(u => {
+                totalCoins += (u.coins || 0);
+                totalDia += (u.diamonds || 0);
+                count++;
+            });
+            
+            const coinsEl = document.getElementById('adm-stat-total-coins');
+            const diaEl = document.getElementById('adm-stat-total-dia');
+            
+            if (coinsEl) coinsEl.textContent = `${totalCoins.toLocaleString()} 🪙`;
+            if (diaEl) diaEl.textContent = `${totalDia.toLocaleString()} 💎`;
+            
+            app.logAdminAction(`경제 통계 갱신 완료 (총 유저: ${count}명)`);
+        });
+    },
+
+    logAdminAction: (msg) => {
+        const consoleEl = document.getElementById('admin-log-console');
+        if (!consoleEl) return;
+        const time = new Date().toLocaleTimeString();
+        const div = document.createElement('div');
+        div.innerHTML = `<span style="color:#888;">[${time}]</span> <span style="color:#ffeb3b;">[ADM]</span> ${msg}`;
+        consoleEl.appendChild(div);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
     },
 
     loadAdminData: () => {
