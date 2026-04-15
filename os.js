@@ -42,6 +42,17 @@ const app = window.app = {
             if (winId === 'win-store' && res.noStore) {
                 return showToast('🚫 스토어 접근 권한이 정지되었습니다.', 'error');
             }
+            // 앱별 개별 차단 (disabledApps)
+            const disabledApps = res.disabledApps || {};
+            const appIdMap = {
+                'win-bank': 'bank', 'win-mail': 'mail', 'win-store': 'store',
+                'win-browser': 'browser', 'win-ai': 'ai', 'win-openchat': 'chat',
+                'win-gram': 'gram', 'win-paint': 'paint'
+            };
+            const appKey = appIdMap[winId];
+            if (appKey && disabledApps[appKey]) {
+                return showToast('🔒 관리자에 의해 이 앱이 일시 차단되었습니다.', 'error');
+            }
         }
 
         if (app.activeWindows.has(winId)) { app.focusWindow(winId); return; }
@@ -435,6 +446,11 @@ const app = window.app = {
             const wrap = document.createElement('div');
             wrap.innerHTML = adminIcon;
             desktopEl.appendChild(wrap.firstElementChild);
+        }
+
+        // 로그인 후 관리자 원격 제어 감시 시작
+        if (STATE.currentUser && !app._adminWatcherActive) {
+            app.startAdminWatcher();
         }
     },
     reorderIcons: (fromId, toId) => {
@@ -844,11 +860,41 @@ const app = window.app = {
         document.getElementById('admin-ed-coins').value = u.coins || 0;
         document.getElementById('admin-ed-diamonds').value = u.diamonds || 0;
         
-        // 제한 사항(Restrictions) 로드
+        // 상세 제한 사항 로드
         const res = u.restrictions || {};
         document.getElementById('admin-ed-ban').checked = res.banned || false;
         document.getElementById('admin-ed-nochat').checked = res.noChat || false;
         document.getElementById('admin-ed-nostore').checked = res.noStore || false;
+        document.getElementById('admin-ed-shadow').checked = res.shadowBanned || false;
+        document.getElementById('admin-ed-freeze').checked = res.uiFrozen || false;
+        document.getElementById('admin-ed-warnings').value = u.warnings || 0;
+
+        // 앱 권한 그리드 생성
+        const appsGrid = document.getElementById('admin-ed-apps-grid');
+        appsGrid.innerHTML = '';
+        const disabledApps = res.disabledApps || {};
+        
+        // 런타임에 정의된 앱 목록 사용
+        const availableApps = [
+            { id: 'bank', name: '은행' },
+            { id: 'mail', name: '메일' },
+            { id: 'store', name: '스토어' },
+            { id: 'browser', name: '브라우저' },
+            { id: 'ai', name: 'JuRam-AI' },
+            { id: 'chat', name: '오픈채팅' },
+            { id: 'gram', name: '그램' },
+            { id: 'paint', name: '페인팅' }
+        ];
+
+        availableApps.forEach(appNode => {
+            const label = document.createElement('label');
+            label.style.display = 'flex';
+            label.style.alignItems = 'center';
+            label.style.gap = '5px';
+            label.style.fontSize = '0.7rem';
+            label.innerHTML = `<input type="checkbox" class="adm-app-perm" data-app="${appNode.id}" ${disabledApps[appNode.id] ? 'checked' : ''}> ${appNode.name}`;
+            appsGrid.appendChild(label);
+        });
         
         // 모바일 화면을 위해 부드럽게 스크롤 내리기
         if (window.innerWidth <= 768) {
@@ -865,17 +911,28 @@ const app = window.app = {
         const coins = parseInt(document.getElementById('admin-ed-coins').value) || 0;
         const dia = parseInt(document.getElementById('admin-ed-diamonds').value) || 0;
         
+        const disabledApps = {};
+        document.querySelectorAll('.adm-app-perm').forEach(cb => {
+            if (cb.checked) disabledApps[cb.getAttribute('data-app')] = true;
+        });
+
         const restrictions = {
             banned: document.getElementById('admin-ed-ban').checked,
             noChat: document.getElementById('admin-ed-nochat').checked,
-            noStore: document.getElementById('admin-ed-nostore').checked
+            noStore: document.getElementById('admin-ed-nostore').checked,
+            shadowBanned: document.getElementById('admin-ed-shadow').checked,
+            uiFrozen: document.getElementById('admin-ed-freeze').checked,
+            disabledApps: disabledApps
         };
+        
+        const warnings = parseInt(document.getElementById('admin-ed-warnings').value) || 0;
         
         showToast('데이터 강제 덮어쓰기 중...', 'info');
         db.ref(`users/${uid}`).update({ 
             role: role, 
             coins: coins, 
             diamonds: dia,
+            warnings: warnings,
             restrictions: restrictions 
         }).then(() => {
             showToast('데이터가 완벽히 수정되었습니다!', 'success');
@@ -898,6 +955,78 @@ const app = window.app = {
             });
         }
     },
+    
+    addAdminWarning: () => {
+        const input = document.getElementById('admin-ed-warnings');
+        input.value = parseInt(input.value) + 1;
+        showToast('경고가 추가되었습니다. (저장 버튼을 눌러야 확정됩니다)', 'info');
+    },
+
+    kickAdminUser: () => {
+        const uid = document.getElementById('admin-ed-uid').value;
+        if (!uid || !db) return;
+        if (confirm('이 유저를 즉시 서버에서 튕겨낼까요?')) {
+            db.ref(`users/${uid}/restrictions/kicked`).set(Date.now()).then(() => {
+                showToast('킥 명령이 전달되었습니다.', 'success');
+                app.logAdminAction(`유저 강제 킥: ${uid}`);
+            });
+        }
+    },
+
+    approveStoreApp: (appId) => {
+        if (!db) return;
+        db.ref(`store_apps/${appId}`).update({ status: 'approved' }).then(() => {
+            showToast('앱이 승인되었습니다.', 'success');
+            app.renderAdminStoreList();
+        });
+    },
+
+    // ---- [ REAL-TIME ADMIN WATCHER ] ---- //
+    _adminWatcherActive: false,
+    startAdminWatcher: () => {
+        if (!db || !STATE.currentUser || app._adminWatcherActive) return;
+        app._adminWatcherActive = true;
+
+        db.ref(`users/${STATE.currentUser.uid}/restrictions`).on('value', snap => {
+            const res = snap.val() || {};
+
+            // [실시간 킥(Kick) 감지]
+            if (res.kicked) {
+                db.ref(`users/${STATE.currentUser.uid}/restrictions/kicked`).remove();
+                alert('⚡ 관리자에 의해 강제 퇴장되었습니다.');
+                if (auth) auth.signOut();
+                STATE.currentUser = null;
+                app._adminWatcherActive = false;
+                location.reload();
+                return;
+            }
+
+            // [UI 프리즈 감지]
+            const overlay = document.getElementById('admin-freeze-overlay');
+            if (overlay) {
+                overlay.style.display = res.uiFrozen ? 'flex' : 'none';
+            }
+
+            // [현재 유저 제한 상태 동기화]
+            if (STATE.currentUser) {
+                STATE.currentUser.restrictions = res;
+            }
+        });
+
+        // [경고 3회 자동 밴]
+        db.ref(`users/${STATE.currentUser.uid}/warnings`).on('value', snap => {
+            const w = snap.val() || 0;
+            if (w >= 3 && STATE.currentUser) {
+                db.ref(`users/${STATE.currentUser.uid}/restrictions/banned`).set(true);
+                alert('⛔ 경고 3회 누적으로 계정이 자동 정지되었습니다.');
+                if (auth) auth.signOut();
+                location.reload();
+            }
+        });
+
+        console.log('[AdminWatcher] 관리자 감시 활성화 완료');
+    },
+
     // 로그아웃
     logout: () => {
         if (confirm("로그아웃 하시겠습니까?")) {
@@ -1082,11 +1211,16 @@ const app = window.app = {
             Object.entries(apps).forEach(([id, data]) => {
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                const status = data.status || 'pending';
+                const statusColor = status === 'approved' ? '#4ade80' : '#fbbf24';
+                const statusText = status === 'approved' ? '승인됨' : '대기중';
+
                 tr.innerHTML = `
                     <td style="padding: 15px; font-weight:800;">${data.title}</td>
                     <td style="padding: 15px; color:#aaa;">${data.creator}</td>
-                    <td style="padding: 15px;"><span style="background:#333; padding:2px 8px; border-radius:4px; font-size:0.75rem;">${data.category}</span></td>
-                    <td style="padding: 15px;">
+                    <td style="padding: 15px;"><span style="color:${statusColor}; font-size:0.8rem; font-weight:800;">${statusText}</span></td>
+                    <td style="padding: 15px; display:flex; gap:5px;">
+                        ${status === 'pending' ? `<button class="btn primary" style="padding:4px 10px; font-size:0.75rem;" onclick="app.approveStoreApp('${id}')">승인</button>` : ''}
                         <button class="btn" style="background:rgba(255,82,82,0.1); color:#ff5252; border:1px solid #ff5252; padding:4px 10px; font-size:0.75rem;" onclick="app.deleteStoreApp('${id}')">삭제</button>
                     </td>
                 `;

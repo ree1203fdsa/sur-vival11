@@ -644,12 +644,34 @@
                                     <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
                                         <input type="checkbox" id="admin-ed-nostore" style="width: 18px; height: 18px;"> 스토어 차단
                                     </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                                        <input type="checkbox" id="admin-ed-shadow" style="width: 18px; height: 18px;"> 섀도우 밴
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; color: #ffeb3b;">
+                                        <input type="checkbox" id="admin-ed-freeze" style="width: 18px; height: 18px;"> UI 프리징
+                                    </label>
                                 </div>
                             </div>
 
-                            <div style="margin-top: auto; display: flex; gap: 10px; padding-top: 20px;">
-                                <button class="btn primary" onclick="app.saveAdminUser()" style="flex: 2; padding: 15px; font-weight: 800;">💾 정보 업데이트</button>
-                                <button class="btn" onclick="app.deleteAdminUser()" style="flex: 1; background: rgba(255,82,82,0.1); border: 1px solid #ff5252; color: #ff5252;">영구 삭제</button>
+                            <div style="margin-top: 15px;">
+                                <label style="font-size: 0.85rem; color: #aaa;">⚠️ 누적 경고 횟수</label>
+                                <div style="display:flex; gap:10px; align-items:center;">
+                                    <input type="number" id="admin-ed-warnings" value="0" style="flex:1; padding: 10px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;">
+                                    <button class="btn" style="background: #fbbf24; color:#000; padding:10px; font-size:0.8rem;" onclick="app.addAdminWarning()">+1 경고</button>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 20px;">
+                                <label style="font-size: 0.85rem; color: #aaa; margin-bottom: 5px; display:block;">🔓 앱별 접근 권한 (Granular Permissions)</label>
+                                <div id="admin-ed-apps-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; max-height: 100px; overflow-y: auto;">
+                                    <!-- App checkboxes will be injected here -->
+                                </div>
+                            </div>
+
+                            <div style="margin-top: auto; display: flex; gap: 8px; padding-top: 20px; flex-wrap: wrap;">
+                                <button class="btn primary" onclick="app.saveAdminUser()" style="flex: 2; padding: 12px; font-weight: 800; font-size: 0.85rem;">💾 저장</button>
+                                <button class="btn" onclick="app.kickAdminUser()" style="flex: 1; min-width: 80px; background: #ea580c; color: white; border:none; font-size: 0.85rem;">🔌 킥(Kick)</button>
+                                <button class="btn" onclick="app.deleteAdminUser()" style="flex: 0.5; min-width: 60px; background: rgba(255,82,82,0.1); border: 1px solid #ff5252; color: #ff5252; font-size: 0.85rem;">삭제</button>
                             </div>
                         </div>
                     </div>
@@ -687,7 +709,7 @@
                                 <tr>
                                     <th style="padding: 15px;">이름</th>
                                     <th style="padding: 15px;">제작자</th>
-                                    <th style="padding: 15px;">카테고리</th>
+                                    <th style="padding: 15px;">상태</th>
                                     <th style="padding: 15px;">동작</th>
                                 </tr>
                             </thead>
@@ -932,6 +954,19 @@
     <script src="os.js?v=156"></script>
     <script src="auth.js?v=156"></script>
     <script src="app.js?v=156"></script>
+    <!-- ADMIN FREEZE OVERLAY (관리자 강제 UI 동결) -->
+    <div id="admin-freeze-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:999999; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); flex-direction:column; justify-content:center; align-items:center; color:white; text-align:center; padding:40px;">
+        <div style="font-size:5rem; margin-bottom:25px; animation: pulse 2s infinite;">🧊</div>
+        <h1 style="font-size:1.8rem; font-weight:900; color:#60a5fa; margin-bottom:15px; letter-spacing:-0.5px;">계정이 일시 정지되었습니다</h1>
+        <p style="color:#94a3b8; font-size:1rem; max-width:350px; line-height:1.6;">관리자가 해당 계정을 검토 중입니다.<br>잠시 후 자동으로 해제될 수 있습니다.</p>
+        <div style="margin-top:40px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:20px 30px; font-size:0.85rem; color:#64748b;">
+            문의: 관리자에게 RamMail로 연락하세요
+        </div>
+        <style>
+            @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+        </style>
+    </div>
+
 </body>
 
 </html>
