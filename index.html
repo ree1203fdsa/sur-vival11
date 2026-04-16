@@ -618,6 +618,8 @@
                                 <label style="font-size: 0.85rem; color: #aaa;">사용자 권한</label>
                                 <select id="admin-ed-role" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; margin-bottom: 15px;">
                                     <option value="user">일반 생존자 (user)</option>
+                                    <option value="vip">브이아이피 (VIP)</option>
+                                    <option value="manager">메니저 (manager)</option>
                                     <option value="creator">크리에이터 (creator)</option>
                                     <option value="admin">관리자 (admin)</option>
                                 </select>
@@ -658,6 +660,30 @@
                                 <div style="display:flex; gap:10px; align-items:center;">
                                     <input type="number" id="admin-ed-warnings" value="0" style="flex:1; padding: 10px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;">
                                     <button class="btn" style="background: #fbbf24; color:#000; padding:10px; font-size:0.8rem;" onclick="app.addAdminWarning()">+1 경고</button>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 20px;">
+                                <label style="font-size: 0.85rem; color: #aaa; margin-bottom: 5px; display:block;">🎖️ 칭호 및 베지 수여 (Badges)</label>
+                                <div id="admin-ed-badges-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(0,0,0,0.1); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; cursor: pointer; color: #64b5f6;">
+                                        <input type="checkbox" class="adm-badge-cb" value="top"> 🏆 TOP USER
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; cursor: pointer; color: #ffd700;">
+                                        <input type="checkbox" class="adm-badge-cb" value="winner"> 👑 WINNER
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; cursor: pointer; color: #f43f5e;">
+                                        <input type="checkbox" class="adm-badge-cb" value="hot"> 🔥 ACTIVE
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; cursor: pointer; color: #00e5ff;">
+                                        <input type="checkbox" class="adm-badge-cb" value="rich"> 💎 RICH
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; cursor: pointer; color: #a78bfa;">
+                                        <input type="checkbox" class="adm-badge-cb" value="bug"> 🐞 BUG HUNTER
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; cursor: pointer; color: #4ade80;">
+                                        <input type="checkbox" class="adm-badge-cb" value="king"> ⭐ KING
+                                    </label>
                                 </div>
                             </div>
 
@@ -772,6 +798,75 @@
             <div id="thirst-bar" style="width:0;"></div><span id="thirst-text"></span>
             <div id="stone-amount">0</div><div id="iron-amount">0</div><div id="gold-amount">0</div>
         </div>
+
+        <!-- ULTIMATE CONTROL CENTER (ONLY FOR jur1203) -->
+        <section id="ultimate-admin-screen" class="screen hidden" style="background: radial-gradient(circle at center, #000 0%, #1a0033 100%); color: white; flex-direction: column; overflow: hidden; position: relative;">
+            <div style="position: absolute; inset: 0; background: url('https://www.transparenttextures.com/patterns/carbon-fibre.png'); opacity: 0.2; pointer-events: none;"></div>
+            <div style="background: rgba(0,0,0,0.8); padding: 25px 40px; border-bottom: 2px solid #8b00ff; display: flex; justify-content: space-between; align-items: center; z-index: 5; box-shadow: 0 5px 30px rgba(139,0,255,0.3);">
+                <div>
+                    <h1 style="font-size: 2rem; font-weight: 900; background: linear-gradient(90deg, #fff, #8b00ff, #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 10px rgba(139,0,255,0.8)); text-shadow: 0 0 20px rgba(139,0,255,0.5);">🌌 최강 제어 센터 (Ultimate)</h1>
+                    <p style="font-size: 0.8rem; color: #a78bfa; margin-top: 5px; font-family: 'Courier New', monospace;">AUTHENTICATED: jur1203 | SECURE INTERFACE v9.9.9</p>
+                </div>
+                <div style="display: flex; gap: 15px;">
+                    <button class="btn" style="background: rgba(139,0,255,0.2); border: 1px solid #8b00ff; color: #fff; padding: 10px 20px; font-weight: 800;" onclick="app.refreshUltimateStats()">동기화</button>
+                    <button class="btn" style="background: #ff5252; color: #fff; padding: 10px 20px; font-weight: 800;" onclick="app.closeWindow('win-ultimate-admin')">센터 폐쇄</button>
+                </div>
+            </div>
+            <div style="flex: 1; padding: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; z-index: 5; overflow-y: auto;">
+                <div class="glass-panel" style="padding: 30px; border: 1px solid rgba(139,0,255,0.3); background: rgba(0,0,0,0.5);">
+                    <h2 style="color: #d8b4fe; margin-bottom: 25px; font-weight: 900; border-left: 5px solid #8b00ff; padding-left: 15px;">⚡ 시스템 오버라이드</h2>
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <div style="background: rgba(139,0,255,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(139,0,255,0.2);">
+                            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">전 세계 UI 동결 (Global Freeze)</h3>
+                            <button id="ultimate-btn-freeze" class="btn" style="width: 100%; height: 50px; background: #8b00ff; color: white; font-weight: 900;" onclick="app.toggleGlobalFreeze()">동결 시퀀스 가동</button>
+                        </div>
+                        <div style="background: rgba(255,82,82,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,82,82,0.2);">
+                            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">전역 채팅 완전 소거 (Wipe)</h3>
+                            <button class="btn" style="width: 100%; background: #ff5252; color: white; font-weight: 900;" onclick="app.wipeAllChats()">전역 소거 발동</button>
+                        </div>
+                        <div style="background: rgba(0,229,255,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(0,229,255,0.2);">
+                            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">최강좌 브로드캐스트</h3>
+                            <textarea id="ultimate-broadcast-msg" placeholder="웅장한 공지 입력..." style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid #00e5ff; color: #fff; padding: 12px; border-radius: 8px; margin-bottom: 15px;"></textarea>
+                            <button class="btn" style="width: 100%; background: #00e5ff; color: #000; font-weight: 900;" onclick="app.sendUltimateBroadcast()">신화적 공지 발송</button>
+                        </div>
+
+                        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">울트라 커맨드 (Ultra Commands)</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <button class="btn" style="background: #ef4444; color: white; font-size: 0.8rem;" onclick="app.ultimateAction('shake')">⚡ 전역 진동</button>
+                                <button class="btn" style="background: #fbbf24; color: black; font-size: 0.8rem;" onclick="app.ultimateAction('fireworks')">🎆 대축제 (효과)</button>
+                                <button class="btn" style="background: #10b981; color: white; font-size: 0.8rem;" onclick="app.ultimateAction('maintenance')">🚧 점검 모드</button>
+                                <button class="btn" style="background: #6366f1; color: white; font-size: 0.8rem;" onclick="app.ultimateAction('rain')">🌧️ 골드 비</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-panel" style="padding: 30px; border: 1px solid rgba(139,0,255,0.3); background: rgba(0,0,0,0.5); display: flex; flex-direction: column;">
+                    <h2 style="color: #d8b4fe; margin-bottom: 25px; font-weight: 900; border-left: 5px solid #8b00ff; padding-left: 15px;">💎 부와 권력</h2>
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <div style="background: rgba(255,215,0,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,215,0,0.3);">
+                            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">무한 재화 주입</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <button class="btn" style="background: #fbb03b; color: #000;" onclick="app.injectWealth('coins', 1000000)">+100만 코인</button>
+                                <button class="btn" style="background: #00e5ff; color: #000;" onclick="app.injectWealth('diamonds', 10000)">+1만 다이아</button>
+                            </div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">유저 데이터 압류</h3>
+                            <input type="text" id="ultimate-seize-username" placeholder="대상 유저 이름" style="width: 100%; background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+                            <button class="btn" style="width: 100%; background: #444; color: white;" onclick="app.seizeUserWealth()">재산 압류 실행</button>
+                        </div>
+                    </div>
+                    <div style="margin-top: 30px; padding: 15px; border: 1px dashed rgba(139,0,255,0.5); border-radius: 12px; text-align: center;">
+                        <p style="color: #a78bfa; font-size: 0.8rem;">"이곳은 해킹이 불가능한 절대 성역입니다."</p>
+                    </div>
+                </div>
+            </div>
+            <div id="ultimate-security-layer" style="position: absolute; inset: 0; background: rgba(0,0,0,0.95); z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(20px);">
+                <div style="width: 80px; height: 80px; border: 4px solid #8b00ff; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <h2 style="margin-top: 20px; font-family: 'Courier New', monospace; color: #8b00ff;">SECURE ACCESS...</h2>
+            </div>
+        </section>
 
         <!-- JURAM-GRAM SOCIAL APP -->
         <section id="gram-screen" class="screen hidden" style="background: #121212; color: white; flex-direction: column;">
@@ -962,11 +1057,26 @@
         <div style="margin-top:40px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:20px 30px; font-size:0.85rem; color:#64748b;">
             문의: 관리자에게 RamMail로 연락하세요
         </div>
-        <style>
-            @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
-        </style>
     </div>
 
-</body>
+    <!-- SECURITY LOCKDOWN OVERLAY (Friendly Info Protection) -->
+    <div id="security-lockdown" style="display: none; position: fixed; inset:0; background: rgba(15, 23, 42, 0.95); z-index: 1000000; flex-direction: column; align-items:center; justify-content:center; color: white; font-family: 'Pretendard', sans-serif; text-align: center; padding: 20px; backdrop-filter: blur(10px);">
+        <div style="font-size: 4rem; margin-bottom: 20px;">🔒</div>
+        <h1 style="font-size: 1.8rem; margin-bottom: 10px; font-weight: 800;">정보 보호 안내</h1>
+        <p style="color: #cbd5e1; margin-bottom: 30px; font-size: 0.95rem; line-height: 1.6;">제작자의 소중한 소스코드를 보호하기 위해<br>무단 열람을 제한하고 있습니다. 양해 부탁드립니다.</p>
+        
+        <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); width: 100%; max-width: 380px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+            <p style="color: #94a3b8; margin-bottom: 15px; font-size: 0.85rem;">비밀번호를 입력하여 잠금을 해제하세요</p>
+            <input type="password" id="lockdown-pw" placeholder="비밀번호 입력" style="width: 100%; padding: 15px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 12px; text-align: center; font-size: 1rem; margin-bottom: 15px; outline: none;" onkeyup="if(event.keyCode===13) app.unlockSystem()">
+            <button class="btn" style="width: 100%; background: #3b82f6; color: white; padding: 14px; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; transition: 0.3s;" onclick="app.unlockSystem()">잠금 해제</button>
+        </div>
+        
+        <p style="margin-top: 40px; font-size: 0.75rem; color: #64748b;">주람 운영체제 보안 프로토콜 | JuRam OS Security</p>
+    </div>
 
+    <style>
+        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+    </style>
+
+</body>
 </html>

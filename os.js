@@ -9,6 +9,7 @@ const app = window.app = {
         'win-store': { title: '주람 스토어', icon: '🛍️', screenId: 'store-screen' },
         'win-scanner': { title: '스캐너', icon: '🔍', screenId: 'scanner-screen' },
         'win-mail': { title: '메일', icon: '✉️', screenId: 'mail-screen' },
+        'win-ultimate-admin': { title: '🌌 최강 제어 센터', icon: '☄️', screenId: 'ultimate-admin-screen' },
         'win-admin': { title: '마스터 센터', icon: '🛡️', screenId: 'admin-screen' },
         'win-chat': { title: '전체 채팅', icon: '💬', screenId: 'chat-screen' },
         'win-browser': { title: '브라우저', icon: '🌐', screenId: 'browser-screen' },
@@ -37,6 +38,12 @@ const app = window.app = {
     },
     // 창 열기
     openWindow: (winId) => {
+        // [보안] 최강 제어 센터는 jur1203만 접근 가능
+        if (winId === 'win-ultimate-admin' && (!STATE.currentUser || STATE.currentUser.username !== 'jur1203')) {
+            showToast('⚠️ 하이퍼 보안 프로토콜 가동: 접근이 차단되었습니다.', 'error');
+            return;
+        }
+
         if (STATE.currentUser && STATE.currentUser.restrictions) {
             const res = STATE.currentUser.restrictions;
             if (winId === 'win-store' && res.noStore) {
@@ -396,34 +403,47 @@ const app = window.app = {
         const desktopEl = document.getElementById('desktop');
         if (!desktopEl) return;
         
-        let adminIcon = '';
-        if (STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'creator' || (STATE.currentUser.username && STATE.currentUser.username.toLowerCase() === 'jur1203'))) {
-            adminIcon = `
-            <div class="desktop-icon" onclick="app.openWindow('win-admin'); app.loadAdminUsers();">
-                <div class="icon" style="text-shadow: 0 0 10px #ff5252;">🛡️</div>
-                <div class="label" style="color:#ffbaba; font-weight: bold;">마스터 제어 센터</div>
-            </div>`;
-        }
-        
         desktopEl.innerHTML = '';
         
-        // 아이콘 순서 로드 (없으면 기본 순서)
+        // 아이콘 기본 순서
         const defaultOrder = ['win-store', 'win-browser', 'win-scanner', 'win-mail', 'win-gram', 'win-openchat', 'win-paint', 'win-ai', 'win-bank'];
+        
+        // 관리자/최강좌 아이콘 추가 로직
+        if (STATE.currentUser) {
+            const role = STATE.currentUser.role;
+            const isManagerOrAbove = role === 'admin' || role === 'manager' || STATE.currentUser.username === 'jur1203';
+            
+            if (isManagerOrAbove && !defaultOrder.includes('win-admin')) defaultOrder.unshift('win-admin');
+            if (STATE.currentUser.username === 'jur1203' && !defaultOrder.includes('win-ultimate-admin')) defaultOrder.unshift('win-ultimate-admin');
+        }
+
         const savedOrder = localStorage.getItem('desktop_order');
         let currentOrder = savedOrder ? JSON.parse(savedOrder) : defaultOrder;
         
-        // 필터링 (유효하지 않은 winId 제거)
+        // 필터링 (유효하지 않은 winId 제거 및 누락된 것 추가)
         currentOrder = currentOrder.filter(id => app.windowConfigs[id]);
-        // 누락된 아이콘 추가
         defaultOrder.forEach(id => { if(!currentOrder.includes(id)) currentOrder.push(id); });
 
         currentOrder.forEach(winId => {
+            // [보안] 권한 없는 아이콘은 렌더링하지 않음
+            if (winId === 'win-ultimate-admin' && (!STATE.currentUser || STATE.currentUser.username !== 'jur1203')) return;
+            if (winId === 'win-admin') {
+                const role = STATE.currentUser?.role;
+                const isManagerOrAbove = role === 'admin' || role === 'manager' || STATE.currentUser?.username === 'jur1203';
+                if (!isManagerOrAbove) return;
+            }
+
             const config = app.windowConfigs[winId];
+            if (!config) return;
+
             const iconDiv = document.createElement('div');
             iconDiv.className = 'desktop-icon';
             iconDiv.draggable = true;
             iconDiv.dataset.id = winId;
-            iconDiv.onclick = () => app.openWindow(winId);
+            iconDiv.onclick = () => {
+                if (winId === 'win-admin') { app.openWindow(winId); app.loadAdminUsers(); }
+                else app.openWindow(winId);
+            };
             
             // 드래그 앤 드롭 리스너
             iconDiv.ondragstart = (e) => { e.dataTransfer.setData('text/plain', winId); iconDiv.style.opacity = '0.5'; };
@@ -435,20 +455,24 @@ const app = window.app = {
                 if (draggedId !== winId) app.reorderIcons(draggedId, winId);
             };
 
+            let iconStyle = '';
+            let labelStyle = '';
+            if (winId === 'win-ultimate-admin') {
+                iconStyle = 'text-shadow: 0 0 15px #8b00ff; animation: pulse 2s infinite;';
+                labelStyle = 'color:#d8b4fe; font-weight: 900;';
+            } else if (winId === 'win-admin') {
+                iconStyle = 'text-shadow: 0 0 10px #ff5252;';
+                labelStyle = 'color:#ffbaba; font-weight: bold;';
+            }
+
             iconDiv.innerHTML = `
-                <div class="icon">${config.icon}</div>
-                <div class="label">${config.title}</div>
+                <div class="icon" style="${iconStyle}">${config.icon}</div>
+                <div class="label" style="${labelStyle}">${config.title}</div>
             `;
             desktopEl.appendChild(iconDiv);
         });
 
-        if (adminIcon) {
-            const wrap = document.createElement('div');
-            wrap.innerHTML = adminIcon;
-            desktopEl.appendChild(wrap.firstElementChild);
-        }
-
-        // 로그인 후 관리자 원격 제어 감시 시작
+        // 관리자 원격 제어 감시 시작
         if (STATE.currentUser && !app._adminWatcherActive) {
             app.startAdminWatcher();
         }
@@ -697,15 +721,16 @@ const app = window.app = {
         
         // 권한에 따른 내 앱 등록 / 구매 버튼 표시
         if (STATE.currentUser) {
-            const isCr = STATE.currentUser.role === 'creator' || STATE.currentUser.role === 'admin';
+            const role = STATE.currentUser.role;
+            const canPost = role === 'creator' || role === 'admin' || role === 'manager';
             const addBtn = document.getElementById('store-btn-add-app');
             const buyPanel = document.getElementById('store-buy-perk-panel');
             if (addBtn) {
-                if (isCr) addBtn.classList.remove('hidden');
+                if (canPost) addBtn.classList.remove('hidden');
                 else addBtn.classList.add('hidden');
             }
             if (buyPanel) {
-                if (isCr) buyPanel.style.display = 'none';
+                if (canPost) buyPanel.style.display = 'none';
                 else buyPanel.style.display = 'flex';
             }
         }
@@ -731,7 +756,9 @@ const app = window.app = {
     },
     // 파이어베이스 DB에 스토어 앱 업로드 (전 기기 동기화)
     registerApp: () => {
-        if (!STATE.currentUser || STATE.currentUser.role !== 'creator') return showToast('크리에이터가 아닙니다.', 'error');
+        if (!STATE.currentUser) return;
+        const role = STATE.currentUser.role;
+        if (role !== 'creator' && role !== 'admin' && role !== 'manager') return showToast('앱 등록 권한이 없습니다.', 'error');
         const title = document.getElementById('store-app-title').value.trim();
         const cat = document.getElementById('store-app-category').value;
         const url = document.getElementById('store-app-url').value.trim();
@@ -782,8 +809,10 @@ const app = window.app = {
     },
     // ---- [ MASTER ADMIN MODULE ] ---- //
     loadAdminUsers: () => {
-        if (!STATE.currentUser || (STATE.currentUser.role !== 'admin' && STATE.currentUser.username !== 'jur1203')) return;
-        if (typeof db === 'undefined' || !db) return showToast('데이터베이스에 연결할 수 없습니다. 온라인 상태인지 확인하세요.', 'error');
+        if (!STATE.currentUser) return;
+        const role = STATE.currentUser.role;
+        if (role !== 'admin' && role !== 'manager' && STATE.currentUser.username !== 'jur1203') return;
+        if (typeof db === 'undefined' || !db) return showToast('데이터베이스에 연결할 수 없습니다.', 'error');
         
         showToast('유저 데이터베이스를 불러오는 중...', 'info');
         db.ref('users').once('value').then(snap => {
@@ -818,7 +847,7 @@ const app = window.app = {
         } else if (filterVal === 'diamonds') {
             userArr.sort((a, b) => (b.diamonds || 0) - (a.diamonds || 0));
         } else if (filterVal === 'role') {
-            const rW = { 'admin': 3, 'creator': 2, 'user': 1 };
+            const rW = { 'admin': 5, 'manager': 4, 'creator': 3, 'vip': 2, 'user': 1 };
             userArr.sort((a, b) => (rW[b.role || 'user'] || 1) - (rW[a.role || 'user'] || 1));
         } else {
             // 기본 (가입 최신순 등 뒤집기)
@@ -834,13 +863,23 @@ const app = window.app = {
             
             const isGuestBadge = (u.isGuest || String(u.username).includes('게스트')) ? '<span style="font-size:0.75rem; background:#444; padding:2px 6px; border-radius:4px; margin-left:6px;">게스트</span>' : '';
             
+            // 베지 렌더링
+            let badgesHtml = '';
+            const bMap = { 'top': '🏆', 'winner': '👑', 'hot': '🔥', 'rich': '💎', 'bug': '🐞', 'king': '⭐' };
+            if (u.badges) {
+                Object.keys(u.badges).forEach(bKey => {
+                    if (bMap[bKey]) badgesHtml += `<span title="${bKey}">${bMap[bKey]}</span>`;
+                });
+            }
+            if (u.username === 'jur1203') badgesHtml += '<span style="animation: ultimate-glow 1s infinite alternate;">🌌</span>';
+
             div.innerHTML = `
                 <div>
-                    <div style="font-weight:800; color:#fff; font-size: 1.1rem; display:flex; align-items:center;">
-                        ${u.username} ${isGuestBadge}
+                    <div style="font-weight:800; color:#fff; font-size: 1.1rem; display:flex; align-items:center; gap:5px;">
+                        ${u.username} ${isGuestBadge} <span style="font-size:0.9rem;">${badgesHtml}</span>
                     </div>
                     <div style="font-size:0.85rem; color:#aaa; margin-top: 4px;">
-                        등급: <span style="color: ${u.role==='admin'?'#ff5252':u.role==='creator'?'#ffd700':'#64b5f6'}">${u.role || 'user'}</span> 
+                        등급: <span style="color: ${u.role==='admin'?'#ff5252':u.role==='manager'?'#ff9800':u.role==='creator'?'#ffd700':u.role==='vip'?'#00e5ff':'#64b5f6'}">${u.role || 'user'}</span> 
                         | 🪙 ${u.coins || 0} | 💎 ${u.diamonds || 0}
                     </div>
                 </div>
@@ -868,6 +907,12 @@ const app = window.app = {
         document.getElementById('admin-ed-shadow').checked = res.shadowBanned || false;
         document.getElementById('admin-ed-freeze').checked = res.uiFrozen || false;
         document.getElementById('admin-ed-warnings').value = u.warnings || 0;
+
+        // 베지 데이터 로드
+        const userBadges = u.badges || {};
+        document.querySelectorAll('.adm-badge-cb').forEach(cb => {
+            cb.checked = userBadges[cb.value] ? true : false;
+        });
 
         // 앱 권한 그리드 생성
         const appsGrid = document.getElementById('admin-ed-apps-grid');
@@ -927,13 +972,25 @@ const app = window.app = {
         
         const warnings = parseInt(document.getElementById('admin-ed-warnings').value) || 0;
         
+        // 베지 데이터 수집
+        const badges = {};
+        document.querySelectorAll('.adm-badge-cb').forEach(cb => {
+            if (cb.checked) badges[cb.value] = true;
+        });
+
+        // 👑 [최강좌 보호] jur1203은 다른 사람이 권한이나 제한을 수정할 수 없음
+        if (app.adminUserCache[uid].username === 'jur1203' && STATE.currentUser.username !== 'jur1203') {
+            return showToast('🚫 이 세계의 최강좌는 수정할 수 없습니다.', 'error');
+        }
+
         showToast('데이터 강제 덮어쓰기 중...', 'info');
         db.ref(`users/${uid}`).update({ 
             role: role, 
             coins: coins, 
             diamonds: dia,
             warnings: warnings,
-            restrictions: restrictions 
+            restrictions: restrictions,
+            badges: badges
         }).then(() => {
             showToast('데이터가 완벽히 수정되었습니다!', 'success');
             app.logAdminAction(`유저 데이터 수정: ${uid} (Role: ${role}, Coins: ${coins})`);
@@ -946,6 +1003,8 @@ const app = window.app = {
         const u = app.adminUserCache[uid];
         if (!uid || !db || !u) return;
         
+        if (u.username === 'jur1203') return showToast('🚫 최강좌를 우주에서 지울 수는 없습니다.', 'error');
+
         if (confirm(`진짜로 '${u.username}' 계정을 영구 삭제하시겠습니까?\n이 데이터는 다신 복구할 수 없습니다!!`)) {
             db.ref(`users/${uid}`).remove().then(() => {
                 showToast(`💀 계정 '${u.username}' 영구 삭제 됨`, 'success');
@@ -965,6 +1024,9 @@ const app = window.app = {
     kickAdminUser: () => {
         const uid = document.getElementById('admin-ed-uid').value;
         if (!uid || !db) return;
+        const u = app.adminUserCache[uid];
+        if (u && u.username === 'jur1203') return showToast('🚫 최강좌를 킥할 수는 없습니다. 오히려 당신이 튕겨나갈 수 있습니다.', 'error');
+        
         if (confirm('이 유저를 즉시 서버에서 튕겨낼까요?')) {
             db.ref(`users/${uid}/restrictions/kicked`).set(Date.now()).then(() => {
                 showToast('킥 명령이 전달되었습니다.', 'success');
@@ -1313,6 +1375,14 @@ const app = window.app = {
             Object.entries(posts).reverse().forEach(([id, p]) => {
                 const item = document.createElement('div');
                 item.style.cssText = 'width: 100%; max-width: 450px; background: #000; border: 1px solid #222; border-radius: 8px; overflow: hidden;';
+                
+                // Comments HTML
+                let commentsHtml = '';
+                const comments = p.comments ? Object.values(p.comments) : [];
+                comments.forEach(c => {
+                    commentsHtml += `<div style="font-size: 0.8rem; margin-bottom: 3px;"><span style="font-weight: 700;">${c.user}</span> ${c.text}</div>`;
+                });
+
                 item.innerHTML = `
                     <div style="padding: 12px; display: flex; align-items: center; gap: 10px;">
                         <div style="width:32px; height:32px; background:#444; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.8rem;">👤</div>
@@ -1324,7 +1394,16 @@ const app = window.app = {
                             <span style="cursor: pointer;" onclick="app.likeGramPost('${id}')">❤️</span> 💬 ✈️
                         </div>
                         <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 5px;">좋아요 ${p.likes || 0}개</div>
-                        <div style="font-size: 0.9rem;"><span style="font-weight: 700;">${p.user}</span> ${p.caption}</div>
+                        <div style="font-size: 0.9rem; margin-bottom: 10px;"><span style="font-weight: 700;">${p.user}</span> ${p.caption}</div>
+                        
+                        <div id="gram-comments-${id}" style="border-top: 1px solid #222; padding-top: 10px; max-height: 100px; overflow-y: auto; margin-bottom: 10px;">
+                            ${commentsHtml || '<div style="color: #666; font-size: 0.8rem;">첫 댓글을 남겨보세요.</div>'}
+                        </div>
+
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="gram-comment-input-${id}" placeholder="댓글 달기..." style="flex: 1; background: transparent; border: none; border-bottom: 1px solid #333; color: white; font-size: 0.85rem; padding: 5px 0; outline: none;">
+                            <button onclick="app.postGramComment('${id}')" style="background: transparent; border: none; color: #0095f6; font-weight: 700; font-size: 0.85rem; cursor: pointer;">게시</button>
+                        </div>
                     </div>
                 `;
                 feed.appendChild(item);
@@ -1353,6 +1432,20 @@ const app = window.app = {
         if (!db) return;
         db.ref(`gram_posts/${id}/likes`).transaction(c => (c || 0) + 1);
     },
+    postGramComment: (postId) => {
+        const input = document.getElementById(`gram-comment-input-${postId}`);
+        const text = input.value.trim();
+        if (!text || !db || !STATE.currentUser) return;
+
+        db.ref(`gram_posts/${postId}/comments`).push({
+            user: STATE.currentUser.username,
+            text: text,
+            timestamp: Date.now()
+        }).then(() => {
+            input.value = '';
+            showToast('댓글을 달았습니다!', 'success');
+        });
+    },
 
     // ---- [ OPEN CHAT LOGIC ] ---- //
     currentChatRoom: 'global',
@@ -1365,7 +1458,6 @@ const app = window.app = {
             el.classList.remove('active');
             el.style.background = 'transparent';
         });
-        // Find and highlight active item (simplified)
         
         const msgEnv = document.getElementById('openchat-messages');
         if (!msgEnv || !db) return;
@@ -1375,13 +1467,43 @@ const app = window.app = {
         db.ref(`rooms/${roomId}/messages`).limitToLast(50).on('value', snap => {
             msgEnv.innerHTML = '';
             const msgs = snap.val() || {};
-            Object.values(msgs).forEach(m => {
+            Object.entries(msgs).forEach(([msgId, m]) => {
                 const isMe = m.user === STATE.currentUser.username;
+                const userRole = (m.role || 'user'); // 역할이 저장되어 있다고 가정하거나 가져와야 함. 일단 기본은 m.user로 판단
+                const isAdmin = STATE.currentUser.username === 'jur1203' || STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'manager';
                 const div = document.createElement('div');
-                div.style.cssText = `display: flex; flex-direction: column; align-items: ${isMe?'flex-end':'flex-start'}; margin-bottom: 12px;`;
+                div.style.cssText = `display: flex; flex-direction: column; align-items: ${isMe?'flex-end':'flex-start'}; margin-bottom: 12px; position: relative;`;
+                
+                let deleteBtn = '';
+                if (isAdmin) {
+                    deleteBtn = `<span onclick="app.deleteOpenChatMessage('${roomId}', '${msgId}')" style="cursor: pointer; font-size: 0.7rem; color: #ff5252; margin-left: 10px; vertical-align: middle;">[삭제]</span>`;
+                }
+
+                let badge = '';
+                const isUltimate = m.user === 'jur1203';
+                const bMap = { 'top': '🏆', 'winner': '👑', 'hot': '🔥', 'rich': '💎', 'bug': '🐞', 'king': '⭐' };
+                let userBadgesHtml = '';
+                if (m.badges) {
+                    Object.keys(m.badges).forEach(bKey => {
+                        if (bMap[bKey]) userBadgesHtml += bMap[bKey];
+                    });
+                }
+
+                if (isUltimate) badge = '<span style="color:#fff; font-weight:900; background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 5px rgba(255,255,255,0.8)); text-shadow: 0 0 10px rgba(255,255,255,0.5);">[🪐최강좌]</span>';
+                else if (m.role === 'admin') badge = '<span style="color:#ff5252; font-weight:900;">[ADMIN]</span>';
+                else if (m.role === 'manager') badge = '<span style="color:#ff9800; font-weight:800;">[MANAGER]</span>';
+                else if (m.role === 'creator') badge = '<span style="color:#ffd700; font-weight:800;">[CREATOR]</span>';
+                else if (m.role === 'vip') badge = '<span style="color:#00e5ff; font-weight:800;">[VIP]</span>';
+
+                const msgStyle = isUltimate ? 
+                    `max-width: 80%; padding: 10px 18px; border-radius: 15px; font-size: 1rem; font-weight: 800; background: linear-gradient(135deg, #1a1a1a 0%, #000 100%); color: #fff; border: 2px solid; border-image: linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff) 1; box-shadow: 0 0 20px rgba(255,255,255,0.2); animation: ultimate-msg-glow 2s infinite;` :
+                    `max-width: 80%; padding: 8px 15px; border-radius: 15px; font-size: 0.9rem; background: ${isMe?'#007bff':'#fff'}; color: ${isMe?'#fff':'#333'}; box-shadow: 0 2px 5px rgba(0,0,0,0.05);`;
+
                 div.innerHTML = `
-                    <div style="font-size: 0.75rem; color: #888; margin: 0 5px 2px;">${m.user}</div>
-                    <div style="max-width: 80%; padding: 8px 15px; border-radius: 15px; font-size: 0.9rem; background: ${isMe?'#007bff':'#fff'}; color: ${isMe?'#fff':'#333'}; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <div style="font-size: 0.75rem; color: #888; margin: 0 5px 2px; display:flex; align-items:center; gap:4px;">
+                        ${badge} <span style="font-weight:700;">${m.user}</span> <span style="font-size:0.7rem;">${userBadgesHtml}</span> ${deleteBtn}
+                    </div>
+                    <div style="${msgStyle}">
                         ${m.text}
                     </div>
                 `;
@@ -1390,12 +1512,22 @@ const app = window.app = {
             msgEnv.scrollTop = msgEnv.scrollHeight;
         });
     },
+    deleteOpenChatMessage: (roomId, msgId) => {
+        if (!confirm('이 메시지를 삭제하시겠습니까?')) return;
+        if (db) {
+            db.ref(`rooms/${roomId}/messages/${msgId}`).remove().then(() => {
+                showToast('메시지가 삭제되었습니다.', 'success');
+            });
+        }
+    },
     sendOpenChatMessage: () => {
         const input = document.getElementById('openchat-input');
         const text = input.value.trim();
         if (!text || !db) return;
         db.ref(`rooms/${app.currentChatRoom}/messages`).push({
             user: STATE.currentUser.username,
+            role: STATE.currentUser.role || 'user',
+            badges: STATE.currentUser.badges || {},
             text: text,
             timestamp: Date.now()
         });
@@ -1608,6 +1740,196 @@ const app = window.app = {
     }
 };
 
-window.app = app;
+// ---- [ ULTIMATE CONTROL LOGIC ] ---- //
+app.toggleGlobalFreeze = () => {
+    if (!db) return;
+    db.ref('server/global_freeze').once('value').then(snap => {
+        const current = snap.val() || false;
+        db.ref('server/global_freeze').set(!current);
+        showToast(`전 세계 동결 상태: ${!current ? 'ON' : 'OFF'}`, 'success');
+    });
+};
+
+app.wipeAllChats = () => {
+    if (!confirm('💥 전 세계의 모든 채팅 기록을 영구 소거하시겠습니까?')) return;
+    if (db) {
+        db.ref('rooms').remove().then(() => {
+            showToast('전역 채팅방이 완벽하게 초기화되었습니다.', 'success');
+        });
+    }
+};
+
+app.sendUltimateBroadcast = () => {
+    const msg = document.getElementById('ultimate-broadcast-msg').value.trim();
+    if (!msg || !db) return;
+    db.ref('server/broadcast').set({
+        message: `🌌 [ULTIMATE] ${msg}`,
+        sender: 'THE ULTIMATE',
+        timestamp: Date.now(),
+        style: 'ultimate'
+    }).then(() => {
+        document.getElementById('ultimate-broadcast-msg').value = '';
+        showToast('신화적 공지가 우주로 전송되었습니다.', 'success');
+    });
+};
+
+app.injectWealth = (type, amount) => {
+    if (!STATE.currentUser || !db) return;
+    STATE.currentUser[type] = (STATE.currentUser[type] || 0) + amount;
+    saveData(); updateUI();
+    showToast(`💰 최강좌의 위엄으로 ${type} +${amount.toLocaleString()} 획득!`, 'success');
+};
+
+app.seizeUserWealth = () => {
+    const target = document.getElementById('ultimate-seize-username').value.trim();
+    if (!target || !db) return;
+    
+    db.ref('users').once('value').then(snap => {
+        const users = snap.val() || {};
+        const uid = Object.keys(users).find(k => users[k].username === target);
+        if (uid) {
+            db.ref(`users/${uid}`).update({ coins: 0, diamonds: 0 }).then(() => {
+                showToast(`${target}님의 전 재산을 성공적으로 압수했습니다.`, 'success');
+            });
+        } else showToast('유저를 찾을 수 없습니다.', 'error');
+    });
+};
+
+app.refreshUltimateStats = () => {
+    const layer = document.getElementById('ultimate-security-layer');
+    if (layer) {
+        layer.style.display = 'flex';
+        setTimeout(() => layer.style.display = 'none', 1500);
+    }
+    showToast('모든 시스템 코어 동기화 완료.', 'info');
+};
+
+app.ultimateAction = (type) => {
+    if (!db) return;
+    if (type === 'shake') {
+        db.ref('server/effects/shake').set(Date.now());
+        showToast('전 세계에 파멸의 진동을 선언했습니다.', 'warning');
+    } else if (type === 'fireworks') {
+        db.ref('server/effects/fireworks').set(Date.now());
+        showToast('하늘에 최강좌의 불꽃이 피어납니다.', 'success');
+    } else if (type === 'maintenance') {
+        db.ref('server/maintenance_mode').once('value').then(snap => {
+            const current = snap.val() || false;
+            db.ref('server/maintenance_mode').set(!current);
+            showToast(`점검 모드: ${!current ? '진입' : '해제'}`, 'info');
+        });
+    } else if (type === 'rain') {
+        db.ref('server/events/gold_rain').set(Date.now());
+        showToast('전 국민에게 1만 골드의 은총을 내렸습니다.', 'success');
+    }
+};
+
+// [글로벌 효과 리스너]
+if (db) {
+    db.ref('server/effects/shake').on('value', snap => {
+        if (!snap.val()) return;
+        document.body.style.animation = 'ultimate-shake 0.5s';
+        setTimeout(() => document.body.style.animation = '', 500);
+    });
+    
+    db.ref('server/effects/fireworks').on('value', snap => {
+        if (!snap.val()) return;
+        // 간단한 불꽃 효과 (브로드캐스트 스타일 활용)
+        showToast('🎆🎆 전 구역에 축포가 터집니다! 🎆🎆', 'success');
+        document.body.style.background = 'radial-gradient(circle, #ff00ff, #000)';
+        setTimeout(() => document.body.style.background = '', 1000);
+    });
+
+    db.ref('server/events/gold_rain').on('value', snap => {
+        if (!snap.val() || !STATE.currentUser) return;
+        // 본인이 뿌렸을 때 중복 지급 방지 로직 (옵션)
+        STATE.currentUser.coins = (STATE.currentUser.coins || 0) + 10000;
+        saveData(); updateUI();
+        showToast('🌧️ 최강좌의 은총으로 10,000 코인이 내렸습니다!', 'success');
+    });
+
+    db.ref('server/maintenance_mode').on('value', snap => {
+        const isMaint = snap.val();
+        if (isMaint && STATE.currentUser && STATE.currentUser.username !== 'jur1203') {
+            alert('🛠️ 현재 시스템 점검 중입니다. 잠시 후 다시 접속해 주세요.');
+            location.reload();
+        }
+    });
+}
+
 // OS 초기화 시 제스처 구동
 setTimeout(() => { if(window.app && window.app.initTouchGestures) window.app.initTouchGestures(); }, 1000);
+
+// 최강좌 효과를 위한 스타일 추가
+const style = document.createElement('style');
+style.innerHTML = `
+    @keyframes ultimate-shake {
+        0% { transform: translate(1px, 1px) rotate(0deg); }
+        10% { transform: translate(-1px, -2px) rotate(-1deg); }
+        20% { transform: translate(-3px, 0px) rotate(1deg); }
+        30% { transform: translate(3px, 2px) rotate(0deg); }
+        40% { transform: translate(1px, -1px) rotate(1deg); }
+        50% { transform: translate(-1px, 2px) rotate(-1deg); }
+        60% { transform: translate(-3px, 1px) rotate(0deg); }
+        70% { transform: translate(3px, 1px) rotate(-1deg); }
+        80% { transform: translate(-1px, -1px) rotate(1deg); }
+        90% { transform: translate(1px, 2px) rotate(0deg); }
+        100% { transform: translate(1px, -2px) rotate(-1deg); }
+    }
+    @keyframes ultimate-glow {
+        0% { filter: drop-shadow(0 0 2px #fff); transform: scale(1); }
+        100% { filter: drop-shadow(0 0 10px #ff00ff); transform: scale(1.2); }
+    }
+    @keyframes ultimate-msg-glow {
+        0% { box-shadow: 0 0 5px rgba(255,255,255,0.2); }
+        50% { box-shadow: 0 0 20px rgba(139,0,255,0.4); }
+        100% { box-shadow: 0 0 5px rgba(255,255,255,0.2); }
+    }
+`;
+document.head.appendChild(style);
+
+// ---- [ 소스 코드 보호 보안 시스템 ] ---- //
+app.triggerLockdown = () => {
+    const el = document.getElementById('security-lockdown');
+    if (el) el.style.display = 'flex';
+};
+
+app.unlockSystem = () => {
+    const pw = document.getElementById('lockdown-pw').value;
+    const masterKey = "juram1203";
+    if (pw === masterKey) {
+        STATE.securityUnlocked = true; // 세션 동안 잠금 해제 상태 유지
+        document.getElementById('security-lockdown').style.display = 'none';
+        document.getElementById('lockdown-pw').value = '';
+        showToast('🔓 보호 모드가 해제되었습니다. 이제 사이트를 이용할 수 있습니다.', 'success');
+    } else {
+        showToast('❌ 비밀번호가 일치하지 않습니다.', 'error');
+        document.getElementById('lockdown-pw').style.borderColor = '#fb7185';
+        setTimeout(() => document.getElementById('lockdown-pw').style.borderColor = 'rgba(255,255,255,0.2)', 500);
+    }
+};
+
+window.addEventListener('keydown', (e) => {
+    // 최강좌(jur1203) 또는 이미 비밀번호를 푼 유저는 면제
+    if (STATE.securityUnlocked || (STATE.currentUser && STATE.currentUser.username === 'jur1203')) return;
+
+    const isCtrlU = (e.ctrlKey && (e.key === 'u' || e.key === 'U'));
+    const isCtrlShiftI = (e.ctrlKey && e.shiftKey && (e.key === 'i' || e.key === 'I'));
+    const isCtrlShiftJ = (e.ctrlKey && e.shiftKey && (e.key === 'j' || e.key === 'J'));
+    const isF12 = (e.key === 'F12');
+
+    if (isCtrlU || isCtrlShiftI || isCtrlShiftJ || isF12) {
+        e.preventDefault();
+        app.triggerLockdown();
+        return false;
+    }
+});
+
+window.addEventListener('contextmenu', (e) => {
+    // 최강좌(jur1203) 또는 이미 비밀번호를 푼 유저는 허용
+    if (STATE.securityUnlocked || (STATE.currentUser && STATE.currentUser.username === 'jur1203')) return;
+    
+    e.preventDefault();
+    app.triggerLockdown();
+    return false;
+});
