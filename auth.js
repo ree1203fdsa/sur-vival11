@@ -91,11 +91,24 @@ const setupLoginHandler = () => {
                     const user = userCredential.user;
                     db.ref('users/' + user.uid).once('value').then((snapshot) => {
                         const userData = snapshot.val();
-                        STATE.currentUser = { ...(userData || {}), uid: user.uid, username: userIn };
-                        if (isCreator) STATE.currentUser.role = 'creator';
+                        if (!userData) {
+                            showToast("사용자 정보가 없습니다. 다시 가입해주세요.", "error"); return;
+                        }
+                        
+                        // [보안] 마스터 계정은 항상 승인 상태로 간주
+                        const isMaster = userIn.toLowerCase() === 'jur1203';
+                        const isApproved = userData.isApproved || isMaster;
+                        
+                        if (!isApproved) {
+                            showToast("⏳ 가입 승인 대기 중입니다. 관리자(jur1203)의 승인 후 접속 가능합니다.", "warning");
+                            auth.signOut();
+                            return;
+                        }
+
+                        STATE.currentUser = { ...userData, uid: user.uid, username: userIn };
+                        if (isMaster) STATE.currentUser.role = 'creator';
                         
                         // [FIREBASE REAL-TIME ENFORCEMENT]
-                        // 계정 상태(차단 등) 실시간 모니터링 시작
                         db.ref(`users/${user.uid}/restrictions`).on('value', snap => {
                             const res = snap.val() || {};
                             if (res.banned) {
@@ -204,7 +217,8 @@ const setupRegisterHandler = () => {
                     const user = userCredential.user;
                     const defaultData = {
                         username: userIn,
-                        role: 'user',
+                        role: 'user', // 무조건 유저로 시작
+                        isApproved: false, // 마스터 승인 필요
                         coins: 1000,
                         diamonds: 50,
                         health: 100, hunger: 100, thirst: 100,
@@ -212,11 +226,9 @@ const setupRegisterHandler = () => {
                     };
                     // 데이터베이스에 유저 초기 정보 저장
                     return db.ref('users/' + user.uid).set(defaultData).then(() => {
-                        showToast(`가입 완료! 람메일(${userIn})님 환영합니다.`, 'success');
-                        STATE.currentUser = { ...defaultData, uid: user.uid };
-                        saveData(); updateUI(); 
-                        if (window.app && window.app.updateDesktop) app.updateDesktop();
-                        showScreen('menu-screen');
+                        showToast(`가입 신청 완료! 관리자(jur1203)의 승인을 기다려주세요.`, 'warning');
+                        auth.signOut(); // 승인 전까지는 로그아웃 상태 유지
+                        showScreen('login-screen');
                         regForm.reset();
                     });
                 }).catch(err => {

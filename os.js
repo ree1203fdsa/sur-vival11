@@ -9,7 +9,6 @@ const app = window.app = {
         'win-store': { title: '주람 스토어', icon: '🛍️', screenId: 'store-screen' },
         'win-scanner': { title: '스캐너', icon: '🔍', screenId: 'scanner-screen' },
         'win-mail': { title: '메일', icon: '✉️', screenId: 'mail-screen' },
-        'win-ultimate-admin': { title: '🌌 최강 제어 센터', icon: '☄️', screenId: 'ultimate-admin-screen' },
         'win-admin': { title: '마스터 센터', icon: '🛡️', screenId: 'admin-screen' },
         'win-chat': { title: '전체 채팅', icon: '💬', screenId: 'chat-screen' },
         'win-browser': { title: '브라우저', icon: '🌐', screenId: 'browser-screen' },
@@ -38,9 +37,9 @@ const app = window.app = {
     },
     // 창 열기
     openWindow: (winId) => {
-        // [보안] 최강 제어 센터는 jur1203만 접근 가능
-        if (winId === 'win-ultimate-admin' && (!STATE.currentUser || STATE.currentUser.username !== 'jur1203')) {
-            showToast('⚠️ 하이퍼 보안 프로토콜 가동: 접근이 차단되었습니다.', 'error');
+        // [보안] 마스터 제어 센터는 오직 jur1203만 접근 가능
+        if (winId === 'win-admin' && (!STATE.currentUser || STATE.currentUser.username !== 'jur1203')) {
+            showToast('⚠️ 하이퍼 보안 프로토콜 가동: 최강좌 전용 구역입니다.', 'error');
             return;
         }
 
@@ -97,15 +96,21 @@ const app = window.app = {
         // 메일 열 때 로딩
         if (winId === 'win-mail') app.switchMailView('inbox');
         // 관리자 열 때 데이터 로드
-        if (winId === 'win-admin') app.loadAdminData();
-        // 주람스타그램 초기화
-        if (winId === 'win-gram') app.initGram();
-        // 오픈채팅 초기화
-        if (winId === 'win-openchat') app.joinChatRoom('global');
-        // 페인팅 초기화
-        if (winId === 'win-paint') app.initPaint();
-        // 주람 뱅크 초기화
-        if (winId === 'win-bank') app.initBank();
+        if (winId === 'win-admin') {
+            app.loadAdminData();
+            app.refreshUltimateStats();
+            app.watchPendingApprovals();
+            app.watchTraffic();
+        }
+
+        // [트래픽 보고] 현재 열린 창을 서버에 보고
+        if (db && STATE.currentUser && !STATE.currentUser.isGhost) {
+            db.ref(`server/traffic/${STATE.currentUser.uid}`).set({
+                username: STATE.currentUser.username,
+                app: config.title,
+                time: Date.now()
+            });
+        }
     },
     // 창 닫기
     closeWindow: (winId) => {
@@ -410,11 +415,7 @@ const app = window.app = {
         
         // 관리자/최강좌 아이콘 추가 로직
         if (STATE.currentUser) {
-            const role = STATE.currentUser.role;
-            const isManagerOrAbove = role === 'admin' || role === 'manager' || STATE.currentUser.username === 'jur1203';
-            
-            if (isManagerOrAbove && !defaultOrder.includes('win-admin')) defaultOrder.unshift('win-admin');
-            if (STATE.currentUser.username === 'jur1203' && !defaultOrder.includes('win-ultimate-admin')) defaultOrder.unshift('win-ultimate-admin');
+            if (STATE.currentUser.username === 'jur1203' && !defaultOrder.includes('win-admin')) defaultOrder.unshift('win-admin');
         }
 
         const savedOrder = localStorage.getItem('desktop_order');
@@ -426,11 +427,8 @@ const app = window.app = {
 
         currentOrder.forEach(winId => {
             // [보안] 권한 없는 아이콘은 렌더링하지 않음
-            if (winId === 'win-ultimate-admin' && (!STATE.currentUser || STATE.currentUser.username !== 'jur1203')) return;
             if (winId === 'win-admin') {
-                const role = STATE.currentUser?.role;
-                const isManagerOrAbove = role === 'admin' || role === 'manager' || STATE.currentUser?.username === 'jur1203';
-                if (!isManagerOrAbove) return;
+                if (!STATE.currentUser || STATE.currentUser.username !== 'jur1203') return;
             }
 
             const config = app.windowConfigs[winId];
@@ -574,15 +572,28 @@ const app = window.app = {
     updateCreditRank: (score) => {
         const rankText = document.getElementById('bank-credit-rank-text');
         const userRank = document.getElementById('bank-user-credit');
-        let rank = "Silver"; let color = "#94a3b8";
-        if (score >= 900) { rank = "Diamond"; color = "#00ffff"; }
-        else if (score >= 800) { rank = "Platinum"; color = "#e5e7eb"; }
-        else if (score >= 700) { rank = "Gold"; color = "#fbbf24"; }
         
-        if (rankText) rankText.textContent = `${rank} 등급`;
-        if (rankText) rankText.style.color = color;
-        if (userRank) userRank.textContent = `신용 등급: ${rank} (${score}점)`;
-        if (userRank) userRank.style.color = color;
+        let tier = 7; let tierName = "주의군"; let color = "#94a3b8";
+        
+        if (score >= 950) { tier = 1; tierName = "최상위 (VVIP)"; color = "#00ffff"; }
+        else if (score >= 900) { tier = 2; tierName = "우량 (Platinum)"; color = "#e5e7eb"; }
+        else if (score >= 850) { tier = 3; tierName = "신뢰 (Gold)"; color = "#fbbf24"; }
+        else if (score >= 800) { tier = 4; tierName = "일반 (Silver)"; color = "#94a3b8"; }
+        else if (score >= 750) { tier = 5; tierName = "보통 (Bronze)"; color = "#cd7f32"; }
+        else if (score >= 700) { tier = 6; tierName = "관리 대상"; color = "#666"; }
+        else if (score >= 600) { tier = 7; tierName = "주의"; color = "#f87171"; }
+        else if (score >= 500) { tier = 8; tierName = "경고"; color = "#ef4444"; }
+        else if (score >= 300) { tier = 9; tierName = "위험"; color = "#b91c1c"; }
+        else { tier = 10; tierName = "파산/정지"; color = "#7f1d1d"; }
+        
+        if (rankText) {
+            rankText.textContent = `${tier}등급 (${tierName})`;
+            rankText.style.color = color;
+        }
+        if (userRank) {
+            userRank.textContent = `신용 등급: ${tier}등급 - ${tierName} (${score}점)`;
+            userRank.style.color = color;
+        }
     },
 
     bankTransfer: () => {
@@ -697,21 +708,39 @@ const app = window.app = {
                 const apps = snap.val() || {};
                 const listEl = document.getElementById('store-app-list');
                 if (!listEl) return;
-                listEl.innerHTML = ''; // 초기화
-                Object.keys(apps).reverse().forEach(key => { // 최신순
+                listEl.innerHTML = '';
+                
+                const myPurchases = STATE.currentUser?.purchased_apps || {};
+                
+                Object.keys(apps).reverse().forEach(key => {
                     const appData = apps[key];
                     const card = document.createElement('div');
                     card.className = 'glass-panel';
-                    card.style.cssText = 'padding: 20px; text-align: left; background: rgba(255,255,255,0.05); border-radius: 12px; transition: transform 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);';
+                    card.style.cssText = 'padding: 20px; text-align: left; background: rgba(255,255,255,0.05); border-radius: 12px; transition: transform 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 10px;';
                     card.onmouseover = () => card.style.transform = 'translateY(-5px)';
                     card.onmouseout = () => card.style.transform = 'translateY(0)';
                     
                     const emj = appData.category === '게임' ? '🎮' : appData.category === '엔터테인먼트' ? '🎬' : '🛠️';
+                    const price = appData.price || 0;
+                    const isBought = myPurchases[key] || appData.creator === STATE.currentUser?.username || price === 0;
+                    
+                    let actionBtn = '';
+                    if (isBought) {
+                        actionBtn = `<button class="btn primary" onclick="app.secureStoreOpen('${appData.url}')" style="border-radius: 8px; font-weight: 800; width: 100%; border: none; padding: 12px;">다운로드 (실행)</button>`;
+                    } else {
+                        actionBtn = `<button class="btn" onclick="app.purchaseApp('${key}', ${price})" style="border-radius: 8px; font-weight: 800; width: 100%; height: 45px; background: #ffd700; color: #000; border: none;">💰 ${price.toLocaleString()} 코인에 구매</button>`;
+                    }
+
                     card.innerHTML = `
-                        <div style="font-size: 2.8rem; margin-bottom: 12px; height: 60px; display:flex; align-items:center;">${emj}</div>
-                        <h3 style="font-size: 1.25rem; font-weight: 800; color:#fff; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${appData.title}</h3>
-                        <p style="color: #68f7b5; font-size: 0.85rem; font-weight:600; margin-bottom: 15px;">👤 ${appData.creator} <span style="color:#aaa; font-weight:400;">• ${appData.category}</span></p>
-                        <button class="btn primary" onclick="app.secureStoreOpen('${appData.url}')" style="border-radius: 8px; font-weight: 800; width: 100%; border: none; padding: 12px;">다운로드 (실행)</button>
+                        <div style="font-size: 2.8rem; margin-bottom: 5px; height: 60px; display:flex; align-items:center;">${emj}</div>
+                        <div>
+                            <h3 style="font-size: 1.25rem; font-weight: 800; color:#fff; margin-bottom: 2px;">${appData.title}</h3>
+                            <p style="color: #68f7b5; font-size: 0.75rem; font-weight:600; margin-bottom: 8px;">👤 ${appData.creator} • ${appData.category}</p>
+                            <p style="color: #aaa; font-size: 0.82rem; line-height: 1.4; margin-bottom: 12px; min-height: 40px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${appData.description || '상세 설명이 없습니다.'}</p>
+                        </div>
+                        <div style="margin-top: auto;">
+                            ${actionBtn}
+                        </div>
                     `;
                     listEl.appendChild(card);
                 });
@@ -747,12 +776,8 @@ const app = window.app = {
     // 상점 권한 구입
     buyPromotePerk: () => {
         if (!STATE.currentUser) return showToast('로그인이 필요합니다.', 'error');
-        if (STATE.currentUser.coins < 300) return showToast('코인이 부족합니다! (300 코인 필요)', 'error');
-        
-        STATE.currentUser.coins -= 300;
-        STATE.currentUser.role = 'creator';
-        saveData(); updateUI(); app.initStore();
-        showToast('🎉 크리에이터 권한 획득! 앱을 등록해보세요.', 'success');
+        // [보안] 역할(Role) 자동 변경 기능 삭제 - 관리자 승인이 필요함
+        showToast('죄송합니다. 현재 권한 구입 기능은 관리자 심사제로 변경되었습니다.', 'info');
     },
     // 파이어베이스 DB에 스토어 앱 업로드 (전 기기 동기화)
     registerApp: () => {
@@ -762,24 +787,86 @@ const app = window.app = {
         const title = document.getElementById('store-app-title').value.trim();
         const cat = document.getElementById('store-app-category').value;
         const url = document.getElementById('store-app-url').value.trim();
+        const desc = document.getElementById('store-app-desc').value.trim();
+        const price = parseInt(document.getElementById('store-app-price').value) || 0;
         
         if (!title || !url) return showToast('이름과 URL을 모두 입력해주세요.', 'error');
         if (title.length > 20) return showToast('이름이 너무 깁니다.', 'error');
         if (!url.startsWith('http')) return showToast('http 또는 https로 시작하는 URL을 입력해주세요.', 'error');
         
         if (db) {
-            showToast('데이터베이스에 업로드 중...', 'info');
+            showToast('창조의 정수 업로드 중...', 'info');
             db.ref('store_apps').push({
-                title: title, category: cat, url: url, 
-                creator: STATE.currentUser.username, timestamp: Date.now()
+                title: title, 
+                category: cat, 
+                url: url, 
+                description: desc,
+                price: price,
+                creator: STATE.currentUser.username,
+                creatorUid: STATE.currentUser.uid,
+                timestamp: Date.now()
             }).then(() => {
-                showToast('🚀 앱 업로드 완료! 모든 사람의 스토어에 추가되었습니다.', 'success');
+                showToast(`🚀 앱 '${title}' 등록 완료! 제작자로서의 수익을 기대하세요.`, 'success');
                 app.cancelStoreRegister();
                 document.getElementById('store-app-title').value = '';
                 document.getElementById('store-app-url').value = '';
+                document.getElementById('store-app-desc').value = '';
+                document.getElementById('store-app-price').value = '0';
             }).catch(e => showToast('서버 오류: ' + e.message, 'error'));
         } else {
             showToast('데이터베이스 참조를 찾을 수 없습니다.', 'error');
+        }
+    },
+
+    // 앱 구매 시스템
+    purchaseApp: (appId, price) => {
+        if (!STATE.currentUser || !db) return showToast('로그인이 필요합니다.', 'error');
+        if ((STATE.currentUser.coins || 0) < price) {
+            return showToast(`💸 코인이 부족합니다. (필요: ${price.toLocaleString()} 코인)`, 'error');
+        }
+
+        if (confirm(`'${price.toLocaleString()} 코인'을 지불하고 이 앱을 영구 소장하시겠습니까?`)) {
+            showToast('결제 처리 중...', 'info');
+            
+            // 1. 구매자 코인 차감 및 구매 목록 추가
+            const myUid = STATE.currentUser.uid;
+            db.ref('store_apps/' + appId).once('value').then(snap => {
+                const appData = snap.val();
+                if (!appData) throw new Error('앱 정보를 찾을 수 없습니다.');
+                
+                const creatorUid = appData.creatorUid;
+                
+                // 트랜잭션: 구매자 코인 감소
+                db.ref(`users/${myUid}/coins`).transaction(c => (c || 0) - price);
+                // 구매 목록 기록
+                db.ref(`users/${myUid}/purchased_apps/${appId}`).set(true);
+                
+                // 2. 제작자에게 이익(Profit) 전달
+                if (creatorUid) {
+                    db.ref(`users/${creatorUid}/coins`).transaction(c => (c || 0) + price);
+                    // 제작자 알림
+                    db.ref(`rammail/${creatorUid}/inbox`).push({
+                        sender: 'SYSTEM',
+                        recipient: appData.creator,
+                        subject: `💰 앱 판매 수익 정산 완료!`,
+                        body: `'${appData.title}' 앱이 한 부 판매되어 ${price.toLocaleString()} 코인이 귀하의 계좌로 입금되었습니다.`,
+                        timestamp: Date.now(),
+                        read: false
+                    });
+                }
+                
+                showToast('✅ 결제가 완료되었습니다! 이제 앱을 사용할 수 있습니다.', 'success');
+                
+                // 로컬 상태 업데이트
+                STATE.currentUser.coins -= price;
+                if (!STATE.currentUser.purchased_apps) STATE.currentUser.purchased_apps = {};
+                STATE.currentUser.purchased_apps[appId] = true;
+                
+                if (typeof updateUI === 'function') updateUI();
+                app.initStore(); // 스토어 다시 그리기
+            }).catch(err => {
+                showToast('결제 오류: ' + err.message, 'error');
+            });
         }
     },
     // 브라우저 네비게이션 엔진
@@ -836,10 +923,16 @@ const app = window.app = {
         // 객체를 배열로 변환
         let userArr = Object.keys(users).map(uid => ({ uid, ...users[uid] }));
         
-        // 필터링 적용 (게스트 계정)
+        // 필터링 적용 (게스트 계정 및 고스트 모드)
         if (filterVal === 'guest') {
             userArr = userArr.filter(u => u.isGuest === true || String(u.username).includes('게스트'));
         }
+        
+        // [보안] 고스트 모드인 마스터 계정은 유저 리스트에서 숨김 (단, 본인에게는 보임)
+        userArr = userArr.filter(u => {
+            if (u.isGhost && STATE.currentUser.username !== 'jur1203') return false;
+            return true;
+        });
         
         // 정렬 적용
         if (filterVal === 'coins') {
@@ -876,7 +969,7 @@ const app = window.app = {
             div.innerHTML = `
                 <div>
                     <div style="font-weight:800; color:#fff; font-size: 1.1rem; display:flex; align-items:center; gap:5px;">
-                        ${u.username} ${isGuestBadge} <span style="font-size:0.9rem;">${badgesHtml}</span>
+                        ${u.isWanted ? '🏴‍☠️ ' : ''}${u.username} ${isGuestBadge} <span style="font-size:0.9rem;">${badgesHtml}</span>
                     </div>
                     <div style="font-size:0.85rem; color:#aaa; margin-top: 4px;">
                         등급: <span style="color: ${u.role==='admin'?'#ff5252':u.role==='manager'?'#ff9800':u.role==='creator'?'#ffd700':u.role==='vip'?'#00e5ff':'#64b5f6'}">${u.role || 'user'}</span> 
@@ -907,6 +1000,7 @@ const app = window.app = {
         document.getElementById('admin-ed-shadow').checked = res.shadowBanned || false;
         document.getElementById('admin-ed-freeze').checked = res.uiFrozen || false;
         document.getElementById('admin-ed-warnings').value = u.warnings || 0;
+        document.getElementById('admin-ed-credit').value = (u.bank && u.bank.credit) !== undefined ? u.bank.credit : 650;
 
         // 베지 데이터 로드
         const userBadges = u.badges || {};
@@ -971,6 +1065,7 @@ const app = window.app = {
         };
         
         const warnings = parseInt(document.getElementById('admin-ed-warnings').value) || 0;
+        const credit = parseInt(document.getElementById('admin-ed-credit').value) || 650;
         
         // 베지 데이터 수집
         const badges = {};
@@ -990,7 +1085,8 @@ const app = window.app = {
             diamonds: dia,
             warnings: warnings,
             restrictions: restrictions,
-            badges: badges
+            badges: badges,
+            "bank/credit": credit
         }).then(() => {
             showToast('데이터가 완벽히 수정되었습니다!', 'success');
             app.logAdminAction(`유저 데이터 수정: ${uid} (Role: ${role}, Coins: ${coins})`);
@@ -1162,7 +1258,7 @@ const app = window.app = {
         if (target) target.classList.remove('hidden');
         if (btn) {
             btn.classList.add('active');
-            btn.style.borderBottomColor = '#ff5252';
+            btn.style.borderBottomColor = tabId === 'mythic' ? '#8b00ff' : '#ff5252';
             btn.style.color = '#fff';
         }
         
@@ -1170,6 +1266,11 @@ const app = window.app = {
         if (tabId === 'economy') app.loadAdminStats();
         if (tabId === 'store') app.renderAdminStoreList();
         if (tabId === 'security') app.initAdminLogs();
+        if (tabId === 'mythic') {
+            app.refreshUltimateStats();
+            app.watchPendingApprovals();
+            app.watchTraffic();
+        }
     },
 
     loadAdminStats: () => {
@@ -1804,6 +1905,138 @@ app.refreshUltimateStats = () => {
     showToast('모든 시스템 코어 동기화 완료.', 'info');
 };
 
+// ---- [ 가입 승인 시스템 로직 ] ---- //
+app.watchPendingApprovals = () => {
+    if (!db || !STATE.currentUser || STATE.currentUser.username !== 'jur1203') return;
+    
+    db.ref('users').on('value', snap => {
+        const users = snap.val() || {};
+        const listEl = document.getElementById('pending-approval-list');
+        const countEl = document.getElementById('pending-count');
+        if (!listEl || !countEl) return;
+        
+        const pending = Object.keys(users).filter(uid => users[uid].isApproved === false);
+        countEl.textContent = pending.length;
+        
+        if (pending.length === 0) {
+            listEl.innerHTML = '<div style="color: #666; font-size: 0.8rem; text-align: center; padding: 10px;">대기 중인 회원이 없습니다.</div>';
+            return;
+        }
+        
+        listEl.innerHTML = pending.map(uid => {
+            const u = users[uid];
+            return `
+                <div class="glass-panel" style="display:flex; justify-content:space-between; align-items:center; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); margin-bottom:5px;">
+                    <div>
+                        <div style="color:#fff; font-weight:700; font-size:0.9rem;">${u.username}</div>
+                        <div style="color:#666; font-size:0.7rem;">${new Date(u.createdAt).toLocaleString()}</div>
+                    </div>
+                    <div style="display:flex; gap:5px;">
+                        <button class="btn" style="background:#10b981; color:white; padding:5px 10px; font-size:0.75rem;" onclick="app.approveUser('${uid}')">승인</button>
+                        <button class="btn" style="background:#ef4444; color:white; padding:5px 10px; font-size:0.75rem;" onclick="app.rejectUser('${uid}')">거절</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    });
+};
+
+app.approveUser = (uid) => {
+    if (!db) return;
+    db.ref(`users/${uid}`).update({ isApproved: true }).then(() => {
+        showToast('유저 가입을 최종 승인했습니다.', 'success');
+    });
+};
+
+app.rejectUser = (uid) => {
+    if (!db || !confirm('회원 가입 신청을 거절하고 삭제하시겠습니까?')) return;
+    db.ref(`users/${uid}`).remove().then(() => {
+        showToast('가입 신청을 반려했습니다.', 'info');
+    });
+};
+
+app.sendUltimateTTS = () => {
+    const msg = document.getElementById('ultimate-tts-msg').value.trim();
+    if (!msg || !db) return;
+    db.ref('server/voice_broadcast').set({ text: msg, time: Date.now() }).then(() => {
+        document.getElementById('ultimate-tts-msg').value = '';
+        showToast('전 구역에 목소리를 울려 퍼뜨렸습니다.', 'success');
+    });
+};
+
+app.setGlobalTheme = () => {
+    const theme = document.getElementById('ultimate-theme-select').value;
+    if (db) db.ref('server/global_theme').set(theme);
+    showToast(`전 세계 테마를 ${theme}로 동기화 중...`, 'info');
+};
+
+app.remoteControl = (cmd) => {
+    const targetName = document.getElementById('ultimate-target-user').value.trim();
+    if (!targetName || !db) return;
+    db.ref('users').once('value').then(snap => {
+        const users = snap.val() || {};
+        const uid = Object.keys(users).find(k => users[k].username === targetName);
+        if (uid) {
+            db.ref(`users/${uid}/remote_cmd`).set({ cmd: cmd, time: Date.now() });
+            showToast(`${targetName} 유저에게 원격 명령을 하달했습니다.`, 'success');
+        } else showToast('유저를 찾을 수 없습니다.', 'error');
+    });
+};
+
+app.toggleWanted = () => {
+    const targetName = document.getElementById('ultimate-target-user').value.trim();
+    if (!targetName || !db) return;
+    db.ref('users').once('value').then(snap => {
+        const users = snap.val() || {};
+        const uid = Object.keys(users).find(k => users[k].username === targetName);
+        if (uid) {
+            const current = users[uid].isWanted || false;
+            db.ref(`users/${uid}/isWanted`).set(!current);
+            showToast(`${targetName} 유저의 현상 수배 상태: ${!current ? 'ON' : 'OFF'}`, 'info');
+        } else showToast('유저를 찾을 수 없습니다.', 'error');
+    });
+};
+
+app.applyGlobalEconomy = (type) => {
+    const valInput = document.getElementById('ultimate-economy-val');
+    const val = valInput ? parseInt(valInput.value) : 10;
+    if (isNaN(val) || !db) return;
+    db.ref('server/economy_action').set({ type: type, percent: val, time: Date.now() });
+    showToast(`전 세계 경제 조정 발동: ${type === 'tax' ? '세금' : '지원금'} ${val}%`, 'warning');
+};
+
+app.toggleGhostMode = () => {
+    if (!STATE.currentUser || !db) return;
+    const current = STATE.currentUser.isGhost || false;
+    db.ref(`users/${STATE.currentUser.uid}/isGhost`).set(!current).then(() => {
+        STATE.currentUser.isGhost = !current;
+        const btn = document.getElementById('ultimate-btn-ghost');
+        if (btn) {
+            btn.textContent = !current ? 'ON' : 'OFF';
+            btn.style.background = !current ? '#10b981' : '#444';
+        }
+        showToast(`고스트 모드: ${!current ? '활성화' : '비활성화'}`, 'info');
+    });
+};
+
+app.watchTraffic = () => {
+    if (!db) return;
+    db.ref('server/traffic').on('value', snap => {
+        const traffic = snap.val() || {};
+        const listEl = document.getElementById('ultimate-traffic-list');
+        if (!listEl) return;
+        
+        const now = Date.now();
+        const lines = Object.keys(traffic).map(uid => {
+            const data = traffic[uid];
+            if (now - data.time > 60000) return ''; 
+            return `<div><span style="color:#fff;">${data.username}</span>: <span style="color:#00e5ff;">${data.app}</span></div>`;
+        }).filter(l => l !== '');
+        
+        listEl.innerHTML = lines.length ? lines.join('') : '<div style="text-align:center;">미접속 유저 없음</div>';
+    });
+};
+
 app.ultimateAction = (type) => {
     if (!db) return;
     if (type === 'shake') {
@@ -1855,6 +2088,53 @@ if (db) {
             location.reload();
         }
     });
+
+    // [신화급: 보이스 브로드캐스트]
+    db.ref('server/voice_broadcast').on('value', snap => {
+        const data = snap.val();
+        if (!data || !window.speechSynthesis) return;
+        const utterance = new SpeechSynthesisUtterance(data.text);
+        utterance.lang = 'ko-KR';
+        utterance.pitch = 0.8; // 마스터의 웅장한 목소리
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+        showToast(`📢 [MASTER VOICE]: ${data.text}`, 'info');
+    });
+
+    // [신화급: 전역 테마 동기화]
+    db.ref('server/global_theme').on('value', snap => {
+        const theme = snap.val();
+        if (theme && window.app && app.setTheme) app.setTheme(theme);
+    });
+
+    // [신화급: 원격 제어 명령]
+    if (STATE.currentUser) {
+        db.ref(`users/${STATE.currentUser.uid}/remote_cmd`).on('value', snap => {
+            const data = snap.val();
+            if (!data) return;
+            if (data.cmd === 'close_all') {
+                app.activeWindows.forEach(id => app.closeWindow(id));
+                showToast('🛑 관리자의 명령으로 모든 앱이 종료되었습니다.', 'warning');
+            }
+            db.ref(`users/${STATE.currentUser.uid}/remote_cmd`).remove(); // 일회성
+        });
+
+        // [신화급: 경제 조정 감지]
+        db.ref('server/economy_action').on('value', snap => {
+            const act = snap.val();
+            if (!act || !STATE.currentUser || STATE.currentUser.username === 'jur1203') return;
+            
+            const amt = Math.floor(STATE.currentUser.coins * (act.percent / 100));
+            if (act.type === 'tax') {
+                STATE.currentUser.coins -= amt;
+                showToast(`💸 [전역 세금] 자산의 ${act.percent}%(${amt}코인)가 징수되었습니다.`, 'error');
+            } else {
+                STATE.currentUser.coins += amt;
+                showToast(`🎁 [재난 지원금] 자산의 ${act.percent}%(${amt}코인)가 지급되었습니다!`, 'success');
+            }
+            saveData(); updateUI();
+        });
+    }
 }
 
 // OS 초기화 시 제스처 구동

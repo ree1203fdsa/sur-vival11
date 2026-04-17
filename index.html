@@ -473,7 +473,15 @@
                     </div>
                     <div class="input-group">
                         <label>URL (웹 주소)</label>
-                        <input type="text" id="store-app-url" placeholder="https://..." style="width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; margin-bottom: 25px;">
+                        <input type="text" id="store-app-url" placeholder="https://..." style="width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; margin-bottom: 15px;">
+                    </div>
+                    <div class="input-group">
+                        <label>앱 설명</label>
+                        <textarea id="store-app-desc" placeholder="앱에 대한 상세 정보를 입력하세요" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; height: 80px; margin-bottom: 15px; resize: none;"></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>판매 가격 (코인)</label>
+                        <input type="number" id="store-app-price" value="0" min="0" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; margin-bottom: 25px;">
                     </div>
                     <div style="display: flex; gap: 10px;">
                         <button class="btn primary" onclick="window.app.registerApp()" style="flex: 1; padding: 15px; font-size: 1.1rem; font-weight: bold;">등록하기</button>
@@ -586,6 +594,7 @@
                     <div class="admin-tab" onclick="app.switchAdminTab('store')" id="adm-btn-store" style="padding: 15px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 800; font-size: 0.9rem; color: #aaa;">🛍️ 스토어 관리</div>
                     <div class="admin-tab" onclick="app.switchAdminTab('economy')" id="adm-btn-economy" style="padding: 15px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 800; font-size: 0.9rem; color: #aaa;">💰 경제/이벤트</div>
                     <div class="admin-tab" onclick="app.switchAdminTab('security')" id="adm-btn-security" style="padding: 15px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 800; font-size: 0.9rem; color: #aaa;">🛡️ 보안/기록</div>
+                    <div class="admin-tab" onclick="app.switchAdminTab('mythic')" id="adm-btn-mythic" style="padding: 15px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 800; font-size: 0.9rem; color: #8b00ff;">🌌 신화적 권능</div>
                 </div>
                 <div style="flex:1;"></div>
                 <div style="display: flex; align-items: center; gap: 10px; padding-right: 20px;">
@@ -633,6 +642,10 @@
                                     <label style="font-size: 0.85rem; color: #aaa;">💎 다이아 보유량</label>
                                     <input type="number" id="admin-ed-diamonds" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;">
                                 </div>
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <label style="font-size: 0.85rem; color: #aaa;">📉 신용 점수 (0~1000)</label>
+                                <input type="number" id="admin-ed-credit" min="0" max="1000" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: #fbbf24; border-radius: 8px; font-weight: 800;">
                             </div>
                             <div class="input-group" style="margin-top: 20px;">
                                 <label style="font-size: 0.85rem; color: #ff5252; font-weight: 800;">🚫 계정 제한 설정 (Restrictions)</label>
@@ -774,16 +787,66 @@
                     </div>
                 </div>
 
-                <!-- 5. SECURITY/LOG TAB -->
-                <div id="admin-tab-security" class="admin-content-panel hidden">
-                    <div style="display: flex; flex-direction: column; gap: 20px; height: 100%;">
-                        <div style="flex: 1; background: #000; border-radius: 12px; border: 1px solid #333; display: flex; flex-direction: column;">
-                            <div style="padding: 12px 20px; background: #1a1a1a; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333;">
-                                <div style="color: #888; font-weight: 800; font-size: 0.85rem;">🛡️ 전역 채팅 및 접속 로그 모니터링 (READ-ONLY)</div>
-                                <button class="btn secondary" onclick="app.clearAdminLogs()" style="font-size: 0.75rem; padding: 4px 10px;">로그 비우기</button>
+                <!-- 6. MYTHIC CONTROL TAB (Merged from Ultimate Admin) -->
+                <div id="admin-tab-mythic" class="admin-content-panel hidden">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; height: 100%; overflow-y: auto; padding-right: 10px;">
+                        <!-- Column 1: System Override -->
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            <h2 style="color: #d8b4fe; font-weight: 900; border-left: 5px solid #8b00ff; padding-left: 15px; margin-bottom: 10px;">⚡ 시스템 오버라이드</h2>
+                            
+                            <div style="background: rgba(139,0,255,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(139,0,255,0.2);">
+                                <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">전 세계 UI 동결 (Global Freeze)</h3>
+                                <button id="ultimate-btn-freeze" class="btn" style="width: 100%; height: 50px; background: #8b00ff; color: white; font-weight: 900;" onclick="app.toggleGlobalFreeze()">동결 시퀀스 가동</button>
                             </div>
-                            <div id="admin-log-console" style="flex: 1; padding: 15px; font-family: 'Courier New', monospace; font-size: 0.85rem; color: #00ff00; overflow-y: auto;">
-                                [SYSTEM] 보안 콘솔 연결됨... 전역 감시 대기 중.<br>
+
+                            <div style="background: rgba(255,82,82,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,82,82,0.2);">
+                                <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">전역 채팅 완전 소거 (Wipe)</h3>
+                                <button class="btn" style="width: 100%; background: #ff5252; color: white; font-weight: 900;" onclick="app.wipeAllChats()">전역 소거 발동</button>
+                            </div>
+
+                            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                                <h3 style="font-size: 1rem; margin-bottom: 15px; color: #fff; display: flex; align-items: center; gap: 10px;">
+                                    👤 가입 승인 대기 <span id="pending-count" style="background: #ef4444; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;">0</span>
+                                </h3>
+                                <div id="pending-approval-list" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                                    <div style="color: #666; font-size: 0.8rem; text-align: center;">대기 중인 회원이 없습니다.</div>
+                                </div>
+                            </div>
+
+                            <div style="background: rgba(0,229,255,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(0,229,255,0.2);">
+                                <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">보충 공지 (Ultimate Broadcast)</h3>
+                                <textarea id="ultimate-broadcast-msg" placeholder="웅장한 공지 입력..." style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid #00e5ff; color: #fff; padding: 12px; border-radius: 8px; margin-bottom: 15px;"></textarea>
+                                <button class="btn" style="width: 100%; background: #00e5ff; color: #000; font-weight: 900;" onclick="app.sendUltimateBroadcast()">신화적 공지 발송</button>
+                            </div>
+                        </div>
+
+                        <!-- Column 2: Surveillance & Economy -->
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            <h2 style="color: #d8b4fe; font-weight: 900; border-left: 5px solid #8b00ff; padding-left: 15px; margin-bottom: 10px;">👁️ 실시간 감시 & 경제</h2>
+
+                            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                                <h3 style="font-size: 1rem; margin-bottom: 15px; color: #fff;">📡 실시간 트래픽</h3>
+                                <div id="ultimate-traffic-list" style="max-height: 150px; overflow-y: auto; font-size: 0.8rem; color: #aaa; display: flex; flex-direction: column; gap: 5px;"></div>
+                            </div>
+
+                            <div style="background: rgba(234, 179, 8, 0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(234, 179, 8, 0.3);">
+                                <input type="text" id="ultimate-tts-msg" placeholder="TTS 메시지..." style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid #eab308; color: #fff; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+                                <button class="btn" style="width: 100%; background: #eab308; color: #000; font-weight: 800;" onclick="app.sendUltimateTTS()">보이스 전역 전송</button>
+                            </div>
+
+                            <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                                <h3 style="font-size: 0.9rem; color: #fff; margin-bottom: 10px;">💰 경제 원격 조정</h3>
+                                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                    <input type="number" id="ultimate-economy-val" value="10" style="width: 60px; background: #000; color: white;">
+                                    <button class="btn" style="flex:1; background:#ef4444; color:white; font-size:0.75rem;" onclick="app.applyGlobalEconomy('tax')">세금 징수</button>
+                                    <button class="btn" style="flex:1; background:#10b981; color:white; font-size:0.75rem;" onclick="app.applyGlobalEconomy('bonus')">지원금 지급</button>
+                                </div>
+                            </div>
+
+                            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                                <h3 style="font-size: 0.9rem; color: #fff; margin-bottom: 10px;">🎯 타겟 유저 제어</h3>
+                                <input type="text" id="ultimate-target-user" placeholder="유저명..." style="width:100%; margin-bottom:10px;">
+                                <button class="btn" style="width:100%; background:#ef4444; color:white;" onclick="app.remoteControl('close_all')">🔌 모든 앱 강제종료</button>
                             </div>
                         </div>
                     </div>
@@ -824,10 +887,58 @@
                             <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">전역 채팅 완전 소거 (Wipe)</h3>
                             <button class="btn" style="width: 100%; background: #ff5252; color: white; font-weight: 900;" onclick="app.wipeAllChats()">전역 소거 발동</button>
                         </div>
+                        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                            <h3 style="font-size: 1rem; margin-bottom: 15px; color: #fff; display: flex; align-items: center; gap: 10px;">
+                                👤 가입 승인 대기 <span id="pending-count" style="background: #ef4444; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;">0</span>
+                            </h3>
+                            <div id="pending-approval-list" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                                <div style="color: #666; font-size: 0.8rem; text-align: center;">대기 중인 회원이 없습니다.</div>
+                            </div>
+                        </div>
+
                         <div style="background: rgba(0,229,255,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(0,229,255,0.2);">
                             <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">최강좌 브로드캐스트</h3>
                             <textarea id="ultimate-broadcast-msg" placeholder="웅장한 공지 입력..." style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid #00e5ff; color: #fff; padding: 12px; border-radius: 8px; margin-bottom: 15px;"></textarea>
                             <button class="btn" style="width: 100%; background: #00e5ff; color: #000; font-weight: 900;" onclick="app.sendUltimateBroadcast()">신화적 공지 발송</button>
+                        </div>
+
+                        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                            <h3 style="font-size: 1rem; margin-bottom: 15px; color: #fff; display: flex; align-items: center; gap: 10px;">
+                                📡 실시간 트래픽 상시 모니터링
+                            </h3>
+                            <div id="ultimate-traffic-list" style="max-height: 150px; overflow-y: auto; font-size: 0.8rem; color: #aaa; display: flex; flex-direction: column; gap: 5px;">
+                                <!-- Traffic data injected here -->
+                                <div style="text-align: center; padding: 10px;">데이터 수집 중...</div>
+                            </div>
+                        </div>
+
+                        <div style="background: rgba(234, 179, 8, 0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(234, 179, 8, 0.3);">
+                            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">🔊 보이스 브로드캐스트 (TTS)</h3>
+                            <input type="text" id="ultimate-tts-msg" placeholder="모두에게 들릴 목소리..." style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid #eab308; color: #fff; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                            <button class="btn" style="width: 100%; background: #eab308; color: #000; font-weight: 900;" onclick="app.sendUltimateTTS()">전 구역 목소리 전송</button>
+                        </div>
+
+                        <div style="background: rgba(139, 92, 246, 0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.3);">
+                            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">🎨 전역 테마 강제 동기화</h3>
+                            <div style="display: flex; gap: 5px;">
+                                <select id="ultimate-theme-select" style="flex: 1; background: #222; border: 1px solid #8b5cf6; color: white; border-radius: 8px; padding: 10px;">
+                                    <option value="default">기본 다크</option>
+                                    <option value="glass">글래스모피즘</option>
+                                    <option value="neon">네온 블루</option>
+                                    <option value="crimson">크림슨 레드</option>
+                                    <option value="forest">포레스트 그린</option>
+                                </select>
+                                <button class="btn" style="background: #8b5cf6; color: white; padding: 0 15px;" onclick="app.setGlobalTheme()">적용</button>
+                            </div>
+                        </div>
+
+                        <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2);">
+                            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">🎯 유저 원격 제어 & 현상 수배</h3>
+                            <input type="text" id="ultimate-target-user" placeholder="대상 유저 이름..." style="width: 100%; background: #111; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                                <button class="btn" style="background: #ef4444; color: white; font-size: 0.75rem;" onclick="app.remoteControl('close_all')">🔌 모든 앱 강제종료</button>
+                                <button class="btn" style="background: #000; color: #ef4444; border: 1px solid #ef4444; font-size: 0.75rem;" onclick="app.toggleWanted()">🏴‍☠️ 현상 수배 토글</button>
+                            </div>
                         </div>
 
                         <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
@@ -842,10 +953,30 @@
                     </div>
                 </div>
                 <div class="glass-panel" style="padding: 30px; border: 1px solid rgba(139,0,255,0.3); background: rgba(0,0,0,0.5); display: flex; flex-direction: column;">
-                    <h2 style="color: #d8b4fe; margin-bottom: 25px; font-weight: 900; border-left: 5px solid #8b00ff; padding-left: 15px;">💎 부와 권력</h2>
+                    <h2 style="color: #d8b4fe; margin-bottom: 25px; font-weight: 900; border-left: 5px solid #8b00ff; padding-left: 15px;">💎 부와 경제 통제</h2>
                     <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">💰 전역 경제 조정 (세금/장려금)</h3>
+                            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                                <input type="number" id="ultimate-economy-val" value="10" style="width: 70px; background: #000; border: 1px solid #10b981; color: white; padding: 10px; border-radius: 8px;">
+                                <span style="color: #fff;">%</span>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn" style="flex: 1; background: #ef4444; color: white; font-weight: 800;" onclick="app.applyGlobalEconomy('tax')">세금 원천 징수</button>
+                                <button class="btn" style="flex: 1; background: #10b981; color: white; font-weight: 800;" onclick="app.applyGlobalEconomy('bonus')">재난 지원금 지급</button>
+                            </div>
+                        </div>
+
+                        <div style="background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3 style="font-size: 1rem; color: #fff;">🛸 고스트 모드 (Ghost Admin)</h3>
+                                <p style="font-size: 0.75rem; color: #888;">접속자 명단에서 완전히 사라집니다.</p>
+                            </div>
+                            <button id="ultimate-btn-ghost" class="btn" style="background: #444; color: white; width: 80px; border-radius: 20px;" onclick="app.toggleGhostMode()">OFF</button>
+                        </div>
+
                         <div style="background: rgba(255,215,0,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,215,0,0.3);">
-                            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">무한 재화 주입</h3>
+                            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #fff;">무한 재화 주입 (Personal)</h3>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                                 <button class="btn" style="background: #fbb03b; color: #000;" onclick="app.injectWealth('coins', 1000000)">+100만 코인</button>
                                 <button class="btn" style="background: #00e5ff; color: #000;" onclick="app.injectWealth('diamonds', 10000)">+1만 다이아</button>
