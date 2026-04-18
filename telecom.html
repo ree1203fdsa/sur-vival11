@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 텔레콤 (JuRam Telecom)</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; margin: 0; padding: 40px; text-align: center; }
+        .card { background: white; max-width: 450px; margin: 0 auto; padding: 40px; border-radius: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        .logo { font-size: 2.5rem; font-weight: 900; color: #3b82f6; margin-bottom: 10px; }
+        .price { font-size: 1.2rem; font-weight: 800; color: #64748b; margin-bottom: 30px; }
+        .form-group { text-align: left; margin-bottom: 25px; }
+        label { display: block; font-size: 0.85rem; font-weight: 800; color: #94a3b8; margin-bottom: 10px; }
+        .number-input-group { display: flex; align-items: center; gap: 10px; font-size: 1.5rem; font-weight: 900; color: #1e293b; }
+        input { flex: 1; padding: 15px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 1.2rem; outline: none; transition: 0.2s; text-align: center; font-family: monospace; }
+        input:focus { border-color: #3b82f6; }
+        .buy-btn { width: 100%; padding: 20px; border-radius: 15px; border: none; background: #3b82f6; color: white; font-size: 1.1rem; font-weight: 900; cursor: pointer; transition: 0.3s; box-shadow: 0 10px 20px rgba(59,130,246,0.2); }
+        .buy-btn:hover { background: #2563eb; transform: translateY(-3px); }
+        .current-number { margin-top: 30px; padding: 20px; background: #eff6ff; border-radius: 15px; color: #1d4ed8; font-weight: 800; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">📡 JuRam Telecom</div>
+        <div class="price">고압축 보안 회선 개통: 💰 1,000 코인</div>
+
+        <div id="status-view">
+            <div class="form-group">
+                <label>희망하는 번호 뒷자리 (4자리)</label>
+                <div class="number-input-group">
+                    <span>094</span>
+                    <span>-</span>
+                    <span id="random-part">0000</span>
+                    <span>-</span>
+                    <input type="text" id="custom-part" maxlength="4" placeholder="1234">
+                </div>
+            </div>
+
+            <button class="buy-btn" onclick="buyNumber()">새 번호 발급 및 개통하기</button>
+        </div>
+
+        <div id="my-number" class="current-number" style="display: none;">
+            나의 번호: <span id="display-number">없음</span>
+        </div>
+    </div>
+
+    <script>
+        const randomPart = Math.floor(1000 + Math.random() * 9000);
+        document.getElementById('random-part').textContent = randomPart;
+
+        function updateUI() {
+            const user = window.parent.STATE.currentUser;
+            if (user && user.phoneNumber) {
+                document.getElementById('my-number').style.display = 'block';
+                document.getElementById('display-number').textContent = user.phoneNumber;
+            }
+        }
+
+        function buyNumber() {
+            const custom = document.getElementById('custom-part').value.trim();
+            if (custom.length !== 4 || isNaN(custom)) {
+                alert("번호 뒷자리는 꼭 숫자 4자리여야 합니다!");
+                return;
+            }
+
+            const user = window.parent.STATE.currentUser;
+            if (user.coins < 1000) {
+                alert("코인이 부족합니다! (필요: 1,000 코인)");
+                return;
+            }
+
+            const newNumber = `094-${randomPart}-${custom}`;
+            if (confirm(`${newNumber} 번호로 개통하시겠습니까? 1,000코인이 소모됩니다.`)) {
+                user.coins -= 1000;
+                user.phoneNumber = newNumber;
+                
+                window.parent.saveData();
+                window.parent.updateUI();
+                alert(`축하합니다! ${newNumber} 번호로 개통되었습니다.`);
+                updateUI();
+            }
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>

@@ -108,30 +108,30 @@
 </head>
 <body>
     <div class="header">
-        <h1>System Monitor</h1>
-        <div class="status-badge">● SYSTEM STABLE</div>
+        <h1>시스템 모니터</h1>
+        <div class="status-badge">● 시스템 안정적</div>
     </div>
 
     <div class="grid">
         <div class="card">
-            <div class="card-label">STORAGE USAGE (LocalStorage)</div>
+            <div class="card-label">저장 공간 사용량 (LocalStorage)</div>
             <div class="card-value" id="storage-val">0.02 MB</div>
             <div class="progress-bar"><div class="progress-fill" id="storage-bar" style="width: 1%;"></div></div>
-            <div class="card-sub">Total allocated 5.0 MB</div>
+            <div class="card-sub">총 할당량: 5.0 MB</div>
         </div>
         <div class="card">
-            <div class="card-label">ACTIVE PROCESSES</div>
+            <div class="card-label">활성 프로세스</div>
             <div class="card-value" id="proc-count">0</div>
-            <div class="card-sub">OS Subsystems included</div>
+            <div class="card-sub">OS 하위 시스템 포함</div>
         </div>
         <div class="card">
-            <div class="card-label">NETWORK LATENCY</div>
+            <div class="card-label">네트워크 지연 시간</div>
             <div class="card-value" id="ping-val">12ms</div>
-            <div class="card-sub">Connected to Firebase Realtime</div>
+            <div class="card-sub">Firebase 실시간 연결됨</div>
         </div>
     </div>
 
-    <h2 style="font-size: 1rem; margin-bottom: 15px; color: #94a3b8;">RUNNING PROCESSES</h2>
+    <h2 style="font-size: 1rem; margin-bottom: 15px; color: #94a3b8;">실행 중인 프로세스 목록</h2>
     <div class="process-list" id="process-list">
         <!-- Processes will be listed here -->
     </div>
@@ -167,9 +167,9 @@
                     item.innerHTML = `
                         <div>
                             <span class="proc-name">${cfg.icon} ${cfg.title}</span>
-                            <span class="proc-status"> - Running</span>
+                            <span class="proc-status"> - 실행 중</span>
                         </div>
-                        <button class="kill-btn" onclick="kill('${pid}')">TERMINATE</button>
+                        <button class="kill-btn" onclick="kill('${pid}')">작업 종료</button>
                     `;
                     list.appendChild(item);
                 });

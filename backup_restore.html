@@ -22,13 +22,13 @@
         <h1>💾 백업 및 복구 센터</h1>
         
         <div class="field">
-            <label>시스템 데이터 (JSON)</label>
+            <label>시스템 데이터 (JSON 코드)</label>
             <textarea id="data-box" placeholder="데이터를 추출하거나 복구할 코드를 여기에 붙여넣으세요..."></textarea>
         </div>
 
         <div class="btn-row">
-            <button class="btn-exp" onclick="exportData()">내보내기 (Backup)</button>
-            <button class="btn-imp" onclick="importData()">가져오기 (Restore)</button>
+            <button class="btn-exp" onclick="exportData()">데이터 내보내기 (백업)</button>
+            <button class="btn-imp" onclick="importData()">데이터 가져오기 (복구)</button>
         </div>
         
         <p style="font-size: 0.75rem; color: #555; margin-top: 20px; line-height: 1.5;">
@@ -51,7 +51,7 @@
             };
             
             document.getElementById('data-box').value = JSON.stringify(backup);
-            alert("백업 코드가 생성되었습니다! 메모장에 안전하게 복사해 두세요.");
+            alert("백업 코드가 성공적으로 생성되었습니다! 이 코드를 안전한 곳에 복사해 두세요.");
         }
 
         function importData() {
@@ -60,16 +60,16 @@
             
             try {
                 const backup = JSON.parse(raw);
-                if (!confirm("정말 이 데이터로 시스템을 복구하시겠습니까? 현재 데이터는 소멸됩니다.")) return;
+                if (!confirm("정말 이 데이터로 시스템을 복구하시겠습니까? 현재 기기의 데이터는 모두 사라집니다.")) return;
                 
                 if (backup.coreData) localStorage.setItem('SURVIVAL_3D_DATA', JSON.stringify(backup.coreData));
                 if (backup.wallpaper) localStorage.setItem('juram_wallpaper', backup.wallpaper);
                 if (backup.theme) localStorage.setItem('juram_theme', backup.theme);
                 
-                alert("복구가 완료되었습니다. 시스템을 재시작합니다.");
+                alert("복구가 완료되었습니다! 시스템을 재시작합니다.");
                 window.parent.location.reload();
             } catch (e) {
-                alert("잘못된 백업 코드입니다.");
+                alert("잘못된 백업 코드이거나 형식이 맞지 않습니다.");
             }
         }
     </script>

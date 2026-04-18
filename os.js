@@ -31,6 +31,8 @@ const app = window.app = {
         'win-cleaner': { title: '시스템 클리너', icon: '🧹', screenId: 'cleaner-screen' },
         'win-backup': { title: '백업 및 복구', icon: '💾', screenId: 'backup-screen' },
         'win-share': { title: 'Quick Share', icon: '🚀', screenId: 'share-screen' },
+        'win-phone': { title: '주람 폰', icon: '📞', screenId: 'phone-screen' },
+        'win-telecom': { title: '주람 텔레콤', icon: '📡', screenId: 'telecom-screen' },
     },
     // 테마 설정
     setTheme: (theme) => {
@@ -160,6 +162,21 @@ const app = window.app = {
                 // 처리 후 삭제 혹은 읽음 표시
                 db.ref(`users/${STATE.currentUser.uid}/incoming_shares/${snap.key}`).remove();
             });
+
+            // [주람 폰 - 수신 전화 감지]
+            db.ref(`users/${STATE.currentUser.uid}/incoming_calls`).on('value', snap => {
+                const data = snap.val();
+                const modal = document.getElementById('incoming-call-modal');
+                if (data && data.status === 'ringing') {
+                    app._activeIncomingCall = data;
+                    document.getElementById('caller-name').textContent = data.from;
+                    modal.style.display = 'flex';
+                    // 벨소리나 알림음 효과 (옵션)
+                    showToast(`📞 ${data.from}님에게 전화가 오고 있습니다.`, 'info');
+                } else {
+                    if (modal) modal.style.display = 'none';
+                }
+            });
         }
 
         // [트래픽 보고] 현재 열린 창을 서버에 보고
@@ -171,6 +188,23 @@ const app = window.app = {
             });
         }
     },
+    
+    acceptCall: () => {
+        const call = app._activeIncomingCall;
+        if (!call || !db) return;
+        db.ref(`calls/${call.id}`).set({ status: 'accepted', to: STATE.currentUser.username });
+        db.ref(`users/${STATE.currentUser.uid}/incoming_calls/status`).set('in-progress');
+        showToast('전화를 수락했습니다. 연결 중...', 'success');
+        app.openWindow('win-phone');
+    },
+
+    rejectCall: () => {
+        const call = app._activeIncomingCall;
+        if (!call || !db) return;
+        db.ref(`calls/${call.id}`).set({ status: 'rejected' });
+        db.ref(`users/${STATE.currentUser.uid}/incoming_calls`).remove();
+        showToast('전화를 거절했습니다.', 'warning');
+    },
     // ---- [ SYSTEM PLAY STORE LOGIC ] ---- //
     refreshPlayStore: () => {
         const list = document.getElementById('playstore-app-list');
@@ -178,16 +212,18 @@ const app = window.app = {
         list.innerHTML = '';
         
         const apps = [
-            { id: 'win-crafting', title: 'Survival 조합 가이드', icon: '🪓', desc: '생존 초보자를 위한 필수 조합 레시피 모음' },
-            { id: 'win-wallpapers', title: '배경화면 체인저', icon: '🖼️', desc: 'OS의 배경을 고화질 이미지로 꾸미는 도구' },
-            { id: 'win-monitor', title: '시스템 모니터', icon: '📊', desc: '리소스 사용량 확인 및 프로세스 관리' },
-            { id: 'win-calculator', title: '주람 계산기', icon: '🧮', desc: '심플하고 강력한 OS 내장 계산기' },
-            { id: 'win-terminal', title: '주람 터미널', icon: '💻', desc: '명령어로 OS를 제어하는 고급 개발자 도구' },
-            { id: 'win-termdict', title: '터미널 사전', icon: '📖', desc: '터미널 실생활 명령어 및 JS 활용법 가이드' },
-            { id: 'win-code', title: '주람 코드 (JuRam Code)', icon: '✍️', desc: 'OS 내에서 직접 자바스크립트를 코딩하고 실행' },
-            { id: 'win-cleaner', title: '시스템 클리너', icon: '🧹', desc: '불필요한 데이터 정리 및 성능 최적화' },
-            { id: 'win-backup', title: '백업 & 복구 센터', icon: '💾', desc: 'OS의 모든 데이터를 파일로 백업하고 복원' },
-            { id: 'win-share', title: '주람 퀵 셰어', icon: '🚀', desc: '주변 유저에게 메시지나 코인을 즉시 전송' }
+            { id: 'win-crafting', title: '생존 조합 가이드', icon: '🪓', desc: '초보 생존자를 위한 필수 조합법과 팁 모음.' },
+            { id: 'win-wallpapers', title: '배경화면 체인저', icon: '🖼️', desc: 'OS의 바탕화면을 고화질 테마 이미지로 변경합니다.' },
+            { id: 'win-monitor', title: '시스템 모니터', icon: '📊', desc: '실시간 리소스 사용량 및 프로세스 관리 도구.' },
+            { id: 'win-calculator', title: '주람 계산기', icon: '🧮', desc: '간단하고 강력한 연산 기능을 제공하는 계산기.' },
+            { id: 'win-terminal', title: '주람 터미널', icon: '💻', desc: '명령어로 OS 핵심 기능을 제어하는 개발자 도구.' },
+            { id: 'win-termdict', title: '터미널 사전', icon: '📖', desc: '터미널 실무 명령어 및 활용법에 대한 위키.' },
+            { id: 'win-code', title: '주람 코드 (Code)', icon: '✍️', desc: 'OS 내에서 직접 자바스크립트를 작성하고 실행합니다.' },
+            { id: 'win-cleaner', title: '시스템 클리너', icon: '🧹', desc: '불필요한 캐시 데이터 정리로 성능을 최적화합니다.' },
+            { id: 'win-backup', title: '백업 & 복구 센터', icon: '💾', desc: '시스템 전체 데이터를 백업 코드로 추출 및 복원.' },
+            { id: 'win-share', title: '주람 퀵 셰어', icon: '🚀', desc: '주변 유저에게 메시지나 코인을 즉시 전송합니다.' },
+            { id: 'win-phone', title: '주람 폰 (Phone)', icon: '📞', desc: '다른 유저와 실시간으로 전화를 연결하고 소통합니다.' },
+            { id: 'win-telecom', title: '주람 텔레콤 (Telecom)', icon: '📡', desc: '나만의 유니크한 전화번호를 개통하고 관리하세요.' }
         ];
 
         apps.forEach(a => {
@@ -1112,18 +1148,18 @@ const app = window.app = {
 
         app.addAdminLog('SYSTEM: Initializing REAL-TIME user sync...');
         const badge = document.getElementById('admin-db-status');
-        if (badge) { badge.textContent = '📡 SYNCING'; badge.style.color = '#fbbf24'; }
+        if (badge) { badge.textContent = '📡 동기화 중...'; badge.style.color = '#fbbf24'; }
 
         db.ref('users').on('value', snap => {
             app.adminUserCache = snap.val() || {};
             const count = Object.keys(app.adminUserCache).length;
             
             if (badge) { 
-                badge.textContent = '🟢 CONNECTED'; 
+                badge.textContent = '🟢 실시간 연결됨'; 
                 badge.style.color = '#86efac'; 
             }
             
-            app.addAdminLog(`DB: Sync Complete (${count} user records)`);
+            app.addAdminLog(`데이터베이스: 동기화 완료 (${count}명의 유저 레코드)`);
             app.renderAdminUserList();
             
             // 전역 경제 지표 업데이트
@@ -1270,7 +1306,7 @@ const app = window.app = {
         const target = document.getElementById(`admin-tab-${tabId}`);
         if (target) target.classList.remove('hidden');
         
-        app.addAdminLog(`NAV: Switched to ${tabId} tab.`);
+        app.addAdminLog(`탐색: ${tabId} 탭으로 전환되었습니다.`);
         if (tabId === 'users') app.loadAdminUsers();
         if (tabId === 'store') app.loadAdminStoreList();
         if (tabId === 'economy') app.refreshAdminData();
@@ -1298,21 +1334,39 @@ const app = window.app = {
 
     loadAdminStoreList: () => {
         if (!db) return;
-        db.ref('app-store/applications').once('value').then(snap => {
+        db.ref('store_apps').once('value').then(snap => {
             const apps = snap.val() || {};
             const list = document.getElementById('admin-store-list');
             if (!list) return;
             
-            list.innerHTML = Object.entries(apps).map(([id, a]) => `
+            const entries = Object.entries(apps);
+            if (entries.length === 0) {
+                list.innerHTML = '<tr><td colspan="4" style="padding: 60px; text-align: center; color: #4b5563;">등록된 앱이 없습니다.</td></tr>';
+                return;
+            }
+
+            list.innerHTML = entries.map(([id, a]) => {
+                const isApproved = a.approved !== false; // 기본적으로 승인됨(true)으로 간주
+                return `
                 <tr style="border-bottom: 1px solid #1f2937;">
                     <td style="padding: 25px 30px; font-weight: 800; color: #fff; font-size: 1.1rem;">${a.title}</td>
-                    <td style="padding: 25px 30px; color: #64748b;">${a.author || '익명'}</td>
-                    <td style="padding: 25px 30px; color: ${a.approved?'#86efac':'#fb7185'}; font-weight: 800;">${a.approved?'승인됨':'대기중'}</td>
+                    <td style="padding: 25px 30px; color: #64748b;">${a.creator || '익명'}</td>
+                    <td style="padding: 25px 30px; color: ${isApproved ? '#86efac' : '#fb7185'}; font-weight: 800;">${isApproved ? '승인됨' : '대기중'}</td>
                     <td style="padding: 25px 30px;">
                         <button class="btn" style="background: transparent; border: 1px solid #f87171; color: #f87171; width: 70px; padding: 5px; border-radius: 8px; font-weight: 700;" onclick="app.deleteAdminApp('${id}')">삭제</button>
                     </td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
+        });
+    },
+
+    deleteAdminApp: (id) => {
+        if (!confirm('정말 이 앱을 스토어에서 영구적으로 삭제하시겠습니까?')) return;
+        if (!db) return;
+        db.ref('store_apps/' + id).remove().then(() => {
+            showToast('앱이 삭제되었습니다.', 'info');
+            app.loadAdminStoreList();
         });
     },
 
@@ -1387,34 +1441,7 @@ const app = window.app = {
         showToast('모든 채팅 기록이 소멸되었습니다.', 'error');
     },
 
-    loadAdminStoreList: () => {
-        if (!db) return;
-        const listBody = document.getElementById('admin-store-list');
-        if (!listBody) return;
-        
-        db.ref('app-store/published').once('value').then(snap => {
-            const apps = snap.val();
-            listBody.innerHTML = '';
-            if (!apps) {
-                listBody.innerHTML = '<tr><td colspan="4" style="padding: 100px; text-align: center; color: #4b5563;">등록된 앱이 없습니다.</td></tr>';
-                return;
-            }
-            
-            Object.entries(apps).forEach(([aid, appData]) => {
-                const tr = document.createElement('tr');
-                tr.style.cssText = 'border-bottom: 1px solid #1f2937;';
-                tr.innerHTML = `
-                    <td style="padding: 25px 30px; font-weight: 800; color: #fff; font-size: 1.1rem;">${appData.name}</td>
-                    <td style="padding: 25px 30px; color: #64748b;">${appData.developer || 'undefined'}</td>
-                    <td style="padding: 25px 30px; color: #86efac; font-weight: 800;">승인됨</td>
-                    <td style="padding: 25px 30px;">
-                        <button class="btn" style="background: transparent; border: 1px solid #f87171; color: #f87171; width: 70px; padding: 5px; border-radius: 8px; font-weight: 700;" onclick="app.deletePublishedApp('${aid}')">삭제</button>
-                    </td>
-                `;
-                listBody.appendChild(tr);
-            });
-        });
-    },
+
 
     deletePublishedApp: (aid) => {
         if (!confirm('정말 이 앱을 스토어에서 삭제하시겠습니까?')) return;
@@ -1593,10 +1620,18 @@ const app = window.app = {
         }
     },
     
-    addAdminWarning: () => {
-        const input = document.getElementById('admin-ed-warnings');
-        input.value = parseInt(input.value) + 1;
-        showToast('경고가 추가되었습니다. (저장 버튼을 눌러야 확정됩니다)', 'info');
+    addAdminLog: (msg) => {
+        const consoleEl = document.getElementById('admin-log-console');
+        if (!consoleEl) return;
+        const time = new Date().toLocaleTimeString();
+        const line = document.createElement('div');
+        line.innerHTML = `<span style="color: #64748b;">[${time}]</span> ${msg}`;
+        consoleEl.appendChild(line);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+    },
+
+    logAdminAction: (msg) => {
+        app.addAdminLog(`[보안] ${msg}`);
     },
 
     kickAdminUser: () => {

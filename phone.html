@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 폰 (JuRam Phone)</title>
+    <style>
+        :root {
+            --bg: #000;
+            --text: #fff;
+            --accent: #22c55e;
+            --danger: #ef4444;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; height: 100vh; box-sizing: border-box; }
+        
+        .dial-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 100%; max-width: 280px; margin-top: 30px; }
+        .dial-btn { width: 70px; height: 70px; border-radius: 50%; background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; cursor: pointer; transition: 0.2s; border: none; }
+        .dial-btn:active { background: #333; transform: scale(0.9); }
+        .dial-btn span { font-size: 0.6rem; color: #666; font-weight: normal; }
+
+        .call-action { margin-top: 40px; display: flex; gap: 30px; }
+        .action-btn { width: 75px; height: 75px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; border: none; cursor: pointer; animation: pulse 2s infinite; }
+        .btn-call { background: var(--accent); color: white; }
+        .btn-hangup { background: var(--danger); color: white; display: none; }
+
+        #number-display { font-size: 2.22rem; font-weight: 300; margin-top: 20px; height: 50px; }
+        .contact-list { width: 100%; max-width: 400px; margin-top: 20px; overflow-y: auto; flex: 1; }
+        .contact-item { padding: 15px; border-bottom: 1px solid #111; display: flex; justify-content: space-between; align-items: center; }
+        .contact-name { font-weight: bold; }
+
+        /* Animation */
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
+
+        /* Call Screen Overlay */
+        #call-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000;
+            display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 1000;
+        }
+        .caller-id { font-size: 2rem; margin-bottom: 10px; }
+        .call-status { color: #64748b; margin-bottom: 50px; }
+    </style>
+</head>
+<body>
+    <div id="main-view" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+        <div style="font-size: 0.8rem; color: #64748b; margin-top: 20px;">내 번호: <span id="my-num-display">없음</span></div>
+        <div id="number-display"></div>
+        
+        <div class="dial-pad">
+            <button class="dial-btn" onclick="addNum('1')">1</button>
+            <button class="dial-btn" onclick="addNum('2')">2<span>ABC</span></button>
+            <button class="dial-btn" onclick="addNum('3')">3<span>DEF</span></button>
+            <button class="dial-btn" onclick="addNum('4')">4<span>GHI</span></button>
+            <button class="dial-btn" onclick="addNum('5')">5<span>JKL</span></button>
+            <button class="dial-btn" onclick="addNum('6')">6<span>MNO</span></button>
+            <button class="dial-btn" onclick="addNum('7')">7<span>PQRS</span></button>
+            <button class="dial-btn" onclick="addNum('8')">8<span>TUV</span></button>
+            <button class="dial-btn" onclick="addNum('9')">9<span>WXYZ</span></button>
+            <button class="dial-btn" onclick="addNum('*')">*</button>
+            <button class="dial-btn" onclick="addNum('0')">0<span>+</span></button>
+            <button class="dial-btn" onclick="addNum('#')">#</button>
+        </div>
+
+        <div class="call-action">
+            <button class="action-btn btn-call" onclick="startCall()">📞</button>
+        </div>
+
+        <h3 style="width: 100%; margin-top: 40px; border-bottom: 1px solid #222; padding-bottom: 10px;">👤 최근 연락처</h3>
+        <div class="contact-list" id="contact-list">
+            <!-- Loaded from Firebase -->
+        </div>
+    </div>
+
+    <!-- Active Call Overlay -->
+    <div id="call-overlay">
+        <div class="user-avatar" style="width: 100px; height: 100px; background: #1e293b; border-radius: 50%; font-size: 3rem; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">👤</div>
+        <div class="caller-id" id="overlay-name">유저 이름</div>
+        <div class="call-status" id="overlay-status">연결 중...</div>
+        
+        <div class="call-action">
+            <button class="action-btn btn-hangup" id="btn-hangup" style="display: flex;" onclick="endCall()">📵</button>
+        </div>
+    </div>
+
+    <script>
+        let currentNum = "";
+        let isCalling = false;
+        let activeCallId = null;
+
+        function addNum(n) {
+            if (currentNum.length > 15) return;
+            currentNum += n;
+            document.getElementById('number-display').textContent = currentNum;
+        }
+
+        function loadContacts() {
+            if (!window.parent.db) return;
+            // 내 번호 표시
+            const me = window.parent.STATE.currentUser;
+            if (me && me.phoneNumber) document.getElementById('my-num-display').textContent = me.phoneNumber;
+
+            window.parent.db.ref('users').once('value').then(snap => {
+                const users = snap.val() || {};
+                const list = document.getElementById('contact-list');
+                list.innerHTML = '';
+                Object.entries(users).forEach(([uid, u]) => {
+                    if (uid === window.parent.STATE.currentUser.uid) return;
+                    const item = document.createElement('div');
+                    item.className = 'contact-item';
+                    item.innerHTML = `
+                        <div>
+                            <div class="contact-name">${u.username}</div>
+                            <div style="font-size: 0.75rem; color: #64748b;">${u.phoneNumber || '번호 없음'}</div>
+                        </div>
+                        <button style="background: none; border: 1px solid #22c55e; color: #22c55e; border-radius: 15px; padding: 5px 12px; cursor: pointer;" onclick="directCall('${uid}', '${u.username}')">전화</button>
+                    `;
+                    list.appendChild(item);
+                });
+            });
+        }
+
+        function directCall(uid, name) {
+            targetUid = uid;
+            targetName = name;
+            startCall();
+        }
+
+        let targetUid = null;
+        let targetName = "Unknown";
+
+        function startCall() {
+            if (!targetUid) {
+                alert("연락처를 선택하거나 번호를 입력하세요!");
+                return;
+            }
+            
+            isCalling = true;
+            document.getElementById('call-overlay').style.display = 'flex';
+            document.getElementById('overlay-name').textContent = targetName;
+            
+            // 수신자에게 알림 전송
+            if (window.parent.db) {
+                activeCallId = 'call_' + Date.now();
+                window.parent.db.ref(`users/${targetUid}/incoming_calls`).set({
+                    from: window.parent.STATE.currentUser.username,
+                    fromUid: window.parent.STATE.currentUser.uid,
+                    id: activeCallId,
+                    status: 'ringing'
+                });
+
+                // 수신 상태 모니터링
+                window.parent.db.ref(`calls/${activeCallId}`).on('value', snap => {
+                    const data = snap.val();
+                    if (!data) return;
+                    if (data.status === 'accepted') {
+                        document.getElementById('overlay-status').textContent = "연결됨 - 통화 중";
+                    } else if (data.status === 'rejected' || data.status === 'ended') {
+                        alert("통화가 거절되었거나 종료되었습니다.");
+                        endCall();
+                    }
+                });
+            }
+        }
+
+        function endCall() {
+            isCalling = false;
+            document.getElementById('call-overlay').style.display = 'none';
+            if (window.parent.db && activeCallId) {
+                window.parent.db.ref(`calls/${activeCallId}/status`).set('ended');
+                window.parent.db.ref(`users/${targetUid}/incoming_calls`).remove();
+            }
+        }
+
+        loadContacts();
+    </script>
+</body>
+</html>

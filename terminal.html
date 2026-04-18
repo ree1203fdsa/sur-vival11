@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>JuRam Terminal</title>
+    <title>주람 터미널</title>
     <style>
         body {
             background: #000;
@@ -40,8 +40,8 @@
     </style>
 </head>
 <body>
-    <div id="output">JuRam OS v1.0.4 [Terminal Mode]
-(c) 2024 JuRam Systems. Type 'help' for commands.
+    <div id="output">주람 OS v1.0.5 [터미널 모드]
+(c) 2024 JuRam Systems. 명령어를 확인하려면 'help'를 입력하세요.
 
 </div>
     <div id="input-area">
@@ -77,12 +77,12 @@
 
             switch(cmd) {
                 case 'help':
-                    print("사용 가능 명령어:\n- ls: 앱 목록 보기\n- open [app_id]: 앱 실행\n- wallpaper [url]: 배경화면 변경\n- clear: 화면 소거\n- exit: 터미널 종료\n- whoami: 현재 사용자 정보");
+                    print("사용 가능 명령어:\n- ls: 앱 목록 보기\n- open [app_id]: 앱 실행\n- wallpaper [url]: 배경화면 변경\n- clear: 화면 소거\n- exit: 터미널 종료\n- whoami: 현재 사용자 정보\n- js [code]: 자바스크립트 실행");
                     break;
                 case 'ls':
                     if (window.parent.app && window.parent.app.windowConfigs) {
                         const apps = Object.keys(window.parent.app.windowConfigs).join(', ');
-                        print("Installed Apps: " + apps);
+                        print("설치된 앱 목록: " + apps);
                     }
                     break;
                 case 'open':
@@ -90,7 +90,16 @@
                         window.parent.app.openWindow(args[0]);
                         print(`${args[0]} 실행 요청됨...`, '#3b82f6');
                     } else {
-                        print("Error: 앱 ID를 입력하세요. (예: open win-store)");
+                        print("오류: 앱 ID를 입력하세요. (예: open win-playstore)");
+                    }
+                    break;
+                case 'js':
+                    try {
+                        const code = args.join(' ');
+                        const result = window.parent.eval(code);
+                        print(`>> ${result}`, '#68f7b5');
+                    } catch(e) {
+                        print(`JS 오류: ${e.message}`, '#ef4444');
                     }
                     break;
                 case 'clear':
@@ -98,7 +107,7 @@
                     break;
                 case 'whoami':
                     const user = window.parent.STATE.currentUser;
-                    print(`User: ${user ? user.username : 'Guest'}\nRole: ${user ? user.role : 'N/A'}`);
+                    print(`사용자: ${user ? user.username : 'GUEST'}\n권한: ${user ? user.role : 'N/A'}`);
                     break;
                 case 'wallpaper':
                     if (args[0] && window.parent.app.setWallpaper) {
@@ -110,7 +119,7 @@
                     window.parent.app.closeWindow('win-terminal');
                     break;
                 default:
-                    if (cmd) print(`Command not found: ${cmd}`, '#ef4444');
+                    if (cmd) print(`명령어를 찾을 수 없습니다: ${cmd}`, '#ef4444');
             }
         }
     </script>

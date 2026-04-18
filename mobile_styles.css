@@ -330,9 +330,28 @@
     #excel-table { table-layout: auto !important; }
     #excel-formula-input { font-size: 0.8rem !important; }
 
-    /* JuRam Gallery Mobile */
-    #gallery-screen > div:first-child { padding: 15px 20px !important; flex-direction: column; align-items: flex-start; gap: 10px; }
-    #gallery-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important; padding: 15px 20px !important; }
-    #photo-viewer-modal img { max-width: 100%; max-height: 70%; }
-    #photo-viewer-modal button { width: 40px; height: 40px; font-size: 1.2rem; }
+    /* Play Store Mobile */
+    #playstore-screen > div:first-child { padding: 20px 15px !important; }
+    #playstore-screen h1 { font-size: 1.4rem !important; }
+    #playstore-app-list { 
+        grid-template-columns: 1fr !important; /* Single column for clarity */
+        padding: 15px !important; 
+        gap: 15px !important;
+    }
+
+    /* System Monitor Mobile */
+    #monitor-screen .grid { grid-template-columns: 1fr !important; }
+    #monitor-screen .card-value { font-size: 1.4rem !important; }
+
+    /* Calculator Mobile */
+    #calc-screen body { padding: 0 !important; }
+    #calc-screen .calc { width: 90% !important; max-width: 320px; margin: auto; }
+
+    /* Terminal Mobile */
+    #term-screen #output { font-size: 12px !important; }
+    #term-screen #cmd-input { font-size: 12px !important; }
+
+    /* Quick Share Mobile */
+    #share-screen .radar { width: 100px !important; height: 100px !important; }
+    #share-screen .user-list { padding: 0 10px; }
 }
