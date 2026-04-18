@@ -99,6 +99,16 @@ const updateUI = () => {
     }
     
     
+    // 메뉴 버튼 리스너 연결
+    const setupMenuBtn = (id, winId) => {
+        const btn = document.getElementById(id);
+        if (btn) btn.onclick = () => app.openWindow(winId);
+    };
+    setupMenuBtn('btn-start-game', 'win-play');
+    setupMenuBtn('btn-shop', 'win-shop');
+    setupMenuBtn('btn-chat', 'win-chat');
+    setupMenuBtn('btn-announcements', 'win-quests'); // 공지 대신 퀘스트 등 연결
+    
     // 관리자 버튼 표시 여부
     const adminBtn = document.getElementById('btn-admin');
     if (adminBtn) {

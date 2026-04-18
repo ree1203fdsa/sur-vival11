@@ -141,7 +141,7 @@ const setupLoginHandler = () => {
             // 로컬 로그인 (오프라인용)
             const found = STATE.users.find(u => u.username === userIn && u.password === passIn);
             if (found) {
-                STATE.currentUser = found;
+                STATE.currentUser = { ...found, uid: found.uid || `local_${found.username}` };
                 showToast(`환영합니다! (로컬 로그인)`, 'success');
                 updateUI(); showScreen('menu-screen');
             } else {
@@ -154,10 +154,21 @@ const setupLoginHandler = () => {
     const guestBtn = document.getElementById('btn-guest-login');
     if (guestBtn) {
         guestBtn.onclick = () => {
+            // 게스트 로그인 시 모든 기존 설정 초기화 (배경화면, 설치된 앱 등)
+            localStorage.removeItem('juram_wallpaper');
+            localStorage.removeItem('juram_theme');
+            const data = loadData();
+            if (data) {
+                data.applications = []; // 설치된 앱 초기화
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            }
+
             const guestId = Math.floor(Math.random() * 10000);
-            STATE.currentUser = { username: `게스트_${guestId}`, role: 'user', isGuest: true, coins: 500 };
-            showToast('게스트로 로그인했습니다. (데이터 미저장)', 'info');
-            updateUI(); showScreen('menu-screen');
+            STATE.currentUser = { username: `게스트_${guestId}`, uid: `guest_${guestId}`, role: 'user', isGuest: true, coins: 500 };
+            showToast('게스트로 로그인했습니다. 모든 설정이 초기화되었습니다.', 'info');
+            updateUI(); 
+            if (window.app && app.updateDesktop) app.updateDesktop();
+            showScreen('menu-screen');
         };
     }
 

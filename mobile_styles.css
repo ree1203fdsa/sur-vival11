@@ -60,6 +60,22 @@
     .desktop-icon .icon { font-size: 2.2rem; }
     .desktop-icon .label { font-size: 0.75rem; margin-top: 5px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
     
+    /* Global Control Refinement for Mobile */
+    .window-ctrl {
+        width: 35px !important;
+        height: 35px !important;
+        font-size: 1.2rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    .window-header {
+        height: 50px !important;
+    }
+    .window-title {
+        font-size: 0.95rem !important;
+    }
+
     /* Taskbar */
     .taskbar { height: 55px; padding: 0 10px; }
     .taskbar-clock { display: none; }
@@ -293,4 +309,30 @@
     #admin-user-list {
         max-height: 300px;
     }
+
+    /* --- PRODUCTIVITY APP MOBILE FIXES --- */
+    /* JuRam Note Mobile */
+    #note-screen { padding: 10px !important; align-items: stretch !important; }
+    #note-content-input { 
+        width: 100% !important; 
+        max-width: 100% !important; 
+        margin: 0 !important; 
+        box-shadow: none !important; 
+        padding: 20px !important;
+        min-height: calc(100vh - 200px) !important;
+    }
+    #note-screen > div:first-child { flex-wrap: wrap; gap: 5px; padding: 10px !important; }
+
+    /* JuRam Excel Mobile */
+    #excel-screen { height: calc(100% - 45px) !important; }
+    #excel-screen > div:first-child > div:nth-child(2) { overflow-x: auto; white-space: nowrap; padding-bottom: 5px; }
+    #excel-screen > div:first-child > div:nth-child(3) { overflow-x: auto; white-space: nowrap; padding: 5px 10px !important; gap: 10px !important; }
+    #excel-table { table-layout: auto !important; }
+    #excel-formula-input { font-size: 0.8rem !important; }
+
+    /* JuRam Gallery Mobile */
+    #gallery-screen > div:first-child { padding: 15px 20px !important; flex-direction: column; align-items: flex-start; gap: 10px; }
+    #gallery-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important; padding: 15px 20px !important; }
+    #photo-viewer-modal img { max-width: 100%; max-height: 70%; }
+    #photo-viewer-modal button { width: 40px; height: 40px; font-size: 1.2rem; }
 }

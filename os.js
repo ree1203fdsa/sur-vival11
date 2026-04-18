@@ -2,7 +2,6 @@
 const app = window.app = {
     activeWindows: new Set(),
     windowConfigs: {
-        'win-play': { title: '생존 시작', icon: '⛺', screenId: 'menu-screen' },
         'win-shop': { title: '상점', icon: '💰', screenId: 'shop-screen' },
         'win-quests': { title: '퀘스트', icon: '📜', screenId: 'quest-screen' },
         'win-settings': { title: '설정', icon: '⚙️', screenId: 'settings-screen' },
@@ -17,6 +16,21 @@ const app = window.app = {
         'win-paint': { title: '페인팅', icon: '🎨', screenId: 'paint-screen' },
         'win-ai': { title: '주람 AI', icon: '🤖', screenId: 'ai-screen' },
         'win-bank': { title: '주람 뱅크', icon: '🏦', screenId: 'bank-screen' },
+        'win-files': { title: '내 파일', icon: '📁', screenId: 'files-screen' },
+        'win-note': { title: '주람 메모', icon: '📝', screenId: 'note-screen' },
+        'win-excel': { title: '주람 엑셀', icon: '📊', screenId: 'excel-screen' },
+        'win-gallery': { title: '주람 갤러리', icon: '🖼️', screenId: 'gallery-screen' },
+        'win-crafting': { title: '조합 가이드', icon: '🪓', screenId: 'crafting-screen' },
+        'win-wallpapers': { title: '배경화면', icon: '🖼️', screenId: 'wallpapers-screen' },
+        'win-playstore': { title: 'Play Store', icon: '🎭', screenId: 'playstore-screen' },
+        'win-monitor': { title: '시스템 모니터', icon: '📊', screenId: 'monitor-screen' },
+        'win-calculator': { title: '계산기', icon: '🧮', screenId: 'calc-screen' },
+        'win-terminal': { title: '터미널', icon: '💻', screenId: 'terminal-screen' },
+        'win-termdict': { title: '터미널 사전', icon: '📖', screenId: 'termdict-screen' },
+        'win-code': { title: '코드 에디터', icon: '✍️', screenId: 'code-screen' },
+        'win-cleaner': { title: '시스템 클리너', icon: '🧹', screenId: 'cleaner-screen' },
+        'win-backup': { title: '백업 및 복구', icon: '💾', screenId: 'backup-screen' },
+        'win-share': { title: 'Quick Share', icon: '🚀', screenId: 'share-screen' },
     },
     // 테마 설정
     setTheme: (theme) => {
@@ -26,6 +40,21 @@ const app = window.app = {
         else document.body.classList.remove('light-mode');
         localStorage.setItem('juram_theme', theme);
         if (STATE.currentUser && db) db.ref(`users/${STATE.currentUser.uid}/settings/theme`).set(theme);
+    },
+    // 배경화면 설정
+    setWallpaper: (url) => {
+        if (!url) return;
+        const bgWrapper = document.querySelector('.bg-wrapper');
+        if (bgWrapper) {
+            bgWrapper.style.backgroundImage = `url(${url})`;
+            bgWrapper.style.backgroundSize = 'cover';
+            bgWrapper.style.backgroundPosition = 'center';
+            // 오브(orb) 효과가 배경을 가릴 수 있으므로 투명도 조절
+            document.querySelectorAll('.glow-orb').forEach(orb => orb.style.opacity = '0.3');
+        }
+        localStorage.setItem('juram_wallpaper', url);
+        if (STATE.currentUser && db) db.ref(`users/${STATE.currentUser.uid}/settings/wallpaper`).set(url);
+        showToast('배경화면이 적용되었습니다!', 'success');
     },
     // 언어 설정
     setLanguage: (lang) => {
@@ -95,12 +124,42 @@ const app = window.app = {
         if (winId === 'win-scanner') setTimeout(() => app.startScanner(), 500);
         // 메일 열 때 로딩
         if (winId === 'win-mail') app.switchMailView('inbox');
-        // 관리자 열 때 데이터 로드
+        // 관리자 열 때 데이터 로드 (v3.0)
         if (winId === 'win-admin') {
-            app.loadAdminData();
-            app.refreshUltimateStats();
-            app.watchPendingApprovals();
-            app.watchTraffic();
+            app.refreshAdminData();
+            app.loadAdminUsers();
+            app.addAdminLog('Master Center v3.0 Initialized.');
+        }
+
+        // 주람그램 초기화
+        if (winId === 'win-gram') app.initGram();
+        // 파일 탐색기 초기화
+        if (winId === 'win-files') app.initFiles();
+        // 주람 메모 초기화
+        if (winId === 'win-note') app.initNotes();
+        // 주람 엑셀 초기화
+        if (winId === 'win-excel') app.initExcel();
+        // 주람 갤러리 초기화
+        if (winId === 'win-gallery') app.initGallery();
+        
+        // 플레이 스토어 데이터 로드
+        if (winId === 'win-playstore') app.refreshPlayStore();
+        
+        // 퀵 셰어 수신 대기
+        if (db && STATE.currentUser) {
+            db.ref(`users/${STATE.currentUser.uid}/incoming_shares`).on('child_added', snap => {
+                const data = snap.val();
+                if (!data || data._read) return;
+                
+                let msg = '';
+                if (data.type === 'coin') msg = `${data.from}님으로부터 ${data.value}코인이 도착했습니다!`;
+                else if (data.type === 'dia') msg = `${data.from}님으로부터 ${data.value}다이아가 도착했습니다!`;
+                else msg = `${data.from}님으로부터 메시지가 도착했습니다: ${data.value}`;
+
+                showToast(`🚀 Quick Share: ${msg}`, 'success');
+                // 처리 후 삭제 혹은 읽음 표시
+                db.ref(`users/${STATE.currentUser.uid}/incoming_shares/${snap.key}`).remove();
+            });
         }
 
         // [트래픽 보고] 현재 열린 창을 서버에 보고
@@ -111,6 +170,54 @@ const app = window.app = {
                 time: Date.now()
             });
         }
+    },
+    // ---- [ SYSTEM PLAY STORE LOGIC ] ---- //
+    refreshPlayStore: () => {
+        const list = document.getElementById('playstore-app-list');
+        if (!list) return;
+        list.innerHTML = '';
+        
+        const apps = [
+            { id: 'win-crafting', title: 'Survival 조합 가이드', icon: '🪓', desc: '생존 초보자를 위한 필수 조합 레시피 모음' },
+            { id: 'win-wallpapers', title: '배경화면 체인저', icon: '🖼️', desc: 'OS의 배경을 고화질 이미지로 꾸미는 도구' },
+            { id: 'win-monitor', title: '시스템 모니터', icon: '📊', desc: '리소스 사용량 확인 및 프로세스 관리' },
+            { id: 'win-calculator', title: '주람 계산기', icon: '🧮', desc: '심플하고 강력한 OS 내장 계산기' },
+            { id: 'win-terminal', title: '주람 터미널', icon: '💻', desc: '명령어로 OS를 제어하는 고급 개발자 도구' },
+            { id: 'win-termdict', title: '터미널 사전', icon: '📖', desc: '터미널 실생활 명령어 및 JS 활용법 가이드' },
+            { id: 'win-code', title: '주람 코드 (JuRam Code)', icon: '✍️', desc: 'OS 내에서 직접 자바스크립트를 코딩하고 실행' },
+            { id: 'win-cleaner', title: '시스템 클리너', icon: '🧹', desc: '불필요한 데이터 정리 및 성능 최적화' },
+            { id: 'win-backup', title: '백업 & 복구 센터', icon: '💾', desc: 'OS의 모든 데이터를 파일로 백업하고 복원' },
+            { id: 'win-share', title: '주람 퀵 셰어', icon: '🚀', desc: '주변 유저에게 메시지나 코인을 즉시 전송' }
+        ];
+
+        apps.forEach(a => {
+            const isInstalled = STATE.applications && STATE.applications.includes(a.id);
+            const card = document.createElement('div');
+            card.className = 'glass-panel';
+            card.style.cssText = 'padding: 15px; background: rgba(255,255,255,0.05); border-radius: 12px; display: flex; flex-direction: column; gap: 10px;';
+            card.innerHTML = `
+                <div style="font-size: 2.5rem;">${a.icon}</div>
+                <div style="font-weight: 800;">${a.title}</div>
+                <div style="font-size: 0.8rem; color: #999;">${a.desc}</div>
+                <button class="btn ${isInstalled ? 'secondary' : 'primary'}" onclick="app.installApp('${a.id}')" ${isInstalled ? 'disabled' : ''}>
+                    ${isInstalled ? '✅ 설치됨' : '⬇️ 다운로드'}
+                </button>
+            `;
+            list.appendChild(card);
+        });
+    },
+    installApp: (appId) => {
+        if (!STATE.applications) STATE.applications = [];
+        if (STATE.applications.includes(appId)) return;
+        
+        showToast('앱 다운로드 중...', 'info');
+        setTimeout(() => {
+            STATE.applications.push(appId);
+            saveData();
+            app.updateDesktop();
+            app.refreshPlayStore();
+            showToast('앱 설치가 완료되었습니다!', 'success');
+        }, 1500);
     },
     // 창 닫기
     closeWindow: (winId) => {
@@ -144,6 +251,28 @@ const app = window.app = {
             item.onclick = () => app.focusWindow(winId);
             container.appendChild(item);
         });
+    },
+    // 창 드래그 기능 (UI 가동성 확보)
+    startDragWindow: (e, winId) => {
+        const winEl = document.getElementById(winId);
+        if (!winEl) return;
+        if (e.target.closest('.window-ctrl')) return;
+
+        app.focusWindow(winId);
+        const startX = e.clientX, startY = e.clientY;
+        const startRect = winEl.getBoundingClientRect();
+
+        const onMove = (me) => {
+            winEl.style.left = (startRect.left + (me.clientX - startX)) + 'px';
+            winEl.style.top = (startRect.top + (me.clientY - startY)) + 'px';
+            winEl.style.transform = 'none';
+        };
+        const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
     },
     // 시작 메뉴 토글
     toggleStartMenu: () => {
@@ -408,10 +537,31 @@ const app = window.app = {
         const desktopEl = document.getElementById('desktop');
         if (!desktopEl) return;
         
+        // 배경화면 복구
+        const savedWallpaper = localStorage.getItem('juram_wallpaper');
+        if (savedWallpaper) {
+            const bgWrapper = document.querySelector('.bg-wrapper');
+            if (bgWrapper) {
+                bgWrapper.style.backgroundImage = `url(${savedWallpaper})`;
+                bgWrapper.style.backgroundSize = 'cover';
+                bgWrapper.style.backgroundPosition = 'center';
+                document.querySelectorAll('.glow-orb').forEach(orb => orb.style.opacity = '0.3');
+            }
+        }
+
         desktopEl.innerHTML = '';
         
-        // 아이콘 기본 순서
-        const defaultOrder = ['win-store', 'win-browser', 'win-scanner', 'win-mail', 'win-gram', 'win-openchat', 'win-paint', 'win-ai', 'win-bank'];
+        // 아이콘 기본 순서 (기본 내장 앱만)
+        const defaultOrder = ['win-files', 'win-note', 'win-excel', 'win-gallery', 'win-playstore', 'win-store', 'win-browser', 'win-scanner', 'win-mail', 'win-gram', 'win-openchat', 'win-paint', 'win-ai', 'win-bank'];
+        
+        // 사용자가 다운로드한 앱 추가
+        if (STATE.applications) {
+            STATE.applications.forEach(appId => {
+                if (app.windowConfigs[appId] && !defaultOrder.includes(appId)) {
+                    defaultOrder.push(appId);
+                }
+            });
+        }
         
         // 관리자/최강좌 아이콘 추가 로직
         if (STATE.currentUser) {
@@ -438,9 +588,21 @@ const app = window.app = {
             iconDiv.className = 'desktop-icon';
             iconDiv.draggable = true;
             iconDiv.dataset.id = winId;
-            iconDiv.onclick = () => {
-                if (winId === 'win-admin') { app.openWindow(winId); app.loadAdminUsers(); }
-                else app.openWindow(winId);
+            
+            // 클릭 유효성 검사 (드래그와 클릭 구분)
+            let startX, startY;
+            iconDiv.onmousedown = (e) => { startX = e.clientX; startY = e.clientY; };
+            iconDiv.onclick = (e) => {
+                const diffX = Math.abs(e.clientX - startX);
+                const diffY = Math.abs(e.clientY - startY);
+                if (diffX > 5 || diffY > 5) return; // 드래그로 간주하고 실행 안함
+
+                if (winId === 'win-admin') { 
+                    app.openWindow(winId); 
+                    app.loadAdminUsers(); 
+                } else {
+                    app.openWindow(winId);
+                }
             };
             
             // 드래그 앤 드롭 리스너
@@ -894,94 +1056,414 @@ const app = window.app = {
             }
         }, 1000);
     },
-    // ---- [ MASTER ADMIN MODULE ] ---- //
-    loadAdminUsers: () => {
-        if (!STATE.currentUser) return;
-        const role = STATE.currentUser.role;
-        if (role !== 'admin' && role !== 'manager' && STATE.currentUser.username !== 'jur1203') return;
-        if (typeof db === 'undefined' || !db) return showToast('데이터베이스에 연결할 수 없습니다.', 'error');
-        
-        showToast('유저 데이터베이스를 불러오는 중...', 'info');
+    // ---- [ MASTER ADMIN SYSTEM v3.0 ] ---- //
+    switchAdminTab: (tabId, el) => {
+        document.querySelectorAll('.admin-tab-content').forEach(t => t.classList.add('hidden'));
+        const target = document.getElementById(`admin-tab-${tabId}`);
+        if (target) target.classList.remove('hidden');
+
+        // Sidebar active state
+        document.querySelectorAll('#admin-screen .settings-item').forEach(item => {
+            item.classList.remove('active');
+            item.style.color = '#94a3b8';
+        });
+        el.classList.add('active');
+        el.style.color = '#fff';
+
+        // Load specific data per tab
+        if (tabId === 'dash') app.refreshAdminData();
+        if (tabId === 'users') app.loadAdminUsers();
+        if (tabId === 'logs') app.addAdminLog('Admin: Switched to logs view.');
+    },
+
+    refreshAdminData: () => {
+        if (!db) return;
+        app.addAdminLog('Syncing server statistics...');
         db.ref('users').once('value').then(snap => {
             const users = snap.val() || {};
-            app.adminUserCache = users; // 로컬 임시저장
-            app.renderAdminUserList();
+            const userArr = Object.values(users);
+            const onlineCount = userArr.filter(u => u._lastTraffic && Date.now() - u._lastTraffic < 60000).length;
+            const totalCoins = userArr.reduce((acc, u) => acc + (u.coins || 0), 0);
+            
+            const totalEl = document.getElementById('admin-stat-total-users');
+            const onlineEl = document.getElementById('admin-stat-online');
+            const coinsEl = document.getElementById('admin-total-coins');
+            
+            if (totalEl) totalEl.textContent = `${userArr.length}명`;
+            if (onlineEl) onlineEl.textContent = `${onlineCount}명`;
+            if (coinsEl) coinsEl.textContent = `${totalCoins.toLocaleString()} 🪙`;
+            
+            app.addAdminLog(`Sync Complete: ${userArr.length} users, ${onlineCount} online.`);
         });
+        app.watchTraffic();
     },
+
+    loadAdminUsers: () => {
+        if (!db) {
+            app.addAdminLog('ERROR: Database connection missing.');
+            return;
+        }
+
+        // 중복 리스너 방지
+        if (window.isAdminUserListenerAttached) {
+            app.addAdminLog('DEBUG: Data stream already active.');
+            return;
+        }
+
+        app.addAdminLog('SYSTEM: Initializing REAL-TIME user sync...');
+        const badge = document.getElementById('admin-db-status');
+        if (badge) { badge.textContent = '📡 SYNCING'; badge.style.color = '#fbbf24'; }
+
+        db.ref('users').on('value', snap => {
+            app.adminUserCache = snap.val() || {};
+            const count = Object.keys(app.adminUserCache).length;
+            
+            if (badge) { 
+                badge.textContent = '🟢 CONNECTED'; 
+                badge.style.color = '#86efac'; 
+            }
+            
+            app.addAdminLog(`DB: Sync Complete (${count} user records)`);
+            app.renderAdminUserList();
+            
+            // 전역 경제 지표 업데이트
+            if (app.refreshAdminData) app.refreshAdminData();
+        }, err => {
+            app.addAdminLog(`CRITICAL: DB Stream Broken - ${err.message}`);
+            if (badge) { badge.textContent = '🔴 DISCONNECTED'; badge.style.color = '#ef4444'; }
+        });
+
+        window.isAdminUserListenerAttached = true;
+    },
+
     renderAdminUserList: () => {
         const users = app.adminUserCache;
         if (!users) return;
+        const listBody = document.getElementById('admin-user-list');
+        const countEl = document.getElementById('admin-user-count');
+        const sortEl = document.getElementById('admin-user-sort');
+        const sort = sortEl ? sortEl.value : 'newest';
         
-        const listEl = document.getElementById('admin-user-list');
-        const cntEl = document.getElementById('admin-user-count');
-        const filterEl = document.getElementById('admin-user-filter');
-        if (!listEl) return;
-        
-        listEl.innerHTML = '';
-        let filterVal = filterEl ? filterEl.value : 'default';
-        
-        // 객체를 배열로 변환
-        let userArr = Object.keys(users).map(uid => ({ uid, ...users[uid] }));
-        
-        // 필터링 적용 (게스트 계정 및 고스트 모드)
-        if (filterVal === 'guest') {
-            userArr = userArr.filter(u => u.isGuest === true || String(u.username).includes('게스트'));
-        }
-        
-        // [보안] 고스트 모드인 마스터 계정은 유저 리스트에서 숨김 (단, 본인에게는 보임)
-        userArr = userArr.filter(u => {
-            if (u.isGhost && STATE.currentUser.username !== 'jur1203') return false;
-            return true;
-        });
+        if (!listBody) return;
+        listBody.innerHTML = '';
+
+        let userArr = Object.entries(users).map(([uid, data]) => ({ uid, ...data }));
         
         // 정렬 적용
-        if (filterVal === 'coins') {
-            userArr.sort((a, b) => (b.coins || 0) - (a.coins || 0));
-        } else if (filterVal === 'diamonds') {
-            userArr.sort((a, b) => (b.diamonds || 0) - (a.diamonds || 0));
-        } else if (filterVal === 'role') {
-            const rW = { 'admin': 5, 'manager': 4, 'creator': 3, 'vip': 2, 'user': 1 };
-            userArr.sort((a, b) => (rW[b.role || 'user'] || 1) - (rW[a.role || 'user'] || 1));
-        } else {
-            // 기본 (가입 최신순 등 뒤집기)
-            userArr.reverse();
-        }
-        
+        if (sort === 'newest') userArr.sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
+        if (sort === 'oldest') userArr.sort((a,b) => (a.createdAt || 0) - (b.createdAt || 0));
+        if (sort === 'coins') userArr.sort((a,b) => (b.coins || 0) - (a.coins || 0));
+
+        if (countEl) countEl.textContent = userArr.length;
+
         userArr.forEach(u => {
             const div = document.createElement('div');
-            div.style.cssText = 'padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-bottom: 5px;';
-            div.onmouseover = () => div.style.background = 'rgba(255,255,255,0.05)';
+            div.className = 'admin-user-row';
+            div.style.cssText = 'padding: 25px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1f2937; cursor: pointer; transition: 0.2s;';
+            div.onclick = () => app.openUserEditPane(u);
+            div.onmouseover = () => div.style.background = 'rgba(255,255,255,0.03)';
             div.onmouseout = () => div.style.background = 'transparent';
-            div.onclick = () => app.selectAdminUser(u.uid, u);
-            
-            const isGuestBadge = (u.isGuest || String(u.username).includes('게스트')) ? '<span style="font-size:0.75rem; background:#444; padding:2px 6px; border-radius:4px; margin-left:6px;">게스트</span>' : '';
-            
-            // 베지 렌더링
-            let badgesHtml = '';
-            const bMap = { 'top': '🏆', 'winner': '👑', 'hot': '🔥', 'rich': '💎', 'bug': '🐞', 'king': '⭐' };
-            if (u.badges) {
-                Object.keys(u.badges).forEach(bKey => {
-                    if (bMap[bKey]) badgesHtml += `<span title="${bKey}">${bMap[bKey]}</span>`;
-                });
-            }
-            if (u.username === 'jur1203') badgesHtml += '<span style="animation: ultimate-glow 1s infinite alternate;">🌌</span>';
 
             div.innerHTML = `
                 <div>
-                    <div style="font-weight:800; color:#fff; font-size: 1.1rem; display:flex; align-items:center; gap:5px;">
-                        ${u.isWanted ? '🏴‍☠️ ' : ''}${u.username} ${isGuestBadge} <span style="font-size:0.9rem;">${badgesHtml}</span>
-                    </div>
-                    <div style="font-size:0.85rem; color:#aaa; margin-top: 4px;">
-                        등급: <span style="color: ${u.role==='admin'?'#ff5252':u.role==='manager'?'#ff9800':u.role==='creator'?'#ffd700':u.role==='vip'?'#00e5ff':'#64b5f6'}">${u.role || 'user'}</span> 
-                        | 🪙 ${u.coins || 0} | 💎 ${u.diamonds || 0}
+                    <div style="font-size: 1.25rem; font-weight: 800; color: #fff; margin-bottom: 5px; letter-spacing: -0.5px;">${u.username || 'Unknown'}</div>
+                    <div style="font-size: 0.9rem; color: #94a3b8; font-weight: 700;">
+                        등급: <span style="color: #60a5fa;">${u.role || 'user'}</span> | 🪙 ${(u.coins || 0).toLocaleString()} | 💎 ${(u.diamonds || 0).toLocaleString()}
                     </div>
                 </div>
-                <div style="font-size:1.4rem;">⚙️</div>
+                <div style="font-size: 1.5rem; color: #9ca3af; opacity: 0.6; transition: 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">⚙️</div>
             `;
-            listEl.appendChild(div);
+            listBody.appendChild(div);
         });
         
-        if(cntEl) cntEl.textContent = `(${userArr.length}명)`;
+        app.addAdminLog(`DEBUG: List Rendered (${userArr.length} users).`);
+    },
+
+    openUserEditPane: (user) => {
+        app._editingUser = user;
+        const pane = document.getElementById('admin-user-edit-pane');
+        if (!pane) return;
+        
+        pane.classList.remove('hidden');
+        document.getElementById('edit-user-name').textContent = (user.username || 'UNKNOWN').toUpperCase();
+        const uidEl = document.getElementById('edit-user-uid');
+        if (uidEl) uidEl.textContent = `UID: ${user.uid || 'N/A'}`;
+        
+        const coinsInput = document.getElementById('edit-user-coins');
+        const roleSelect = document.getElementById('edit-user-role');
+        
+        if (coinsInput) coinsInput.value = user.coins || 0;
+        if (roleSelect) roleSelect.value = user.role || 'user';
+    },
+
+    saveAdminUserField: (field) => {
+        if (!app._editingUser || !db) return;
+        const val = field === 'coins' ? parseInt(document.getElementById('edit-user-coins').value) : document.getElementById('edit-user-role').value;
+        db.ref(`users/${app._editingUser.uid}/${field}`).set(val).then(() => {
+            showToast(`${field} 변경 완료!`, 'success');
+            app.addAdminLog(`ACTION: Set ${field} of ${app._editingUser.username} to ${val}`);
+            app.loadAdminUsers();
+        });
+    },
+
+    toggleUserRestriction: (key) => {
+        if (!app._editingUser || !db) return;
+        const current = (app._editingUser.restrictions && app._editingUser.restrictions[key]) || false;
+        db.ref(`users/${app._editingUser.uid}/restrictions/${key}`).set(!current).then(() => {
+            showToast(`제재 변경 완료: ${key} = ${!current}`, 'info');
+            app.addAdminLog(`SECURITY: ${!current ? 'Applied' : 'Removed'} ${key} for ${app._editingUser.username}`);
+            if (!app._editingUser.restrictions) app._editingUser.restrictions = {};
+            app._editingUser.restrictions[key] = !current;
+            app.updateRestrictionUI(app._editingUser.restrictions);
+        });
+    },
+
+    updateRestrictionUI: (res) => {
+        const btnFreeze = document.getElementById('btn-admin-freeze-toggle');
+        const btnBan = document.getElementById('btn-admin-ban-toggle');
+        if (btnFreeze) {
+            btnFreeze.style.background = res.frozen ? '#3b82f6' : '#ef4444';
+            btnFreeze.textContent = res.frozen ? '🥶 해제 (Unfreeze)' : '🥶 UI 강제 동결 (Freeze)';
+        }
+        if (btnBan) {
+            btnBan.style.background = res.banned ? '#444' : '#000';
+            btnBan.textContent = res.banned ? '💀 차단 해제' : '💀 영구 차단 (Permanent Ban)';
+        }
+    },
+
+    addAdminLog: (msg) => {
+        const consoleEl = document.getElementById('admin-log-console');
+        if (!consoleEl) return;
+        const time = new Date().toLocaleTimeString();
+        const line = document.createElement('div');
+        line.innerHTML = `<span style="color: #64748b;">[${time}]</span> ${msg}`;
+        consoleEl.appendChild(line);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+    },
+
+    switchAdminTab: (tabId, btn) => {
+        // Toggle Buttons (Screenshot Style - centered top nav)
+        document.querySelectorAll('.admin-tab-btn').forEach(b => {
+            b.classList.remove('active');
+            b.style.opacity = '0.6';
+            b.style.borderBottom = '3px solid transparent';
+        });
+        
+        let targetBtn = btn;
+        if (!targetBtn) {
+            document.querySelectorAll('.admin-tab-btn').forEach(b => {
+                const onclick = b.getAttribute('onclick');
+                if (onclick && onclick.includes(`'${tabId}'`)) targetBtn = b;
+            });
+        }
+
+        if (targetBtn) {
+            targetBtn.classList.add('active');
+            targetBtn.style.opacity = '1';
+            targetBtn.style.borderBottom = '3px solid #f87171';
+        }
+        
+        // Toggle Contents
+        document.querySelectorAll('.admin-tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+        const target = document.getElementById(`admin-tab-${tabId}`);
+        if (target) target.classList.remove('hidden');
+        
+        app.addAdminLog(`NAV: Switched to ${tabId} tab.`);
+        if (tabId === 'users') app.loadAdminUsers();
+        if (tabId === 'store') app.loadAdminStoreList();
+        if (tabId === 'economy') app.refreshAdminData();
+        if (tabId === 'dash') app.startSystemStatusSync();
+    },
+
+    refreshAdminData: () => {
+        const users = app.adminUserCache;
+        if (!users) return;
+        
+        let totalCoins = 0;
+        let totalDia = 0;
+        
+        Object.values(users).forEach(u => {
+            if (u.username === 'jur1203') return; // 관리자 제외 (인플레이션 방지)
+            totalCoins += (u.coins || 0);
+            totalDia += (u.diamonds || 0);
+        });
+        
+        const coinEl = document.getElementById('admin-eco-total-coins');
+        const diaEl = document.getElementById('admin-eco-total-dia');
+        if (coinEl) coinEl.textContent = totalCoins.toLocaleString();
+        if (diaEl) diaEl.textContent = totalDia.toLocaleString();
+    },
+
+    loadAdminStoreList: () => {
+        if (!db) return;
+        db.ref('app-store/applications').once('value').then(snap => {
+            const apps = snap.val() || {};
+            const list = document.getElementById('admin-store-list');
+            if (!list) return;
+            
+            list.innerHTML = Object.entries(apps).map(([id, a]) => `
+                <tr style="border-bottom: 1px solid #1f2937;">
+                    <td style="padding: 25px 30px; font-weight: 800; color: #fff; font-size: 1.1rem;">${a.title}</td>
+                    <td style="padding: 25px 30px; color: #64748b;">${a.author || '익명'}</td>
+                    <td style="padding: 25px 30px; color: ${a.approved?'#86efac':'#fb7185'}; font-weight: 800;">${a.approved?'승인됨':'대기중'}</td>
+                    <td style="padding: 25px 30px;">
+                        <button class="btn" style="background: transparent; border: 1px solid #f87171; color: #f87171; width: 70px; padding: 5px; border-radius: 8px; font-weight: 700;" onclick="app.deleteAdminApp('${id}')">삭제</button>
+                    </td>
+                </tr>
+            `).join('');
+        });
+    },
+
+    broadcastAdminMessage: () => {
+        const msg = document.getElementById('admin-broadcast-msg').value.trim();
+        if (!msg || !db) return;
+        db.ref('system/broadcast').set({
+            message: msg,
+            sender: 'MASTER',
+            timestamp: Date.now()
+        }).then(() => {
+            showToast('전역 공지가 발송되었습니다.', 'success');
+            app.addAdminLog(`SERVER: Global Broadcast -> ${msg}`);
+            document.getElementById('admin-broadcast-msg').value = '';
+        });
+    },
+
+    toggleMaintenance: () => {
+        if (!db) return;
+        db.ref('system/maintenance').once('value').then(snap => {
+            const current = snap.val() || false;
+            db.ref('system/maintenance').set(!current).then(() => {
+                const btn = document.getElementById('btn-admin-maintenance');
+                if (btn) {
+                    btn.textContent = !current ? 'ON' : 'OFF';
+                    btn.style.background = !current ? '#86efac' : '#374151';
+                    btn.style.color = !current ? '#000' : '#fff';
+                }
+                app.addAdminLog(`SYSTEM: Maintenance Mode -> ${!current ? 'ON' : 'OFF'}`);
+                showToast(`점검 모드 ${!current ? '가동' : '종료'}`, 'info');
+            });
+        });
+    },
+
+    applyGlobalEconomy: (type) => {
+        const percent = parseInt(document.getElementById('ultimate-economy-val').value) || 10;
+        if (!db) return;
+        showToast('경제 정책 산출 중...', 'info');
+        db.ref('users').once('value').then(snap => {
+            const users = snap.val();
+            const factor = type === 'tax' ? (100 - percent) / 100 : (100 + percent) / 100;
+            const updates = {};
+            Object.keys(users).forEach(uid => {
+                const current = users[uid].coins || 0;
+                updates[`${uid}/coins`] = Math.floor(current * factor);
+            });
+            db.ref('users').update(updates).then(() => {
+                showToast(`전역 경제 ${type === 'tax' ? '징수' : '지원'} 완료!`, 'success');
+                app.addAdminLog(`ECONOMY: Applied ${percent}% ${type} to all users.`);
+            });
+        });
+    },
+
+    toggleGlobalFreeze: () => {
+        if (!db) return;
+        db.ref('system/freeze').once('value').then(snap => {
+            const current = snap.val() || false;
+            db.ref('system/freeze').set(!current).then(() => {
+                const btn = document.getElementById('btn-admin-freeze');
+                if (btn) btn.textContent = !current ? '🧊 전역 인터페이스 동결 해제' : '🧊 전역 인터페이스 동결 발동';
+                app.addAdminLog(`MYTHIC: Global Freeze -> ${!current ? 'ON' : 'OFF'}`);
+            });
+        });
+    },
+
+    wipeAllChats: () => {
+        if (!confirm('💥 정말 모든 채팅 데이터를 소거하시겠습니까?')) return;
+        if (!db) return;
+        const targets = ['chats', 'open-chats'];
+        targets.forEach(t => db.ref(t).remove());
+        app.addAdminLog('MYTHIC: All chat channels WIPE performed.');
+        showToast('모든 채팅 기록이 소멸되었습니다.', 'error');
+    },
+
+    loadAdminStoreList: () => {
+        if (!db) return;
+        const listBody = document.getElementById('admin-store-list');
+        if (!listBody) return;
+        
+        db.ref('app-store/published').once('value').then(snap => {
+            const apps = snap.val();
+            listBody.innerHTML = '';
+            if (!apps) {
+                listBody.innerHTML = '<tr><td colspan="4" style="padding: 100px; text-align: center; color: #4b5563;">등록된 앱이 없습니다.</td></tr>';
+                return;
+            }
+            
+            Object.entries(apps).forEach(([aid, appData]) => {
+                const tr = document.createElement('tr');
+                tr.style.cssText = 'border-bottom: 1px solid #1f2937;';
+                tr.innerHTML = `
+                    <td style="padding: 25px 30px; font-weight: 800; color: #fff; font-size: 1.1rem;">${appData.name}</td>
+                    <td style="padding: 25px 30px; color: #64748b;">${appData.developer || 'undefined'}</td>
+                    <td style="padding: 25px 30px; color: #86efac; font-weight: 800;">승인됨</td>
+                    <td style="padding: 25px 30px;">
+                        <button class="btn" style="background: transparent; border: 1px solid #f87171; color: #f87171; width: 70px; padding: 5px; border-radius: 8px; font-weight: 700;" onclick="app.deletePublishedApp('${aid}')">삭제</button>
+                    </td>
+                `;
+                listBody.appendChild(tr);
+            });
+        });
+    },
+
+    deletePublishedApp: (aid) => {
+        if (!confirm('정말 이 앱을 스토어에서 삭제하시겠습니까?')) return;
+        db.ref(`app-store/published/${aid}`).remove().then(() => {
+            showToast('앱이 삭제되었습니다.', 'info');
+            app.loadAdminStoreList();
+        });
+    },
+
+    loadPendingApps: () => {
+        // Older pending app logic if needed - currently using store list for simplicity
+        app.loadAdminStoreList();
+    },
+
+    approveApp: (aid, isApproved) => {
+        if (!db) return;
+        db.ref(`app-store/pending/${aid}`).once('value').then(snap => {
+            const appData = snap.val();
+            if (!appData) return;
+            
+            if (isApproved) {
+                db.ref(`app-store/published/${aid}`).set(appData);
+                app.addAdminLog(`STORE: App [${appData.name}] APPROVED.`);
+            } else {
+                app.addAdminLog(`STORE: App [${appData.name}] REJECTED.`);
+            }
+            db.ref(`app-store/pending/${aid}`).remove().then(() => {
+                app.loadAdminStoreList();
+                showToast(`처리 완료: ${isApproved ? '승인' : '거절'}`, 'info');
+            });
+        });
+    },
+
+    createCoupon: () => {
+        const code = document.getElementById('admin-coupon-code').value.trim();
+        const coins = parseInt(document.getElementById('admin-coupon-coin').value) || 500;
+        const dia = parseInt(document.getElementById('admin-coupon-dia').value) || 10;
+        
+        if (!code || !db) return;
+        db.ref(`coupons/${code}`).set({
+            rewardCoins: coins,
+            rewardDiamonds: dia,
+            active: true,
+            createdAt: Date.now()
+        }).then(() => {
+            showToast(`쿠폰 [${code}] 발행 완료!`, 'success');
+            app.addAdminLog(`ECONOMY: Coupon [${code}] generated (C:${coins}, D:${dia}).`);
+            document.getElementById('admin-coupon-code').value = '';
+        });
     },
     selectAdminUser: (uid, u) => {
         const panel = document.getElementById('admin-editor-panel');
@@ -1131,11 +1613,53 @@ const app = window.app = {
         }
     },
 
-    approveStoreApp: (appId) => {
+    // ---- [ MASTER ADMIN EXTENSION ] ---- //
+    // Redundant block removed to prevent overwriting high-fidelity administrative logic.
+    // Primary administrative functions are defined around line 1100.
+
+    // 점검 모드 토글
+    toggleMaintenance: () => {
         if (!db) return;
-        db.ref(`store_apps/${appId}`).update({ status: 'approved' }).then(() => {
-            showToast('앱이 승인되었습니다.', 'success');
-            app.renderAdminStoreList();
+        db.ref('server/maintenance').once('value').then(snap => {
+            const current = snap.val() || false;
+            db.ref('server/maintenance').set(!current).then(() => {
+                showToast(`점검 모드가 ${!current ? '활성화' : '비활성'}화되었습니다.`, 'info');
+                app.addAdminLog(`SYSTEM: Maintenance mode toggled to ${!current}`);
+            });
+        });
+    },
+
+    // 서버 상태 실시간 동기화 (관리자 패널용)
+    startSystemStatusSync: () => {
+        if (!db) return;
+        db.ref('server/maintenance').on('value', snap => {
+            const isMaint = snap.val() || false;
+            const btn = document.getElementById('btn-admin-maintenance');
+            if (btn) {
+                btn.textContent = isMaint ? 'ON' : 'OFF';
+                btn.style.background = isMaint ? '#ef4444' : '#374151';
+            }
+        });
+        
+        // 트래픽 감시 활성화
+        app.watchTraffic();
+    },
+
+    // 관리자 공지 발송 (메인)
+    sendAdminBroadcast: () => {
+        const input = document.getElementById('admin-broadcast-msg');
+        if (!input || !db) return;
+        const msg = input.value.trim();
+        if (!msg) return;
+
+        db.ref('server/broadcast').set({
+            message: msg,
+            timestamp: Date.now(),
+            sender: 'MASTER'
+        }).then(() => {
+            input.value = '';
+            showToast('전역 공지가 송출되었습니다.', 'success');
+            app.addAdminLog(`BROADCAST: ${msg}`);
         });
     },
 
@@ -1193,6 +1717,7 @@ const app = window.app = {
             location.reload();
         }
     },
+
     // ---- [ TOUCH GESTURES (ANDROID APP DRAWER) ] ---- //
     touchStartY: 0,
     initTouchGestures: () => {
@@ -1200,7 +1725,7 @@ const app = window.app = {
         if (!layer) return;
 
         layer.addEventListener('touchstart', (e) => {
-            // [수정] 배경화면(desktop)에서 시작된 터치인지 확인 + 열린 창이 없을 때만 작동
+            // 배경화면(desktop)에서 시작된 터치인지 확인 + 열린 창이 없을 때만 작동
             const isDesktop = e.target.id === 'desktop' || e.target.classList.contains('desktop');
             if (app.activeWindows.size > 0 || !isDesktop) {
                 app.touchStartY = null; // 제스처 취소
@@ -1244,193 +1769,29 @@ const app = window.app = {
         else menu.classList.toggle('active');
     },
 
-    // ---- [ MASTER ADMIN EXTENSION ] ---- //
-    switchAdminTab: (tabId) => {
-        document.querySelectorAll('.admin-content-panel').forEach(p => p.classList.add('hidden'));
-        document.querySelectorAll('#admin-screen .admin-tab').forEach(t => {
-            t.classList.remove('active');
-            t.style.borderBottomColor = 'transparent';
-            t.style.color = '#aaa';
-        });
-
-        const target = document.getElementById(`admin-tab-${tabId}`);
-        const btn = document.getElementById(`adm-btn-${tabId}`);
-        if (target) target.classList.remove('hidden');
-        if (btn) {
-            btn.classList.add('active');
-            btn.style.borderBottomColor = tabId === 'mythic' ? '#8b00ff' : '#ff5252';
-            btn.style.color = '#fff';
-        }
-        
-        if (tabId === 'users') app.loadAdminUsers();
-        if (tabId === 'economy') app.loadAdminStats();
-        if (tabId === 'store') app.renderAdminStoreList();
-        if (tabId === 'security') app.initAdminLogs();
-        if (tabId === 'mythic') {
-            app.refreshUltimateStats();
-            app.watchPendingApprovals();
-            app.watchTraffic();
-        }
-    },
-
-    loadAdminStats: () => {
-        if (!db) return;
-        db.ref('users').once('value').then(snap => {
-            const users = snap.val() || {};
-            let totalCoins = 0;
-            let totalDia = 0;
-            let count = 0;
-
-            Object.values(users).forEach(u => {
-                totalCoins += (u.coins || 0);
-                totalDia += (u.diamonds || 0);
-                count++;
-            });
+    // QR 로그인 표시
+    showQRLogin: () => {
+        const modal = document.getElementById('qr-scan-modal');
+        if (modal) modal.style.display = 'flex';
+        // 임시 QR 생성 (테스트용)
+        const qrImg = document.getElementById('qr-img');
+        if (qrImg) {
+            const token = 'QR_' + Math.random().toString(36).substr(2, 9);
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://survival-os.web.app/?qrToken=${token}`;
             
-            const coinsEl = document.getElementById('adm-stat-total-coins');
-            const diaEl = document.getElementById('adm-stat-total-dia');
-            
-            if (coinsEl) coinsEl.textContent = `${totalCoins.toLocaleString()} 🪙`;
-            if (diaEl) diaEl.textContent = `${totalDia.toLocaleString()} 💎`;
-            
-            app.logAdminAction(`경제 통계 갱신 완료 (총 유저: ${count}명)`);
-        });
-    },
-
-    logAdminAction: (msg) => {
-        const consoleEl = document.getElementById('admin-log-console');
-        if (!consoleEl) return;
-        const time = new Date().toLocaleTimeString();
-        const div = document.createElement('div');
-        div.innerHTML = `<span style="color:#888;">[${time}]</span> <span style="color:#ffeb3b;">[ADM]</span> ${msg}`;
-        consoleEl.appendChild(div);
-        consoleEl.scrollTop = consoleEl.scrollHeight;
-    },
-
-    loadAdminData: () => {
-        app.loadAdminUsers();
-        app.checkMaintenanceStatus();
-        showToast('전역 마스터 데이터 동기화 중...', 'info');
-    },
-
-    broadcastAdminMessage: () => {
-        const msg = document.getElementById('admin-broadcast-msg').value.trim();
-        if (!msg || !db) return;
-        
-        db.ref('server/broadcast').set({
-            message: msg,
-            sender: STATE.currentUser.username,
-            timestamp: Date.now()
-        }).then(() => {
-            showToast('전역 공지사항이 즉시 발송되었습니다.', 'success');
-            document.getElementById('admin-broadcast-msg').value = '';
-        });
-    },
-
-    checkMaintenanceStatus: () => {
-        if (!db) return;
-        db.ref('server/maintenance').on('value', snap => {
-            const isMain = snap.val();
-            const btn = document.getElementById('admin-btn-maintenance');
-            if (btn) {
-                btn.textContent = isMain ? 'ON (발동 중)' : 'OFF';
-                btn.style.background = isMain ? '#ff5252' : '#444';
+            // 승인 대기 리스너
+            if (db) {
+                db.ref('qr_auth/' + token).on('value', snap => {
+                    const data = snap.val();
+                    if (data && data.status === 'approved') {
+                        db.ref('qr_auth/' + token).remove();
+                        STATE.currentUser = data.user;
+                        saveData(); updateUI(); app.updateDesktop(); showScreen('menu-screen');
+                        showToast('QR 코드로 안전하게 로그인했습니다!', 'success');
+                    }
+                });
             }
-        });
-    },
-
-    toggleMaintenance: () => {
-        if (!db) return;
-        db.ref('server/maintenance').once('value').then(snap => {
-            const current = snap.val() || false;
-            db.ref('server/maintenance').set(!current);
-            showToast(`점검 모드를 ${!current ? '활성화' : '비활성화'} 했습니다.`, 'info');
-        });
-    },
-
-    createCoupon: () => {
-        const code = document.getElementById('admin-coupon-code').value.trim().toUpperCase();
-        const coins = parseInt(document.getElementById('admin-coupon-coin').value) || 0;
-        const dia = parseInt(document.getElementById('admin-coupon-dia').value) || 0;
-        
-        if (!code || !db) return showToast('코드를 입력하세요.', 'error');
-        
-        db.ref(`server/coupons/${code}`).set({
-            coins, diamonds: dia, active: true, createdAt: Date.now()
-        }).then(() => {
-            showToast(`쿠폰 [${code}] 이(가) 정식 발행되었습니다.`, 'success');
-            document.getElementById('admin-coupon-code').value = '';
-        });
-    },
-
-    renderAdminStoreList: () => {
-        if (!db) return;
-        db.ref('store_apps').once('value').then(snap => {
-            const apps = snap.val() || {};
-            const listEl = document.getElementById('admin-store-list');
-            if (!listEl) return;
-            listEl.innerHTML = '';
-            
-            Object.entries(apps).forEach(([id, data]) => {
-                const tr = document.createElement('tr');
-                tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
-                const status = data.status || 'pending';
-                const statusColor = status === 'approved' ? '#4ade80' : '#fbbf24';
-                const statusText = status === 'approved' ? '승인됨' : '대기중';
-
-                tr.innerHTML = `
-                    <td style="padding: 15px; font-weight:800;">${data.title}</td>
-                    <td style="padding: 15px; color:#aaa;">${data.creator}</td>
-                    <td style="padding: 15px;"><span style="color:${statusColor}; font-size:0.8rem; font-weight:800;">${statusText}</span></td>
-                    <td style="padding: 15px; display:flex; gap:5px;">
-                        ${status === 'pending' ? `<button class="btn primary" style="padding:4px 10px; font-size:0.75rem;" onclick="app.approveStoreApp('${id}')">승인</button>` : ''}
-                        <button class="btn" style="background:rgba(255,82,82,0.1); color:#ff5252; border:1px solid #ff5252; padding:4px 10px; font-size:0.75rem;" onclick="app.deleteStoreApp('${id}')">삭제</button>
-                    </td>
-                `;
-                listEl.appendChild(tr);
-            });
-        });
-    },
-
-    deleteStoreApp: (id) => {
-        if (confirm('이 앱을 스토어에서 영구 삭제할까요?') && db) {
-            db.ref(`store_apps/${id}`).remove().then(() => {
-                showToast('앱이 삭제되었습니다.', 'success');
-                app.renderAdminStoreList();
-            });
         }
-    },
-
-    initAdminLogs: () => {
-        if (!db || app.logsInitialized) return;
-        const logEl = document.getElementById('admin-log-console');
-        
-        // Listen for all chats
-        db.ref('chats').limitToLast(20).on('child_added', snap => {
-            const data = snap.val();
-            const time = new Date(data.timestamp).toLocaleTimeString();
-            const p = document.createElement('div');
-            p.style.marginBottom = '4px';
-            p.innerHTML = `<span style="color:#888;">[${time}]</span> <span style="color:#64b5f6;">${data.user}:</span> ${data.text}`;
-            logEl.appendChild(p);
-            logEl.scrollTop = logEl.scrollHeight;
-        });
-
-        // Listen for logins (if presence is used)
-        db.ref('presence').on('child_added', snap => {
-            const p = document.createElement('div');
-            p.style.color = '#ffeb3b';
-            p.innerHTML = `> [LOGIN] ${snap.key} 계정 접속 감지`;
-            logEl.appendChild(p);
-            logEl.scrollTop = logEl.scrollHeight;
-        });
-        
-        app.logsInitialized = true;
-    },
-
-    clearAdminLogs: () => {
-        const logEl = document.getElementById('admin-log-console');
-        if (logEl) logEl.innerHTML = '[SYSTEM] 로그 버퍼가 초기화되었습니다.<br>';
     },
 
     // ---- [ USER REDEEM SYSTEM ] ---- //
@@ -1465,7 +1826,422 @@ const app = window.app = {
         });
     },
 
-    // ---- [ JURAM-GRAM LOGIC ] ---- //
+    // ---- [ MY FILES EXPLORER LOGIC (PROPER VER.) ] ---- //
+    initFiles: () => {
+        if (!db || !STATE.currentUser) return;
+        const container = document.getElementById('files-container');
+        if (!container) return;
+        
+        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">파일 목록을 불러오는 중...</div>';
+        
+        db.ref(`files/${STATE.currentUser.uid}`).on('value', snap => {
+            app.currentFiles = snap.val() || {};
+            app.renderFileList(app.currentFiles);
+        });
+    },
+
+    renderFileList: (files) => {
+        const container = document.getElementById('files-container');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        const entries = Object.entries(files);
+        if (entries.length === 0) {
+            container.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 80px 40px;">
+                    <div style="font-size: 4rem; opacity: 0.2; margin-bottom: 20px;">📂</div>
+                    <div style="color: #9aa0a6; font-size: 1rem;">폴더가 비어 있습니다.</div>
+                </div>`;
+            return;
+        }
+        
+        entries.forEach(([id, f]) => {
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            item.style.cssText = 'display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px; border-radius: 12px; cursor: pointer; transition: all 0.2s; position: relative; border: 1px solid transparent;';
+            item.onmouseover = () => { item.style.background = '#fff'; item.style.borderColor = '#e0e0e0'; item.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'; };
+            item.onmouseout = () => { item.style.background = 'transparent'; item.style.borderColor = 'transparent'; item.style.boxShadow = 'none'; };
+            
+            const icon = f.type === 'image' ? '🖼️' : '📄';
+            const date = new Date(f.createdAt).toLocaleDateString();
+            
+            item.innerHTML = `
+                <div style="font-size: 3.8rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">${icon}</div>
+                <div style="font-size: 0.85rem; font-weight: 600; color: #3c4043; text-align: center; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${f.name}</div>
+                <div style="font-size: 0.7rem; color: #9aa0a6;">${date}</div>
+                <button onclick="event.stopPropagation(); app.deleteFile('${id}')" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.05); border: none; border-radius: 50%; width: 24px; height: 24px; color: #666; cursor: pointer; visibility: hidden;">×</button>
+            `;
+            item.onmouseenter = () => item.querySelector('button').style.visibility = 'visible';
+            item.onmouseleave = () => item.querySelector('button').style.visibility = 'hidden';
+            
+            item.onclick = () => app.openFile(id, f);
+            container.appendChild(item);
+        });
+    },
+
+    showNewFileModal: () => {
+        document.getElementById('files-new-modal').classList.remove('hidden');
+        document.getElementById('files-new-name').focus();
+    },
+
+    createNewFile: () => {
+        const nameInput = document.getElementById('files-new-name');
+        const name = nameInput.value.trim();
+        if (!name || !db || !STATE.currentUser) return;
+        
+        const fileData = {
+            name,
+            type: name.match(/\.(jpg|jpeg|png|gif)$/i) ? 'image' : 'text',
+            content: "",
+            createdAt: Date.now()
+        };
+        
+        db.ref(`files/${STATE.currentUser.uid}`).push(fileData).then(() => {
+            nameInput.value = '';
+            document.getElementById('files-new-modal').classList.add('hidden');
+            showToast(`'${name}' 파일이 드라이브에 저장되었습니다.`, 'success');
+        });
+    },
+
+    openFile: (id, file) => {
+        if (file.type === 'text') {
+            app.activeFileId = id;
+            document.getElementById('files-editor-title').textContent = file.name;
+            document.getElementById('files-editor-content').value = file.content || "";
+            document.getElementById('files-editor').classList.remove('hidden');
+        } else {
+            showToast("이미지 뷰어는 준비 중입니다.", "info");
+        }
+    },
+
+    saveFileContent: () => {
+        if (!app.activeFileId || !db || !STATE.currentUser) return;
+        const content = document.getElementById('files-editor-content').value;
+        
+        db.ref(`files/${STATE.currentUser.uid}/${app.activeFileId}`).update({ content }).then(() => {
+            showToast("변경사항이 성공적으로 저장되었습니다.", "success");
+        });
+    },
+
+    closeFileEditor: () => {
+        document.getElementById('files-editor').classList.add('hidden');
+        app.activeFileId = null;
+    },
+
+    filterFiles: (query) => {
+        if (!app.currentFiles) return;
+        const filtered = Object.fromEntries(
+            Object.entries(app.currentFiles).filter(([id, f]) => 
+                f.name.toLowerCase().includes(query.toLowerCase())
+            )
+        );
+        app.renderFileList(filtered);
+    },
+
+    switchFilesTab: (tab) => {
+        document.querySelectorAll('#files-screen .mail-nav-item').forEach(el => el.classList.remove('active', 'primary-bg'));
+        // UI logic for tabs can be added here
+        app.initFiles();
+    },
+    
+    deleteFile: (id) => {
+        if (!confirm("이 파일을 삭제하시겠습니까?")) return;
+        db.ref(`files/${STATE.currentUser.uid}/${id}`).remove().then(() => {
+            showToast("파일이 삭제되었습니다.", "info");
+        });
+    },
+
+    // ---- [ JURAM NOTE LOGIC (Hangul Style Processor) ] ---- //
+    initNotes: () => {
+        if (!db || !STATE.currentUser) return;
+        db.ref(`notes/${STATE.currentUser.uid}`).on('value', snap => {
+            const notes = snap.val() || {};
+            const listEl = document.getElementById('note-list');
+            if (!listEl) return;
+            listEl.innerHTML = '';
+            
+            const entries = Object.entries(notes).sort((a,b) => b[1].updatedAt - a[1].updatedAt);
+            if (entries.length === 0) {
+                listEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #999; font-size: 0.8rem;">문서가 없습니다.</div>';
+                return;
+            }
+
+            entries.forEach(([id, n]) => {
+                const item = document.createElement('div');
+                item.className = `note-item ${app.activeNoteId === id ? 'active' : ''}`;
+                item.style.cssText = `padding: 12px; border-radius: 8px; margin-bottom: 5px; cursor: pointer; transition: 0.2s; border: 1px solid ${app.activeNoteId === id ? '#0056b3' : 'transparent'}; background: ${app.activeNoteId === id ? '#f0f7ff' : '#fff'};`;
+                item.innerHTML = `
+                    <div style="font-weight: 800; font-size: 0.9rem; margin-bottom: 3px; color: ${app.activeNoteId === id ? '#0056b3' : '#333'}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${n.title || "제목 없는 문서"}</div>
+                    <div style="font-size: 0.7rem; color: #999;">${new Date(n.updatedAt).toLocaleDateString()}</div>
+                `;
+                item.onclick = () => app.loadNote(id, n);
+                listEl.appendChild(item);
+            });
+        });
+    },
+
+    createNewNote: () => {
+        if (!db || !STATE.currentUser) return;
+        const newNote = {
+            title: "새로운 문서",
+            content: "주람한글에 오신 것을 환영합니다.",
+            updatedAt: Date.now()
+        };
+        const ref = db.ref(`notes/${STATE.currentUser.uid}`).push();
+        ref.set(newNote).then(() => {
+            app.loadNote(ref.key, newNote);
+        });
+    },
+
+    loadNote: (id, note) => {
+        app.activeNoteId = id;
+        const titleInp = document.getElementById('note-title-input');
+        const contentInp = document.getElementById('note-content-input');
+        const titleDisp = document.getElementById('note-title-display');
+        
+        if (titleInp) titleInp.value = note.title;
+        if (contentInp) contentInp.innerHTML = note.content;
+        if (titleDisp) titleDisp.textContent = `파일명: [${note.title}.hwp]`;
+        
+        app.updateNoteStats();
+        app.initNotes(); 
+    },
+
+    autoSaveNote: () => {
+        if (!app.activeNoteId || !db || !STATE.currentUser) return;
+        const title = document.getElementById('note-title-input').value;
+        const content = document.getElementById('note-content-input').innerHTML;
+        const titleDisp = document.getElementById('note-title-display');
+        
+        if (titleDisp) titleDisp.textContent = `파일명: [${title}.hwp] (저장 중...)`;
+        document.getElementById('note-save-status').textContent = "저장 중...";
+        
+        clearTimeout(app._noteSaveTimer);
+        app._noteSaveTimer = setTimeout(() => {
+            db.ref(`notes/${STATE.currentUser.uid}/${app.activeNoteId}`).update({
+                title, content, updatedAt: Date.now()
+            }).then(() => {
+                document.getElementById('note-save-status').textContent = "저장됨";
+                if (titleDisp) titleDisp.textContent = `파일명: [${title}.hwp]`;
+                app.updateNoteStats();
+            });
+        }, 1000);
+    },
+
+    saveNoteManual: () => {
+        app.autoSaveNote();
+        showToast("파일이 안전하게 저장되었습니다.", "success");
+    },
+
+    deleteCurrentNote: () => {
+        if (!app.activeNoteId || !db || !STATE.currentUser) return;
+        if (!confirm("이 문서를 영구적으로 삭제하시겠습니까? (삭제된 문서는 복구할 수 없습니다.)")) return;
+        
+        db.ref(`notes/${STATE.currentUser.uid}/${app.activeNoteId}`).remove().then(() => {
+            app.activeNoteId = null;
+            document.getElementById('note-title-input').value = "";
+            document.getElementById('note-content-input').innerHTML = "";
+            document.getElementById('note-title-display').textContent = "문서를 선택해 주세요.";
+            showToast("문서가 삭제되었습니다.", "info");
+        });
+    },
+
+    updateNoteStats: () => {
+        const editor = document.getElementById('note-content-input');
+        if (!editor) return;
+        const text = editor.innerText || "";
+        const charCount = text.replace(/\s/g, '').length;
+        const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+        document.getElementById('note-char-count').textContent = `글자수: ${text.length}자 (공백제외: ${charCount}자) | 단어수: ${wordCount}개`;
+    },
+
+    // ---- [ JURAM EXCEL LOGIC (Spreadsheet Processor) ] ---- //
+    initExcel: () => {
+        if (!db || !STATE.currentUser) return;
+        const headerRow = document.getElementById('excel-header-row');
+        const body = document.getElementById('excel-body');
+        if (!headerRow || !body) return;
+
+        // Reset
+        headerRow.innerHTML = '<th style="width: 40px; background: #f8f9fa; border: 1px solid #d1d1d1;"></th>';
+        body.innerHTML = '';
+
+        const cols = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('');
+        const rowCount = 50;
+
+        // Build Headers
+        cols.forEach(col => {
+            const th = document.createElement('th');
+            th.style.cssText = "width: 100px; background: #f8f9fa; border: 1px solid #d1d1d1; font-weight: normal; font-size: 0.8rem; height: 25px;";
+            th.textContent = col;
+            headerRow.appendChild(th);
+        });
+
+        // Build Rows
+        for (let i = 1; i <= rowCount; i++) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td style="background: #f8f9fa; border: 1px solid #d1d1d1; text-align: center; font-size: 0.75rem; color: #666;">${i}</td>`;
+            cols.forEach(col => {
+                const td = document.createElement('td');
+                const cellId = `${col}${i}`;
+                td.id = `excel-cell-${cellId}`;
+                td.contentEditable = "true";
+                td.style.cssText = "border: 1px solid #d1d1d1; outline: none; padding: 4px 8px; font-size: 0.85rem; height: 25px; overflow: hidden; white-space: nowrap;";
+                
+                td.onfocus = () => {
+                    document.getElementById('excel-cell-id').textContent = cellId;
+                    document.getElementById('excel-formula-input').value = td.innerText;
+                    app.activeExcelCell = td;
+                    // Highlight header/row labels if needed
+                };
+
+                td.oninput = () => {
+                    document.getElementById('excel-formula-input').value = td.innerText;
+                    app.autoSaveExcel(cellId, td.innerText);
+                };
+
+                tr.appendChild(td);
+            });
+            body.appendChild(tr);
+        }
+
+        // Load Data
+        db.ref(`excel/${STATE.currentUser.uid}`).once('value', snap => {
+            const data = snap.val() || {};
+            Object.entries(data).forEach(([cid, val]) => {
+                const cel = document.getElementById(`excel-cell-${cid}`);
+                if (cel) cel.innerText = val;
+            });
+        });
+    },
+
+    syncExcelCellFromFormula: () => {
+        if (!app.activeExcelCell) return;
+        const val = document.getElementById('excel-formula-input').value;
+        app.activeExcelCell.innerText = val;
+        const cellId = app.activeExcelCell.id.replace('excel-cell-', '');
+        app.autoSaveExcel(cellId, val);
+    },
+
+    autoSaveExcel: (cellId, value) => {
+        if (!db || !STATE.currentUser) return;
+        document.getElementById('excel-save-status').textContent = "저장 중...";
+        
+        clearTimeout(app._excelSaveTimer);
+        app._excelSaveTimer = setTimeout(() => {
+            db.ref(`excel/${STATE.currentUser.uid}/${cellId}`).set(value).then(() => {
+                document.getElementById('excel-save-status').textContent = "구름 동기화 완료";
+            });
+        }, 1000);
+    },
+
+    saveExcelManual: () => {
+        showToast("스프레드시트가 안전하게 저장되었습니다.", "success");
+    },
+
+    // ---- [ JURAM GALLERY LOGIC (Photo & Media) ] ---- //
+    initGallery: () => {
+        if (!db || !STATE.currentUser) return;
+        const grid = document.getElementById('gallery-grid');
+        if (!grid) return;
+        
+        db.ref(`gallery/${STATE.currentUser.uid}`).on('value', snap => {
+            const photos = snap.val() || {};
+            const photoArr = Object.entries(photos).map(([id, data]) => ({ id, ...data }));
+            photoArr.sort((a,b) => b.timestamp - a.timestamp);
+
+            if (photoArr.length === 0) {
+                grid.innerHTML = `
+                    <div style="text-align: center; grid-column: 1/-1; padding-top: 100px; color: #444;">
+                        <div style="font-size: 3rem; margin-bottom: 20px;">🖼️</div>
+                        <p>아직 사진이 없습니다.<br>사진을 업로드하거나 주람스타그램에서 저장하세요.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = '';
+            photoArr.forEach(p => {
+                const item = document.createElement('div');
+                item.style.cssText = `position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.3s; background: #111;`;
+                item.onmouseover = () => item.style.transform = 'scale(1.03)';
+                item.onmouseout = () => item.style.transform = 'scale(1)';
+                item.onclick = () => app.openPhotoViewer(p);
+                
+                item.innerHTML = `
+                    <img src="${p.url}" style="width: 100%; height: 100%; object-fit: cover;">
+                    <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 10px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); font-size: 0.7rem; color: white; opacity: 0; transition: 0.3s;">
+                        ${p.name || '무제한_이미지'}
+                    </div>
+                `;
+                item.onmouseenter = () => item.querySelector('div').style.opacity = '1';
+                item.onmouseleave = () => item.querySelector('div').style.opacity = '0';
+                
+                grid.appendChild(item);
+            });
+        });
+    },
+
+    openPhotoViewer: (photo) => {
+        const modal = document.getElementById('photo-viewer-modal');
+        const img = document.getElementById('opened-photo-img');
+        const name = document.getElementById('opened-photo-name');
+        const meta = document.getElementById('opened-photo-meta');
+        
+        if (!modal || !img) return;
+        
+        img.src = photo.url;
+        name.textContent = photo.name || '이름 없는 사진';
+        meta.textContent = new Date(photo.timestamp).toLocaleString() + (photo.size ? ` | ${photo.size}` : '');
+        
+        modal.style.display = 'flex';
+        app._openedPhoto = photo;
+    },
+
+    downloadOpenedImage: () => {
+        if (!app._openedPhoto) return;
+        const link = document.createElement('a');
+        link.href = app._openedPhoto.url;
+        link.download = app._openedPhoto.name || 'juram_photo.jpg';
+        link.click();
+        showToast('이미지 다운로드를 시작합니다.', 'success');
+    },
+
+    saveToGallery: (url, name) => {
+        if (!db || !STATE.currentUser) return;
+        db.ref(`gallery/${STATE.currentUser.uid}`).push({
+            url,
+            name: name || `IMG_${Date.now()}.jpg`,
+            timestamp: Date.now()
+        }).then(() => {
+            showToast('사진이 주람 갤러리에 저장되었습니다!', 'success');
+        });
+    },
+
+    switchGalleryTab: (tab, el) => {
+        // UI Feedback
+        const tabs = document.querySelectorAll('.gallery-tab');
+        tabs.forEach(t => {
+            t.style.color = '#888';
+            t.style.fontWeight = '400';
+            t.style.borderBottom = 'none';
+        });
+        
+        el.style.color = '#3b82f6';
+        el.style.fontWeight = '800';
+        el.style.borderBottom = '2px solid #3b82f6';
+
+        if (tab === 'recent') {
+            app.initGallery();
+        } else {
+            document.getElementById('gallery-grid').innerHTML = `
+                <div style="text-align: center; grid-column: 1/-1; padding-top: 100px; color: #444;">
+                    <div style="font-size: 3rem; margin-bottom: 20px;">📂</div>
+                    <p>'${el.textContent}' 탭은 아직 비어 있습니다.</p>
+                </div>
+            `;
+        }
+    },
     initGram: () => {
         if (!db) return;
         db.ref('gram_posts').on('value', snap => {
@@ -1473,7 +2249,14 @@ const app = window.app = {
             const feed = document.getElementById('gram-feed');
             if (!feed) return;
             feed.innerHTML = '';
-            Object.entries(posts).reverse().forEach(([id, p]) => {
+            
+            const postEntries = Object.entries(posts);
+            if (postEntries.length === 0) {
+                feed.innerHTML = '<div style="color: #666; padding: 40px; text-align: center;">게시물이 없습니다. 첫 포스팅을 남겨보세요!</div>';
+                return;
+            }
+            
+            postEntries.reverse().forEach(([id, p]) => {
                 const item = document.createElement('div');
                 item.style.cssText = 'width: 100%; max-width: 450px; background: #000; border: 1px solid #222; border-radius: 8px; overflow: hidden;';
                 
@@ -2019,6 +2802,20 @@ app.toggleGhostMode = () => {
     });
 };
 
+app.sendUltimateBroadcast = () => {
+    const msg = document.getElementById('admin-broadcast-input').value.trim();
+    if (!msg || !db) return;
+    db.ref('server/broadcast').set({
+        text: msg,
+        sender: 'MASTER',
+        time: Date.now()
+    }).then(() => {
+        document.getElementById('admin-broadcast-input').value = '';
+        app.addAdminLog(`SYSTEM: Global Broadcast Sent -> "${msg}"`);
+        showToast('전역 신화 방송이 송출되었습니다.', 'success');
+    });
+};
+
 app.watchTraffic = () => {
     if (!db) return;
     db.ref('server/traffic').on('value', snap => {
@@ -2037,24 +2834,42 @@ app.watchTraffic = () => {
     });
 };
 
+app.toggleGlobalBuff = (type) => {
+    if (!db) return;
+    db.ref(`server/buffs/${type}`).once('value').then(snap => {
+        const current = snap.val() || false;
+        db.ref(`server/buffs/${type}`).set(!current);
+        app.addAdminLog(`ENV: Global buff [${type}] toggled to ${!current}.`);
+    });
+};
+
 app.ultimateAction = (type) => {
     if (!db) return;
     if (type === 'shake') {
         db.ref('server/effects/shake').set(Date.now());
-        showToast('전 세계에 파멸의 진동을 선언했습니다.', 'warning');
+        app.addAdminLog('EFFECT: Earth Shake declared.');
     } else if (type === 'fireworks') {
         db.ref('server/effects/fireworks').set(Date.now());
-        showToast('하늘에 최강좌의 불꽃이 피어납니다.', 'success');
+        app.addAdminLog('EFFECT: Fireworks sparked.');
     } else if (type === 'maintenance') {
         db.ref('server/maintenance_mode').once('value').then(snap => {
             const current = snap.val() || false;
             db.ref('server/maintenance_mode').set(!current);
-            showToast(`점검 모드: ${!current ? '진입' : '해제'}`, 'info');
+            app.addAdminLog(`SYSTEM: Maintenance mode toggled to ${!current}.`);
         });
     } else if (type === 'rain') {
-        db.ref('server/events/gold_rain').set(Date.now());
-        showToast('전 국민에게 1만 골드의 은총을 내렸습니다.', 'success');
+        db.ref('server/effects/rain').set(Date.now());
+        app.addAdminLog('ENV: Heavy rain summoned.');
+    } else if (type === 'snow') {
+        db.ref('server/effects/snow').set(Date.now());
+        app.addAdminLog('ENV: Snow blizzard summoned.');
     }
+};
+
+app.clearAdminLogs = () => {
+    const el = document.getElementById('admin-log-console');
+    if (el) el.innerHTML = '<div>[SYSTEM] Console Cleared.</div>';
+    app.addAdminLog('Admin: Strategy log cleared.');
 };
 
 // [글로벌 효과 리스너]

@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (clockEl) clockEl.textContent = timeStr;
     }, 1000);
 
+    if (db) {
         // 전역 공지(브로드캐스트) 리스너
         db.ref('server/broadcast').on('value', snap => {
             const data = snap.val();
@@ -58,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 location.reload();
             }
         });
+    }
 
         console.log("Juram OS 모듈 시스템 v157 초기화 완료.");
 });

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 백업 & 복구</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0c0e12; color: #fff; padding: 40px; }
+        .box { background: rgba(255,255,255,0.05); border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.1); max-width: 500px; margin: 0 auto; }
+        h1 { font-size: 1.5rem; display: flex; align-items: center; gap: 10px; margin-bottom: 30px; }
+        .field { margin-bottom: 25px; }
+        label { display: block; font-size: 0.8rem; color: #666; margin-bottom: 10px; text-transform: uppercase; }
+        textarea { width: 100%; height: 120px; background: #000; border: 1px solid #333; color: #0f0; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 0.8rem; box-sizing: border-box; }
+        .btn-row { display: flex; gap: 10px; }
+        button { flex: 1; padding: 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-exp { background: #3b82f6; color: white; }
+        .btn-imp { background: #10b981; color: white; }
+        button:hover { opacity: 0.8; transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>💾 백업 및 복구 센터</h1>
+        
+        <div class="field">
+            <label>시스템 데이터 (JSON)</label>
+            <textarea id="data-box" placeholder="데이터를 추출하거나 복구할 코드를 여기에 붙여넣으세요..."></textarea>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn-exp" onclick="exportData()">내보내기 (Backup)</button>
+            <button class="btn-imp" onclick="importData()">가져오기 (Restore)</button>
+        </div>
+        
+        <p style="font-size: 0.75rem; color: #555; margin-top: 20px; line-height: 1.5;">
+            * 이 데이터에는 유저 정보, 코인, 배경화면 설정 등이 포함됩니다.<br>
+            * 복구 시 현재의 로컬 데이터가 모두 덮어씌워지니 주의하세요.
+        </p>
+    </div>
+
+    <script>
+        function exportData() {
+            const data = localStorage.getItem('SURVIVAL_3D_DATA');
+            const wallpaper = localStorage.getItem('juram_wallpaper');
+            const theme = localStorage.getItem('juram_theme');
+            
+            const backup = {
+                coreData: JSON.parse(data),
+                wallpaper: wallpaper,
+                theme: theme,
+                timestamp: Date.now()
+            };
+            
+            document.getElementById('data-box').value = JSON.stringify(backup);
+            alert("백업 코드가 생성되었습니다! 메모장에 안전하게 복사해 두세요.");
+        }
+
+        function importData() {
+            const raw = document.getElementById('data-box').value;
+            if (!raw) return alert("복구할 코드를 입력해 주세요.");
+            
+            try {
+                const backup = JSON.parse(raw);
+                if (!confirm("정말 이 데이터로 시스템을 복구하시겠습니까? 현재 데이터는 소멸됩니다.")) return;
+                
+                if (backup.coreData) localStorage.setItem('SURVIVAL_3D_DATA', JSON.stringify(backup.coreData));
+                if (backup.wallpaper) localStorage.setItem('juram_wallpaper', backup.wallpaper);
+                if (backup.theme) localStorage.setItem('juram_theme', backup.theme);
+                
+                alert("복구가 완료되었습니다. 시스템을 재시작합니다.");
+                window.parent.location.reload();
+            } catch (e) {
+                alert("잘못된 백업 코드입니다.");
+            }
+        }
+    </script>
+</body>
+</html>

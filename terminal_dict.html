@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>터미널 사전 (Terminal Wiki)</title>
+    <style>
+        :root {
+            --primary: #10b981;
+            --bg: #050505;
+            --card: #111;
+            --text: #eee;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            border-bottom: 1px solid #222;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        h1 { margin: 0; font-size: 1.5rem; color: var(--primary); }
+        .search-box {
+            width: 100%;
+            padding: 12px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        .command-card {
+            background: var(--card);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--primary);
+        }
+        .cmd-name {
+            font-family: monospace;
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .cmd-usage {
+            font-size: 0.85rem;
+            background: #000;
+            padding: 5px 10px;
+            border-radius: 4px;
+            color: #68f7b5;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .cmd-desc { font-size: 0.9rem; line-height: 1.6; color: #aaa; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📖 터미널 사전 v1.0</h1>
+        <p style="font-size: 0.8rem; color: #555;">터미널에서 사용 가능한 모든 명령어를 정리했습니다.</p>
+    </header>
+
+    <input type="text" class="search-box" id="search" placeholder="명령어 검색..." oninput="filter()">
+
+    <div id="list">
+        <div class="command-card" data-name="help">
+            <div class="cmd-name">help</div>
+            <div class="cmd-usage">usage: help</div>
+            <div class="cmd-desc">현재 터미널에서 사용 가능한 기본 명령어 목록과 설명을 보여줍니다.</div>
+        </div>
+        <div class="command-card" data-name="ls">
+            <div class="cmd-name">ls</div>
+            <div class="cmd-usage">usage: ls</div>
+            <div class="cmd-desc">시스템에 설치된 모든 앱의 ID 목록을 출력합니다.</div>
+        </div>
+        <div class="command-card" data-name="open">
+            <div class="cmd-name">open</div>
+            <div class="cmd-usage">usage: open [app_id]</div>
+            <div class="cmd-desc">특정 앱을 실행합니다. 상점(`win-store`), 메일(`win-mail`) 등을 키워드로 사용할 수 있습니다.</div>
+        </div>
+        <div class="command-card" data-name="js">
+            <div class="cmd-name">js</div>
+            <div class="cmd-usage">usage: js [javascript_code]</div>
+            <div class="cmd-desc">실제 자바스크립트 엔진을 구동합니다. `alert()`, `console.log()` 등 모든 JS 기능을 OS 컨텍스트에서 실행할 수 있습니다.</div>
+        </div>
+        <div class="command-card" data-name="wallpaper">
+            <div class="cmd-name">wallpaper</div>
+            <div class="cmd-usage">usage: wallpaper [image_url]</div>
+            <div class="cmd-desc">전달받은 이미지 URL을 바탕화면 배경으로 즉시 적용합니다.</div>
+        </div>
+        <div class="command-card" data-name="whoami">
+            <div class="cmd-name">whoami</div>
+            <div class="cmd-usage">usage: whoami</div>
+            <div class="cmd-desc">현재 로그인된 유저의 이름, 역할(유저/관리자) 정보를 표시합니다.</div>
+        </div>
+        <div class="command-card" data-name="clear">
+            <div class="cmd-name">clear</div>
+            <div class="cmd-usage">usage: clear</div>
+            <div class="cmd-desc">터미널의 출력 창을 모두 비우고 초기 화면으로 되돌립니다.</div>
+        </div>
+    </div>
+
+    <script>
+        function filter() {
+            const q = document.getElementById('search').value.toLowerCase();
+            const cards = document.querySelectorAll('.command-card');
+            cards.forEach(c => {
+                const name = c.dataset.name;
+                c.style.display = name.includes(q) ? 'block' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>
