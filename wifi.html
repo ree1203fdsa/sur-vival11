@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+    body { background: #0f172a; color: white; margin: 0; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; }
+    .header { padding: 20px; background: #1e293b; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #334155; }
+    .header h2 { margin: 0; display: flex; align-items: center; gap: 10px; color: #60a5fa; }
+    .toggle { display: flex; align-items: center; cursor: pointer; }
+    .toggle input { display: none; }
+    .slider { width: 50px; height: 26px; background: #475569; border-radius: 20px; position: relative; transition: 0.3s; margin-left: 10px; }
+    .slider::before { content: ""; position: absolute; width: 20px; height: 20px; border-radius: 50%; background: white; top: 3px; left: 3px; transition: 0.3s; }
+    input:checked + .slider { background: #3b82f6; }
+    input:checked + .slider::before { transform: translateX(24px); }
+    
+    .network-list { padding: 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .network { background: rgba(255,255,255,0.05); padding: 15px 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; cursor: pointer; border: 1px solid transparent; }
+    .network:hover { background: rgba(255,255,255,0.1); }
+    .network.connected { border-color: #3b82f6; background: rgba(59,130,246,0.1); }
+    .net-info { display: flex; flex-direction: column; }
+    .net-name { font-weight: bold; font-size: 1.1rem; }
+    .net-status { font-size: 0.85rem; color: #94a3b8; margin-top: 5px; }
+    .signal { color: #4ade80; font-size: 1.2rem; }
+</style>
+</head>
+<body>
+    <div class="header">
+        <h2>📶 Wi-Fi 프로토콜</h2>
+        <label class="toggle">
+            <span style="font-weight:bold; color:#cbd5e1;" id="toggle-text">켜짐</span>
+            <input type="checkbox" id="wifi-toggle" checked onchange="toggleWifi()">
+            <span class="slider"></span>
+        </label>
+    </div>
+    
+    <div class="network-list" id="networks">
+        <div class="network connected" onclick="alert('이미 연결되어 있습니다.')">
+            <div class="net-info">
+                <span class="net-name">JuRam_5G_Secured</span>
+                <span class="net-status" style="color:#3b82f6;">연결됨 • 보안 프로토콜 활성화</span>
+            </div>
+            <div class="signal">📶 강함</div>
+        </div>
+        <div class="network" onclick="connect(this, 'Public_Station')">
+            <div class="net-info">
+                <span class="net-name">Public_Station</span>
+                <span class="net-status">저장됨</span>
+            </div>
+            <div class="signal" style="color:#facc15;">📶 보통</div>
+        </div>
+        <div class="network" onclick="connect(this, 'JUR1203_Hotspot')">
+            <div class="net-info">
+                <span class="net-name">JUR1203_Hotspot</span>
+                <span class="net-status">WPA3 보안 통신망</span>
+            </div>
+            <div class="signal">📶 강함</div>
+        </div>
+    </div>
+
+    <script>
+        function toggleWifi() {
+            const isChecked = document.getElementById('wifi-toggle').checked;
+            document.getElementById('toggle-text').innerText = isChecked ? '켜짐' : '꺼짐';
+            document.getElementById('networks').style.opacity = isChecked ? '1' : '0.2';
+            document.getElementById('networks').style.pointerEvents = isChecked ? 'auto' : 'none';
+        }
+        function connect(el, name) {
+            alert(`[${name}] 네트워크 키를 교환하고 있습니다...`);
+            setTimeout(() => { alert('연결에 실패했습니다. 암호가 변경되었거나 거리가 너무 멉니다.'); }, 1500);
+        }
+    </script>
+</body>
+</html>

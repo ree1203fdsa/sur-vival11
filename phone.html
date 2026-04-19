@@ -110,7 +110,10 @@
                             <div class="contact-name">${u.username}</div>
                             <div style="font-size: 0.75rem; color: #64748b;">${u.phoneNumber || '번호 없음'}</div>
                         </div>
-                        <button style="background: none; border: 1px solid #22c55e; color: #22c55e; border-radius: 15px; padding: 5px 12px; cursor: pointer;" onclick="directCall('${uid}', '${u.username}')">전화</button>
+                        <div style="display: flex; gap: 5px;">
+                            <button style="background: none; border: 1px solid #3b82f6; color: #3b82f6; border-radius: 15px; padding: 5px 12px; cursor: pointer;" onclick="window.parent.app.openWindow('win-messages')">💬</button>
+                            <button style="background: none; border: 1px solid #22c55e; color: #22c55e; border-radius: 15px; padding: 5px 12px; cursor: pointer;" onclick="directCall('${uid}', '${u.username}')">전화</button>
+                        </div>
                     `;
                     list.appendChild(item);
                 });

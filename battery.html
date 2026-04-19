@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin:0; }
+.batt-wrapper { position: relative; margin-bottom: 20px; margin-top: -30px;}
+.batt-head { width: 40px; height: 10px; background: #4ade80; border-radius: 5px 5px 0 0; margin: 0 auto; }
+.batt { width: 120px; height: 220px; border: 4px solid #4ade80; border-radius: 12px; position:relative; overflow:hidden; display: flex; flex-direction: column; justify-content: flex-end; background: rgba(0,0,0,0.5); }
+.fill { width: 100%; background: linear-gradient(0deg, #22c55e, #4ade80); height: 85%; transition: 1s; padding-bottom: 5px; box-shadow: 0 0 20px rgba(74, 222, 128, 0.4); }
+.text { position: absolute; width: 100%; top: 50%; left: 0; transform: translateY(-50%); text-align: center; font-size: 2rem; font-weight: 900; color: white; text-shadow: 1px 1px 5px rgba(0,0,0,0.8); }
+.info { color: #94a3b8; text-align: center; font-size: 0.9rem; line-height: 1.5; }
+.btn { background: #1e293b; border: 1px solid #334155; color: #f8fafc; padding: 12px 25px; border-radius: 20px; font-weight: bold; margin-top: 30px; cursor: pointer; transition: 0.2s; }
+.btn:hover { background: #334155; }
+</style>
+</head>
+<body>
+<div class="batt-wrapper">
+    <div class="batt-head"></div>
+    <div class="batt">
+        <div class="fill"></div>
+        <div class="text">85%</div>
+    </div>
+</div>
+<h2 style="margin: 0 0 10px 0;">배터리 상태: 양호</h2>
+<div class="info">남은 사용 시간: 약 9시간 30분<br>백그라운드 전력 소모가 최적화되어 있습니다.</div>
+<button class="btn" onclick="alert('절전 모드가 활성화되었습니다. 백그라운드 프로세스를 제한합니다.')">초절전 모드 켜기</button>
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 메시지 (JuRam Messages)</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #3b82f6;
+            --text: #f1f5f9;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar (Conversation List) */
+        .sidebar { width: 30%; border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; background: rgba(0,0,0,0.2); }
+        .sidebar-header { padding: 25px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-header h2 { margin: 0; font-size: 1.2rem; }
+        .new-chat { background: var(--accent); color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 800; }
+
+        .chat-list { flex: 1; overflow-y: auto; }
+        .chat-item { padding: 20px 25px; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; transition: 0.2s; }
+        .chat-item:hover { background: rgba(255,255,255,0.03); }
+        .chat-item.active { background: rgba(59, 130, 246, 0.1); border-left: 4px solid var(--accent); }
+        .chat-target { font-weight: 800; font-size: 1rem; margin-bottom: 5px; }
+        .chat-preview { font-size: 0.8rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Main Chat View */
+        .chat-view { flex: 1; display: flex; flex-direction: column; background: #0b0f1a; }
+        .chat-header { padding: 20px 30px; border-bottom: 1px solid rgba(255,255,255,0.05); background: var(--bg); }
+        .messages-container { flex: 1; overflow-y: auto; padding: 30px; display: flex; flex-direction: column; gap: 15px; }
+        
+        .msg { max-width: 70%; padding: 12px 18px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; position: relative; }
+        .msg.sent { align-self: flex-end; background: var(--accent); color: white; border-bottom-right-radius: 4px; }
+        .msg.received { align-self: flex-start; background: var(--card); color: var(--text); border-bottom-left-radius: 4px; }
+        .msg-time { font-size: 0.65rem; opacity: 0.5; margin-top: 5px; text-align: right; }
+
+        .input-area { padding: 20px 30px; background: var(--bg); border-top: 1px solid rgba(255,255,255,0.05); display: flex; gap: 15px; }
+        input { flex: 1; background: #111827; border: 1px solid #1f2937; color: white; padding: 15px 20px; border-radius: 12px; outline: none; }
+        .send-btn { background: var(--accent); color: white; border: none; width: 55px; height: 55px; border-radius: 12px; cursor: pointer; font-size: 1.2rem; }
+
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 1000; }
+        .modal-body { background: var(--card); padding: 30px; border-radius: 20px; width: 350px; display: flex; flex-direction: column; gap: 15px; }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 40%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>메시지</h2>
+            <button class="new-chat" onclick="openNewChat()">+</button>
+        </div>
+        <div class="chat-list" id="chat-list">
+            <!-- Threads go here -->
+        </div>
+    </div>
+
+    <div class="chat-view">
+        <div class="chat-header">
+            <h3 id="chat-title">대화를 선택하세요</h3>
+        </div>
+        <div class="messages-container" id="msg-cnt">
+            <!-- Messages go here -->
+        </div>
+        <div class="input-area" id="input-area" style="display: none;">
+            <input type="text" id="msg-input" placeholder="메시지 입력...">
+            <button class="send-btn" onclick="sendMsg()">📤</button>
+        </div>
+    </div>
+
+    <div class="modal" id="new-chat-modal">
+        <div class="modal-body">
+            <h3>새 메시지</h3>
+            <label style="font-size: 0.8rem; color: #64748b;">상대방 전화번호</label>
+            <input type="text" id="target-phone" placeholder="094-XXXX-XXXX">
+            <button class="new-chat" onclick="startNewChat()">대화 시작</button>
+            <button style="background:none; border:none; color:#64748b; padding:10px; cursor:pointer;" onclick="closeModal()">취소</button>
+        </div>
+    </div>
+
+    <script>
+        let activeThread = null;
+        let myPhone = null;
+
+        function init() {
+            const user = window.parent.STATE.currentUser;
+            if (!user.phoneNumber) {
+                document.body.innerHTML = `
+                <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px;">
+                    <div style="font-size:4rem; margin-bottom:20px;">🚫</div>
+                    <h2>전화번호가 없습니다</h2>
+                    <p style="color:#64748b;">메시지 기능을 사용하려면 '주람 텔레콤'에서 번호를 먼저 개통해 주세요.</p>
+                </div>`;
+                return;
+            }
+            myPhone = user.phoneNumber;
+            loadThreads();
+        }
+
+        function loadThreads() {
+            if (!window.parent.db) return;
+            window.parent.db.ref('messages').on('value', snap => {
+                const allMsgs = snap.val() || {};
+                const threads = {};
+                
+                Object.values(allMsgs).forEach(m => {
+                    if (m.from === myPhone || m.to === myPhone) {
+                        const target = m.from === myPhone ? m.to : m.from;
+                        if (!threads[target] || threads[target].timestamp < m.timestamp) {
+                            threads[target] = m;
+                        }
+                    }
+                });
+
+                const list = document.getElementById('chat-list');
+                list.innerHTML = '';
+                Object.entries(threads).sort((a,b) => b[1].timestamp - a[1].timestamp).forEach(([num, m]) => {
+                    const div = document.createElement('div');
+                    div.className = `chat-item ${activeThread === num ? 'active' : ''}`;
+                    div.onclick = () => selectThread(num);
+                    div.innerHTML = `
+                        <div class="chat-target">${num}</div>
+                        <div class="chat-preview">${m.text}</div>
+                    `;
+                    list.appendChild(div);
+                });
+            });
+        }
+
+        function selectThread(num) {
+            activeThread = num;
+            document.getElementById('chat-title').textContent = num;
+            document.getElementById('input-area').style.display = 'flex';
+            document.getElementById('msg-cnt').innerHTML = '';
+            
+            window.parent.db.ref('messages').on('value', snap => {
+                const all = snap.val() || {};
+                const list = document.getElementById('msg-cnt');
+                list.innerHTML = '';
+                
+                Object.values(all).forEach(m => {
+                    if ((m.from === myPhone && m.to === num) || (m.from === num && m.to === myPhone)) {
+                        const div = document.createElement('div');
+                        div.className = `msg ${m.from === myPhone ? 'sent' : 'received'}`;
+                        div.innerHTML = `
+                            ${m.text}
+                            <div class="msg-time">${new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                        `;
+                        list.appendChild(div);
+                    }
+                });
+                list.scrollTop = list.scrollHeight;
+            });
+            loadThreads(); // Refresh selection status
+        }
+
+        function sendMsg() {
+            const text = document.getElementById('msg-input').value.trim();
+            if (!text || !activeThread) return;
+
+            window.parent.db.ref('messages').push({
+                from: myPhone,
+                to: activeThread,
+                text: text,
+                timestamp: Date.now()
+            }).then(() => {
+                document.getElementById('msg-input').value = '';
+            });
+        }
+
+        function openNewChat() { document.getElementById('new-chat-modal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('new-chat-modal').style.display = 'none'; }
+        function startNewChat() {
+            const num = document.getElementById('target-phone').value.trim();
+            if (!num.startsWith('094-')) return alert("올바른 번호 형식이 아닙니다 (094-XXXX-XXXX)");
+            closeModal();
+            selectThread(num);
+        }
+
+        init();
+    </script>
+</body>
+</html>

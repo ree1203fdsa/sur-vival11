@@ -33,6 +33,83 @@ const app = window.app = {
         'win-share': { title: 'Quick Share', icon: '🚀', screenId: 'share-screen' },
         'win-phone': { title: '주람 폰', icon: '📞', screenId: 'phone-screen' },
         'win-telecom': { title: '주람 텔레콤', icon: '📡', screenId: 'telecom-screen' },
+        'win-messages': { title: '주람 메시지', icon: '💬', screenId: 'messages-screen' },
+        'win-data': { title: '데이터 매니저', icon: '📶', screenId: 'data-screen' },
+        'win-editor': {title:'텍스트 편집기',icon:'📝',screenId:'editor-screen'},
+        'win-recycle': {title:'휴지통',icon:'🗑️',screenId:'recycle-screen'},
+        'win-help': {title:'도움말 센터',icon:'❓',screenId:'help-screen'},
+        'win-update': {title:'소프트웨어 업데이트',icon:'🔄',screenId:'update-screen'},
+        'win-clock': {title:'세계 시계',icon:'⏰',screenId:'clock-screen'},
+        'win-calendar': {title:'달력',icon:'📅',screenId:'calendar-screen'},
+        'win-search': {title:'통합 검색',icon:'🔍',screenId:'search-screen'},
+        'win-fonts': {title:'폰트 관리자',icon:'🔤',screenId:'fonts-screen'},
+        'win-videochat': {title:'화상 회의',icon:'🎥',screenId:'videochat-screen'},
+        'win-news': {title:'뉴스 리더',icon:'📰',screenId:'news-screen'},
+        'win-downloads': {title:'다운로드 관리',icon:'📥',screenId:'downloads-screen'},
+        'win-blog': {title:'블로그 포스팅',icon:'✍️',screenId:'blog-screen'},
+        'win-radio': {title:'온라인 라디오',icon:'📻',screenId:'radio-screen'},
+        'win-ip': {title:'IP 진단',icon:'🌐',screenId:'ip-screen'},
+        'win-wifi': {title:'Wi-Fi 설정',icon:'📶',screenId:'wifi-screen'},
+        'win-speedtest': {title:'속도 측정',icon:'🚀',screenId:'speedtest-screen'},
+        'win-bookmarks': {title:'북마크',icon:'🔖',screenId:'bookmarks-screen'},
+        'win-translator': {title:'번역기',icon:'🌍',screenId:'translator-screen'},
+        'win-music': {title:'음악 플레이어',icon:'🎵',screenId:'music-screen'},
+        'win-video': {title:'비디오 플레이어',icon:'🎬',screenId:'video-screen'},
+        'win-photoedit': {title:'사진 편집',icon:'🎨',screenId:'photoedit-screen'},
+        'win-videoedit': {title:'동영상 편집',icon:'✂️',screenId:'videoedit-screen'},
+        'win-recorder': {title:'녹음기',icon:'🎙️',screenId:'recorder-screen'},
+        'win-capture': {title:'화면 캡처',icon:'📸',screenId:'capture-screen'},
+        'win-screenrec': {title:'화면 녹화기',icon:'⏺️',screenId:'screenrec-screen'},
+        'win-mixer': {title:'오디오 믹서',icon:'🎛️',screenId:'mixer-screen'},
+        'win-3dviewer': {title:'3D 뷰어',icon:'🧊',screenId:'3dviewer-screen'},
+        'win-pdf': {title:'PDF 리더',icon:'📄',screenId:'pdf-screen'},
+        'win-iconmaker': {title:'아이콘 제작기',icon:'💠',screenId:'iconmaker-screen'},
+        'win-composer': {title:'작곡 툴',icon:'🎼',screenId:'composer-screen'},
+        'win-animator': {title:'애니메이션',icon:'🎞️',screenId:'animator-screen'},
+        'win-palette': {title:'컬러 팔레트',icon:'🎨',screenId:'palette-screen'},
+        'win-subtitles': {title:'자막 편집',icon:'💬',screenId:'subtitles-screen'},
+        'win-camera': {title:'카메라',icon:'📷',screenId:'camera-screen'},
+        'win-todo': {title:'할 일 목록',icon:'✅',screenId:'todo-screen'},
+        'win-slides': {title:'프레젠테이션',icon:'📊',screenId:'slides-screen'},
+        'win-converter': {title:'단위 변환',icon:'📏',screenId:'converter-screen'},
+        'win-exchange': {title:'환율 계산',icon:'💱',screenId:'exchange-screen'},
+        'win-dictionary': {title:'영어 사전',icon:'📖',screenId:'dictionary-screen'},
+        'win-map': {title:'세계 지도',icon:'🗺️',screenId:'map-screen'},
+        'win-diary': {title:'일기장',icon:'📓',screenId:'diary-screen'},
+        'win-ledger': {title:'가계부',icon:'💰',screenId:'ledger-screen'},
+        'win-mindmap': {title:'마인드맵',icon:'🧠',screenId:'mindmap-screen'},
+        'win-spellcheck': {title:'맞춤법 검사',icon:'✔️',screenId:'spellcheck-screen'},
+        'win-ebook': {title:'전자책',icon:'📚',screenId:'ebook-screen'},
+        'win-subs': {title:'구독 관리',icon:'🔄',screenId:'subs-screen'},
+        'win-project': {title:'프로젝트 관리',icon:'📋',screenId:'project-screen'},
+        'win-math': {title:'수식 계산기',icon:'➗',screenId:'math-screen'},
+        'win-encyclopedia': {title:'백과사전',icon:'🌐',screenId:'encyclopedia-screen'},
+        'win-tetris': {title:'테트리스',icon:'🧱',screenId:'tetris-screen'},
+        'win-minesweeper': {title:'지뢰 찾기',icon:'🚩',screenId:'minesweeper-screen'},
+        'win-solitaire': {title:'솔리테어',icon:'🃏',screenId:'solitaire-screen'},
+        'win-snake': {title:'뱀 게임',icon:'🐍',screenId:'snake-screen'},
+        'win-chess': {title:'체스',icon:'♟️',screenId:'chess-screen'},
+        'win-crossword': {title:'낱말 맞추기',icon:'🔠',screenId:'crossword-screen'},
+        'win-meditation': {title:'명상 음악',icon:'🧘',screenId:'meditation-screen'},
+        'win-constellation': {title:'별자리 보기',icon:'✨',screenId:'constellation-screen'},
+        'win-aquarium': {title:'가상 수족관',icon:'🐟',screenId:'aquarium-screen'},
+        'win-omok': {title:'오목',icon:'⚫',screenId:'omok-screen'},
+        'win-sudoku': {title:'스도쿠',icon:'🔢',screenId:'sudoku-screen'},
+        'win-quiz': {title:'퀴즈 게임',icon:'❓',screenId:'quiz-screen'},
+        'win-fortune': {title:'운세 앱',icon:'🍀',screenId:'fortune-screen'},
+        'win-piano': {title:'가상 피아노',icon:'🎹',screenId:'piano-screen'},
+        'win-antivirus': {title:'백신 프로그램',icon:'🛡️',screenId:'antivirus-screen'},
+        'win-firewall': {title:'방화벽 설정',icon:'🧱',screenId:'firewall-screen'},
+        'win-battery': {title:'배터리 관리자',icon:'🔋',screenId:'battery-screen'},
+        'win-zip': {title:'압축 도구',icon:'🗜️',screenId:'zip-screen'},
+        'win-passwords': {title:'암호 관리자',icon:'🔑',screenId:'passwords-screen'},
+        'win-sysinfo': {title:'시스템 정보',icon:'ℹ️',screenId:'sysinfo-screen'},
+        'win-logs': {title:'로그 확인기',icon:'📄',screenId:'logs-screen'},
+        'win-drivers': {title:'드라이버 업데이트',icon:'⚙️',screenId:'drivers-screen'},
+        'win-brightness': {title:'밝기 조절',icon:'☀️',screenId:'brightness-screen'},
+        'win-bluelight': {title:'블루 차단기',icon:'👁️',screenId:'bluelight-screen'},
+        'win-startup': {title:'시작 프로그램',icon:'🚀',screenId:'startup-screen'},
+        'win-power': {title:'종료 예약',icon:'🔌',screenId:'power-screen'},
     },
     // 테마 설정
     setTheme: (theme) => {
@@ -73,6 +150,14 @@ const app = window.app = {
             showToast('⚠️ 하이퍼 보안 프로토콜 가동: 최강좌 전용 구역입니다.', 'error');
             return;
         }
+
+        // --- 데이터 소모 시스템 ---
+        // 데이터 매니저, 텔레콤 등 핵심 서비스 앱은 데이터 없이도 실행 가능
+        const freeApps = ['win-data', 'win-telecom', 'win-monitor', 'win-settings', 'win-admin', 'win-playstore'];
+        if (!freeApps.includes(winId)) {
+            if (!app.consumeData(0.5)) return; // 앱 실행 시 0.5MB 소모
+        }
+        // -------------------------
 
         if (STATE.currentUser && STATE.currentUser.restrictions) {
             const res = STATE.currentUser.restrictions;
@@ -205,26 +290,89 @@ const app = window.app = {
         db.ref(`users/${STATE.currentUser.uid}/incoming_calls`).remove();
         showToast('전화를 거절했습니다.', 'warning');
     },
+    consumeData: (amount) => {
+        if (!STATE.currentUser || STATE.currentUser.mobileData === 999999 || STATE.currentUser.username === 'jur1203') return true;
+        const current = STATE.currentUser.mobileData || 0;
+        if (current < amount) {
+            showToast('데이터가 부족합니다! 주람 텔레콤에서 충전하세요.', 'error');
+            return false;
+        }
+        STATE.currentUser.mobileData = current - amount;
+        saveData();
+        return true;
+    },
+
     // ---- [ SYSTEM PLAY STORE LOGIC ] ---- //
     refreshPlayStore: () => {
         const list = document.getElementById('playstore-app-list');
+        const filterEl = document.getElementById('playstore-category-filter');
+        const searchEl = document.getElementById('playstore-search-input');
         if (!list) return;
+
+        const category = filterEl ? filterEl.value : 'all';
+        const query = searchEl ? searchEl.value.toLowerCase().replace(/\s+/g, '') : '';
+
         list.innerHTML = '';
         
-        const apps = [
-            { id: 'win-crafting', title: '생존 조합 가이드', icon: '🪓', desc: '초보 생존자를 위한 필수 조합법과 팁 모음.' },
-            { id: 'win-wallpapers', title: '배경화면 체인저', icon: '🖼️', desc: 'OS의 바탕화면을 고화질 테마 이미지로 변경합니다.' },
-            { id: 'win-monitor', title: '시스템 모니터', icon: '📊', desc: '실시간 리소스 사용량 및 프로세스 관리 도구.' },
-            { id: 'win-calculator', title: '주람 계산기', icon: '🧮', desc: '간단하고 강력한 연산 기능을 제공하는 계산기.' },
-            { id: 'win-terminal', title: '주람 터미널', icon: '💻', desc: '명령어로 OS 핵심 기능을 제어하는 개발자 도구.' },
-            { id: 'win-termdict', title: '터미널 사전', icon: '📖', desc: '터미널 실무 명령어 및 활용법에 대한 위키.' },
-            { id: 'win-code', title: '주람 코드 (Code)', icon: '✍️', desc: 'OS 내에서 직접 자바스크립트를 작성하고 실행합니다.' },
-            { id: 'win-cleaner', title: '시스템 클리너', icon: '🧹', desc: '불필요한 캐시 데이터 정리로 성능을 최적화합니다.' },
-            { id: 'win-backup', title: '백업 & 복구 센터', icon: '💾', desc: '시스템 전체 데이터를 백업 코드로 추출 및 복원.' },
-            { id: 'win-share', title: '주람 퀵 셰어', icon: '🚀', desc: '주변 유저에게 메시지나 코인을 즉시 전송합니다.' },
-            { id: 'win-phone', title: '주람 폰 (Phone)', icon: '📞', desc: '다른 유저와 실시간으로 전화를 연결하고 소통합니다.' },
-            { id: 'win-telecom', title: '주람 텔레콤 (Telecom)', icon: '📡', desc: '나만의 유니크한 전화번호를 개통하고 관리하세요.' }
+        let apps = [
+            { id: 'win-crafting', title: '생존 조합 가이드', icon: '🪓', desc: '초보 생존자를 위한 필수 조합법과 팁 모음.', category: 'games' },
+            { id: 'win-wallpapers', title: '배경화면 체인저', icon: '🖼️', desc: 'OS의 바탕화면을 고화질 테마 이미지로 변경합니다.', category: 'system' },
+            { id: 'win-monitor', title: '시스템 모니터', icon: '📊', desc: '실시간 리소스 사용량 및 프로세스 관리 도구.', category: 'system' },
+            { id: 'win-calculator', title: '주람 계산기', icon: '🧮', desc: '간단하고 강력한 연산 기능을 제공하는 계산기.', category: 'system' },
+            { id: 'win-terminal', title: '주람 터미널', icon: '💻', desc: '명령어로 OS 핵심 기능을 제어하는 개발자 도구.', category: 'system' },
+            { id: 'win-termdict', title: '터미널 사전', icon: '📖', desc: '터미널 실무 명령어 및 활용법에 대한 위키.', category: 'productivity' },
+            { id: 'win-code', title: '주람 코드 (Code)', icon: '✍️', desc: 'OS 내에서 직접 자바스크립트를 작성하고 실행합니다.', category: 'productivity' },
+            { id: 'win-cleaner', title: '시스템 클리너', icon: '🧹', desc: '불필요한 캐시 데이터 정리로 성능을 최적화합니다.', category: 'security' },
+            { id: 'win-backup', title: '백업 & 복구 센터', icon: '💾', desc: '시스템 전체 데이터를 백업 코드로 추출 및 복원.', category: 'security' },
+            { id: 'win-share', title: '주람 퀵 셰어', icon: '🚀', desc: '주변 유저에게 메시지나 코인을 즉시 전송합니다.', category: 'internet' },
+            { id: 'win-phone', title: '주람 폰 (Phone)', icon: '📞', desc: '다른 유저와 실시간으로 전화를 연결하고 소통합니다.', category: 'internet' },
+            { id: 'win-telecom', title: '주람 텔레콤 (Telecom)', icon: '📡', desc: '나만의 유니크한 전화번호를 개통하고 관리하세요.', category: 'internet' },
+            { id: 'win-messages', title: '주람 메시지 (Messages)', icon: '💬', desc: '번호를 이용해 다른 유저와 1:1 메시지를 주고받습니다.', category: 'internet' },
+            { id: 'win-data', title: '데이터 매니저 (Data)', icon: '📶', desc: '실시간 데이터 사용량 확인 및 요금제 관리.', category: 'system' }
         ];
+
+        // --- 대규모 앱 팩 카테고리 매핑 ---
+        const catMap = {
+            'win-editor':'system','win-recycle':'system','win-help':'system','win-update':'system','win-clock':'system','win-calendar':'system','win-search':'system','win-fonts':'system',
+            'win-videochat':'internet','win-news':'internet','win-downloads':'internet','win-blog':'internet','win-radio':'internet','win-ip':'internet','win-wifi':'internet','win-speedtest':'internet','win-bookmarks':'internet','win-translator':'internet',
+            'win-music':'media','win-video':'media','win-photoedit':'media','win-videoedit':'media','win-recorder':'media','win-capture':'media','win-screenrec':'media','win-mixer':'media','win-3dviewer':'media','win-pdf':'media','win-iconmaker':'media','win-composer':'media','win-animator':'media','win-palette':'media','win-subtitles':'media','win-camera':'media',
+            'win-todo':'productivity','win-slides':'productivity','win-converter':'productivity','win-exchange':'productivity','win-dictionary':'productivity','win-map':'productivity','win-diary':'productivity','win-ledger':'productivity','win-mindmap':'productivity','win-spellcheck':'productivity','win-ebook':'productivity','win-subs':'productivity','win-project':'productivity','win-math':'productivity','win-encyclopedia':'productivity',
+            'win-tetris':'games','win-minesweeper':'games','win-solitaire':'games','win-snake':'games','win-chess':'games','win-crossword':'games','win-meditation':'games','win-constellation':'games','win-aquarium':'games','win-omok':'games','win-sudoku':'games','win-quiz':'games','win-fortune':'games','win-piano':'games',
+            'win-antivirus':'security','win-firewall':'security','win-battery':'security','win-zip':'security','win-passwords':'security','win-sysinfo':'security','win-logs':'security','win-drivers':'security','win-brightness':'security','win-bluelight':'security','win-startup':'security','win-power':'security'
+        };
+
+        // --- 대규모 앱 팩 동적 추가 (Universal Apps) ---
+        Object.keys(app.windowConfigs).forEach(id => {
+            // 기본 설치된 시스템 앱 및 기존 스토어 앱 제외
+            const excluded = ['win-shop', 'win-quests', 'win-admin', 'win-settings', 'win-store', 'win-playstore', 'win-files', 'win-browser', 'win-mail', 'win-chat', 'win-openchat', 'win-gram', 'win-paint', 'win-ai', 'win-bank', 'win-note', 'win-excel', 'win-gallery'];
+            if (!apps.find(a => a.id === id) && !excluded.includes(id)) {
+                apps.push({
+                    id: id,
+                    title: app.windowConfigs[id].title,
+                    icon: app.windowConfigs[id].icon,
+                    desc: '시스템 100종 대규모 업데이트 패키지에 포함된 애플리케이션입니다.',
+                    category: catMap[id] || 'system'
+                });
+            }
+        });
+
+        // 1. 카테고리 필터링
+        if (category !== 'all') {
+            apps = apps.filter(a => a.category === category);
+        }
+
+        // 2. 유연한 검색어 필터링 (띄어쓰기 무시, 대소문자 무시)
+        if (query) {
+            apps = apps.filter(a => {
+                const targetText = (a.title + a.desc).toLowerCase().replace(/\s+/g, '');
+                return targetText.includes(query);
+            });
+        }
+
+        if (apps.length === 0) {
+            list.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #94a3b8; padding: 50px; font-size: 1.2rem;">🔍 검색 결과가 없습니다. 다른 키워드로 시도해보세요.</div>';
+            return;
+        }
 
         apps.forEach(a => {
             const isInstalled = STATE.applications && STATE.applications.includes(a.id);
@@ -1197,17 +1345,19 @@ const app = window.app = {
             div.className = 'admin-user-row';
             div.style.cssText = 'padding: 25px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1f2937; cursor: pointer; transition: 0.2s;';
             div.onclick = () => app.openUserEditPane(u);
-            div.onmouseover = () => div.style.background = 'rgba(255,255,255,0.03)';
-            div.onmouseout = () => div.style.background = 'transparent';
 
             div.innerHTML = `
-                <div>
-                    <div style="font-size: 1.25rem; font-weight: 800; color: #fff; margin-bottom: 5px; letter-spacing: -0.5px;">${u.username || 'Unknown'}</div>
-                    <div style="font-size: 0.9rem; color: #94a3b8; font-weight: 700;">
-                        등급: <span style="color: #60a5fa;">${u.role || 'user'}</span> | 🪙 ${(u.coins || 0).toLocaleString()} | 💎 ${(u.diamonds || 0).toLocaleString()}
+                <div class="admin-user-info-cnt">
+                    <div class="admin-user-name-title">${u.username || 'Unknown'}</div>
+                    <div class="admin-user-stats-row">
+                        <span class="stat-badge role-badge">등급: ${u.role || 'user'}</span>
+                        <span class="stat-sep">|</span>
+                        <span class="stat-badge">🪙 ${(u.coins || 0).toLocaleString()}</span>
+                        <span class="stat-sep">|</span>
+                        <span class="stat-badge">💎 ${(u.diamonds || 0).toLocaleString()}</span>
                     </div>
                 </div>
-                <div style="font-size: 1.5rem; color: #9ca3af; opacity: 0.6; transition: 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">⚙️</div>
+                <div class="admin-user-gear">⚙️</div>
             `;
             listBody.appendChild(div);
         });

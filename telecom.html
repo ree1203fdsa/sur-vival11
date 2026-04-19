@@ -14,32 +14,52 @@
         input { flex: 1; padding: 15px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 1.2rem; outline: none; transition: 0.2s; text-align: center; font-family: monospace; }
         input:focus { border-color: #3b82f6; }
         .buy-btn { width: 100%; padding: 20px; border-radius: 15px; border: none; background: #3b82f6; color: white; font-size: 1.1rem; font-weight: 900; cursor: pointer; transition: 0.3s; box-shadow: 0 10px 20px rgba(59,130,246,0.2); }
-        .buy-btn:hover { background: #2563eb; transform: translateY(-3px); }
-        .current-number { margin-top: 30px; padding: 20px; background: #eff6ff; border-radius: 15px; color: #1d4ed8; font-weight: 800; }
+        .buy-btn:hover { background: #34d399; transform: translateY(-3px); }
+        .data-plans { margin-top: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .plan-card { background: #f1f5f9; padding: 15px; border-radius: 15px; text-align: center; border: 2px solid transparent; transition: 0.2s; cursor: pointer; }
+        .plan-card:hover { border-color: #10b981; background: white; }
+        .plan-amount { font-size: 1.2rem; font-weight: 900; color: #0f172a; margin-bottom: 5px; }
+        .plan-price { font-size: 0.8rem; color: #64748b; font-weight: 700; }
+        
+        .current-number { margin-top: 30px; padding: 20px; background: #eff6ff; border-radius: 15px; color: #1d4ed8; font-weight: 800; display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
 <body>
     <div class="card">
         <div class="logo">📡 JuRam Telecom</div>
-        <div class="price">고압축 보안 회선 개통: 💰 1,000 코인</div>
-
+        
         <div id="status-view">
+            <div class="price" style="margin-bottom: 10px;">회선 개통: 💰 1,000 코인</div>
             <div class="form-group">
-                <label>희망하는 번호 뒷자리 (4자리)</label>
                 <div class="number-input-group">
-                    <span>094</span>
-                    <span>-</span>
-                    <span id="random-part">0000</span>
-                    <span>-</span>
+                    <span>094</span><span>-</span><span id="random-part">0000</span><span>-</span>
                     <input type="text" id="custom-part" maxlength="4" placeholder="1234">
                 </div>
             </div>
+            <button class="buy-btn" style="background:#3b82f6;" onclick="buyNumber()">새 번호 개통하기</button>
 
-            <button class="buy-btn" onclick="buyNumber()">새 번호 발급 및 개통하기</button>
+            <div style="margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 30px;">
+                <h3 style="margin-bottom: 20px;">📶 모바일 데이터 플랜</h3>
+                <div class="data-plans">
+                    <div class="plan-card" onclick="buyData(500, 50)">
+                        <div class="plan-amount">500MB</div>
+                        <div class="plan-price">💰 50</div>
+                    </div>
+                    <div class="plan-card" onclick="buyData(2048, 150)">
+                        <div class="plan-amount">2GB</div>
+                        <div class="plan-price">💰 150</div>
+                    </div>
+                    <div class="plan-card" onclick="buyData(999999, 1000)">
+                        <div class="plan-amount">무제한</div>
+                        <div class="plan-price">💰 1,000</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="my-number" class="current-number" style="display: none;">
-            나의 번호: <span id="display-number">없음</span>
+            <div>📱 <span id="display-number">없음</span></div>
+            <div style="font-size: 0.9rem; color: #3b82f6;">📶 <span id="display-data">0</span> MB</div>
         </div>
     </div>
 
@@ -50,34 +70,40 @@
         function updateUI() {
             const user = window.parent.STATE.currentUser;
             if (user && user.phoneNumber) {
-                document.getElementById('my-number').style.display = 'block';
+                document.getElementById('my-number').style.display = 'flex';
                 document.getElementById('display-number').textContent = user.phoneNumber;
+                document.getElementById('display-data').textContent = user.mobileData === 999999 ? '무제한' : (user.mobileData || 0);
             }
         }
 
         function buyNumber() {
             const custom = document.getElementById('custom-part').value.trim();
-            if (custom.length !== 4 || isNaN(custom)) {
-                alert("번호 뒷자리는 꼭 숫자 4자리여야 합니다!");
-                return;
-            }
-
+            if (custom.length !== 4 || isNaN(custom)) return alert("뒷자리 4자리를 입력하세요!");
             const user = window.parent.STATE.currentUser;
-            if (user.coins < 1000) {
-                alert("코인이 부족합니다! (필요: 1,000 코인)");
-                return;
-            }
+            if (user.coins < 1000) return alert("코인이 부족합니다!");
 
-            const newNumber = `094-${randomPart}-${custom}`;
-            if (confirm(`${newNumber} 번호로 개통하시겠습니까? 1,000코인이 소모됩니다.`)) {
-                user.coins -= 1000;
-                user.phoneNumber = newNumber;
-                
-                window.parent.saveData();
-                window.parent.updateUI();
-                alert(`축하합니다! ${newNumber} 번호로 개통되었습니다.`);
-                updateUI();
-            }
+            user.coins -= 1000;
+            user.phoneNumber = `094-${randomPart}-${custom}`;
+            user.mobileData = (user.mobileData || 0) + 100; // 보너스 데이터
+            window.parent.saveData();
+            window.parent.updateUI();
+            alert(`개통 완료! 가입 축하 보너스 데이터 100MB가 지급되었습니다.`);
+            updateUI();
+        }
+
+        function buyData(amount, price) {
+            const user = window.parent.STATE.currentUser;
+            if (!user.phoneNumber) return alert("먼저 번호를 개통해 주세요!");
+            if (user.coins < price) return alert("코인이 부족합니다!");
+
+            user.coins -= price;
+            if (amount === 999999) user.mobileData = 999999;
+            else user.mobileData = (user.mobileData || 0) + amount;
+
+            window.parent.saveData();
+            window.parent.updateUI();
+            alert(`${amount === 999999 ? '무제한' : amount + 'MB'} 데이터 구매가 완료되었습니다!`);
+            updateUI();
         }
 
         updateUI();

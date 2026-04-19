@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>주람 앱 - 준비 중</title>
+<style>
+body { font-family: 'Segoe UI',sans-serif; background: #0b0f19; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
+.icon { font-size: 5rem; animation: float 3s infinite; margin-bottom: 20px;}
+@keyframes float { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
+h1 { color: #3b82f6; margin:0 0 10px 0; }
+p { color: #94a3b8; font-size: 1rem; max-width: 80%; line-height:1.5; }
+.badge { background: rgba(59,130,246,0.2); border: 1px solid #3b82f6; color: #60a5fa; padding: 10px 20px; border-radius: 20px; font-weight: bold; margin-top:20px; font-size:0.85rem;}
+</style>
+</head>
+<body>
+<div class="icon" id="ic">⏳</div>
+<h1 id="ti">앱 준비 중</h1>
+<p>이 시스템 앱은 최신 주람 OS 업데이트 패키지에 포함되어 있으며, 현재 모듈 초기화 및 심층 설치가 진행 중입니다.</p>
+<div class="badge">🔨 다음 대규모 버전에서 최종 활성화됩니다</div>
+<script>
+    const p = new URLSearchParams(window.location.search);
+    if(p.get('icon')) document.getElementById('ic').textContent = p.get('icon');
+    if(p.get('title')) document.getElementById('ti').textContent = p.get('title');
+</script>
+</body>
+</html>

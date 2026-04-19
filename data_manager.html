@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 데이터 매니저</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --bg: #0f172a;
+            --card: #1e293b;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #fff; margin:0; padding: 25px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .data-circle { width: 140px; height: 140px; border-radius: 50%; border: 8px solid #334155; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto 30px; border-top-color: var(--primary); transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; }
+        .data-circle-inner { transform: rotate(45deg); text-align: center; }
+        .usage-text { font-size: 1.5rem; font-weight: 900; }
+        .usage-label { font-size: 0.75rem; color: #94a3b8; }
+
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+        .stat-card { background: var(--card); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
+        .stat-val { font-size: 1.1rem; font-weight: 800; color: var(--primary); }
+        .stat-lab { font-size: 0.7rem; color: #64748b; margin-top: 5px; }
+
+        .history { background: var(--card); border-radius: 20px; overflow: hidden; }
+        .history-title { padding: 15px 20px; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; }
+        .history-item { padding: 12px 20px; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.02); display: flex; justify-content: space-between; }
+        .history-item span:first-child { color: #94a3b8; }
+
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 12px; }
+        .switch { width: 50px; height: 26px; background: #334155; border-radius: 13px; position: relative; cursor: pointer; transition: 0.3s; }
+        .switch.on { background: var(--primary); }
+        .switch::after { content: ''; width: 20px; height: 20px; background: white; border-radius: 50%; position: absolute; top:3px; left:3px; transition: 0.3s; }
+        .switch.on::after { left: 27px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2 style="margin:0;">📶 데이터 네트워크</h2>
+    </div>
+
+    <div class="toggle-row">
+        <span>모바일 데이터 활성화</span>
+        <div class="switch on" id="data-switch" onclick="toggleData()"></div>
+    </div>
+
+    <div class="data-circle">
+        <div class="data-circle-inner">
+            <div class="usage-text" id="usage-val">0</div>
+            <div class="usage-label">남은 용량 (MB)</div>
+        </div>
+    </div>
+
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-val" id="total-consumed">0 MB</div>
+            <div class="stat-lab">오늘 사용한 데이터</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-val">37.2 Mbps</div>
+            <div class="stat-lab">현재 다운로드 속도</div>
+        </div>
+    </div>
+
+    <div class="history">
+        <div class="history-title">앱별 데이터 사용량 <span>전체</span></div>
+        <div id="history-list">
+            <div class="history-item"><span>인터넷 브라우저</span> <span>12.4 MB</span></div>
+            <div class="history-item"><span>주람 메시지</span> <span>0.8 MB</span></div>
+            <div class="history-item"><span>시스템 업데이트</span> <span>2.1 MB</span></div>
+            <div class="history-item"><span>Quick Share</span> <span>4.5 MB</span></div>
+        </div>
+    </div>
+
+    <script>
+        function update() {
+            const user = window.parent.STATE.currentUser;
+            const data = user.mobileData || 0;
+            document.getElementById('usage-val').textContent = data === 999999 ? '무제한' : data;
+            
+            // Randomly simulate consumed data if not unlimited
+            const consumed = (Math.random() * 0.1).toFixed(2);
+            document.getElementById('total-consumed').textContent = (Math.random() * 20 + 10).toFixed(1) + ' MB';
+        }
+
+        function toggleData() {
+            const sw = document.getElementById('data-switch');
+            sw.classList.toggle('on');
+            if (sw.classList.contains('on')) {
+                window.parent.showToast('모바일 데이터가 활성화되었습니다.', 'info');
+            } else {
+                window.parent.showToast('모바일 데이터가 비활성화되었습니다.', 'warning');
+            }
+        }
+
+        setInterval(update, 2000);
+        update();
+    </script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+    body { margin:0; overflow:hidden; background:#0f172a; color:white; font-family:'Segoe UI',sans-serif; }
+    #header { padding: 15px 20px; background: #1e293b; border-bottom: 2px solid #3b82f6; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); position: relative; z-index: 10; }
+    #header h2 { margin: 0; font-size: 1.3rem; display: flex; align-items: center; gap: 10px; }
+    input { padding: 8px 15px; border-radius: 20px; border: 1px solid #475569; background: #0f172a; color: white; width: 300px; outline: none; }
+</style>
+</head>
+<body>
+    <div id="header">
+        <h2>🗺️ 세계 지도 (OS Map)</h2>
+        <div>
+            <input type="text" placeholder="검색할 도시나 장소를 입력하세요..." onkeypress="if(event.key==='Enter') searchMap(this.value)">
+        </div>
+    </div>
+    <iframe id="map-frame" width="100%" height="calc(100vh - 65px)" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="https://www.openstreetmap.org/export/embed.html?bbox=-180,-90,180,90&layer=mapnik"></iframe>
+    <script>
+        function searchMap(query) {
+            // Note: OpenStreetMap does not instantly search via simple embed URL, 
+            // but for OS immersion, we fake a loading state then load a static view or inform the user.
+            alert(`[${query}] 장소 검색 데이터베이스 연동 중입니다...`);
+        }
+    </script>
+</body>
+</html>

@@ -214,51 +214,77 @@
     /* --- ADMIN CENTER MOBILE REFINEMENT --- */
     #admin-screen { height: calc(100% - 50px) !important; }
     #admin-screen > div:first-child { 
+        height: auto !important;
         flex-direction: column !important; 
         padding: 0 !important;
         background: #111 !important;
+        align-items: stretch !important;
     }
+    
+    /* Center Title Section */
     #admin-screen > div:first-child > div:first-child { 
-        padding: 15px 20px !important; 
-        margin-right: 0 !important;
+        padding: 20px !important; 
+        height: auto !important;
         border-bottom: 1px solid rgba(255,255,255,0.05);
+        justify-content: center !important;
     }
+    #admin-screen > div:first-child > div:first-child span { font-size: 1.5rem !important; }
+    #admin-screen > div:first-child > div:first-child div div { font-size: 1.2rem !important; }
+
+    /* Admin Tabs Scroll */
     #admin-screen > div:first-child > div:nth-child(2) {
         width: 100%;
         overflow-x: auto !important;
-        overflow-y: hidden;
         white-space: nowrap;
-        -webkit-overflow-scrolling: touch;
-        padding: 0 10px !important;
+        padding: 5px 10px !important;
         gap: 0 !important;
+        background: rgba(0,0,0,0.2);
     }
-    #admin-screen > div:first-child > div:nth-child(2) .admin-tab {
-        padding: 12px 15px !important;
-        font-size: 0.8rem !important;
-        flex-shrink: 0;
+    .admin-tab-btn { padding: 10px 15px !important; }
+    .admin-tab-btn span { font-size: 1.2rem !important; }
+    .admin-tab-btn div { font-size: 0.7rem !important; }
+
+    /* Status & Refresh Section */
+    #admin-screen > div:first-child > div:last-child {
+        padding: 10px 20px !important;
+        justify-content: space-between !important;
+        background: rgba(0,0,0,0.4);
     }
-    #admin-screen #admin-main-view { padding: 15px !important; }
-    
-    /* Admin Grid/Columns Fix */
-    .admin-content-panel .glass-panel { padding: 15px !important; margin-bottom: 15px; }
-    #admin-tab-users > div { flex-direction: column !important; min-height: auto !important; }
-    #admin-tab-economy > div { grid-template-columns: 1fr !important; }
-    #admin-tab-users > div > div:first-child { min-height: 350px !important; }
-    
+    #admin-db-status { padding: 8px 15px !important; font-size: 0.7rem !important; }
+    #admin-screen button[onclick="app.loadAdminUsers()"] { 
+        width: 45px !important; 
+        height: 45px !important; 
+        padding: 0 !important;
+    }
+    #admin-screen button[onclick="app.loadAdminUsers()"] span:last-child { display: none; }
+
+    /* User Row Mobile Improvement */
+    .admin-user-row { padding: 15px 20px !important; }
+    .admin-user-name-title { font-size: 1.1rem !important; }
+    .admin-user-stats-row { 
+        display: flex; 
+        flex-wrap: wrap; 
+        gap: 5px; 
+        font-size: 0.8rem !important; 
+        margin-top: 5px;
+        align-items: center;
+    }
+    .stat-sep { display: none; }
+    .role-badge { color: #60a5fa; }
+    .admin-user-gear { font-size: 1.2rem !important; }
+
+    #admin-main-view { padding: 15px !important; }
+    #admin-tab-users > div:first-child { padding: 15px !important; margin-bottom: 15px !important; }
+    #admin-tab-users h2 { font-size: 1rem !important; }
+    #admin-user-sort { padding: 5px 10px !important; font-size: 0.8rem !important; }
+
     /* Store App Table for Mobile */
-    #admin-tab-store table, #admin-tab-store thead, #admin-tab-store tbody, #admin-tab-store th, #admin-tab-store td, #admin-tab-store tr { 
-        display: block; 
-    }
-    #admin-tab-store thead tr { position: absolute; top: -9999px; left: -9999px; }
     #admin-tab-store td { border: none; border-bottom: 1px solid rgba(255,255,255,0.05); position: relative; padding-left: 45% !important; padding-top: 12px !important; padding-bottom: 12px !important; }
-    #admin-tab-store td:before { 
-        position: absolute; left: 15px; width: 40%; font-weight: 800; color: #ff5252;
-    }
+    #admin-tab-store td:before { position: absolute; left: 15px; width: 40%; font-weight: 800; color: #ff5252; }
     #admin-tab-store td:nth-of-type(1):before { content: "이름"; }
     #admin-tab-store td:nth-of-type(2):before { content: "제작자"; }
-    #admin-tab-store td:nth-of-type(3):before { content: "카테고리"; }
-    #admin-tab-store td:nth-of-type(4):before { content: "동작"; padding-top: 0; }
-    #admin-tab-store td:nth-of-type(4) { border-bottom: 3px solid #ff5252; margin-bottom: 15px; }
+    #admin-tab-store td:nth-of-type(3):before { content: "상태"; }
+    #admin-tab-store td:nth-of-type(4):before { content: "동작"; }
 
     /* Security Console Fix */
     #admin-log-console { font-size: 0.75rem !important; height: 300px !important; }
