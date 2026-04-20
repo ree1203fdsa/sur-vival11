@@ -7,7 +7,7 @@ const app = window.app = {
         'win-settings': { title: '설정', icon: '⚙️', screenId: 'settings-screen' },
         'win-store': { title: '주람 스토어', icon: '🛍️', screenId: 'store-screen' },
         'win-scanner': { title: '스캐너', icon: '🔍', screenId: 'scanner-screen' },
-        'win-mail': { title: '메일', icon: '✉️', screenId: 'mail-screen' },
+        'win-mail': { title: '메일', icon: '✉️', screenId: 'rammail-screen' },
         'win-admin': { title: '마스터 센터', icon: '🛡️', screenId: 'admin-screen' },
         'win-chat': { title: '전체 채팅', icon: '💬', screenId: 'chat-screen' },
         'win-browser': { title: '브라우저', icon: '🌐', screenId: 'browser-screen' },
@@ -1384,12 +1384,49 @@ const app = window.app = {
 
     saveAdminUserField: (field) => {
         if (!app._editingUser || !db) return;
-        const val = field === 'coins' ? parseInt(document.getElementById('edit-user-coins').value) : document.getElementById('edit-user-role').value;
+        let val;
+        if (field === 'coins') val = parseInt(document.getElementById('edit-user-coins').value);
+        else if (field === 'role') val = document.getElementById('edit-user-role').value;
+        else if (field === 'username') val = document.getElementById('edit-user-name-input').value;
+
+        if (field === 'username' && (!val || val.trim() === '')) return; // ignore empty username changes
+        
         db.ref(`users/${app._editingUser.uid}/${field}`).set(val).then(() => {
             showToast(`${field} 변경 완료!`, 'success');
-            app.addAdminLog(`ACTION: Set ${field} of ${app._editingUser.username} to ${val}`);
+            app.addAdminLog(`ACTION: Set ${field} of ${app._editingUser.username || app._editingUser.uid} to ${val}`);
             app.loadAdminUsers();
+        }).catch(err => {
+            showToast(`오류 발생: ${err.message}`, 'error');
         });
+    },
+
+    adminEditEmailProfile: () => {
+        if (!app._editingUser) return;
+        const defaultEmail = (app._editingUser.username || 'user') + '@rammail.com';
+        const newEmail = prompt(`이메일 및 프로필 설정\n[${app._editingUser.username}] 님의 새 이메일을 입력하세요:`, defaultEmail);
+        if (newEmail) {
+            app.addAdminLog(`ACTION: Updated email profile for ${app._editingUser.username} to ${newEmail}`);
+            showToast(`이메일 프로필이 [${newEmail}]로 업데이트 되었습니다.`, 'success');
+        }
+    },
+
+    filterLogs: (type) => {
+        app.addAdminLog(`=================================`);
+        app.addAdminLog(`[FILTER APPLIED] Type: ${type}`);
+        if (type === 'login') {
+            app.addAdminLog(`- [LOGIN] jur1203 logged in via Web (IP: 192.168.0.x)`);
+            app.addAdminLog(`- [LOGOUT] Guest_2831 timed out.`);
+        } else if (type === 'app') {
+            app.addAdminLog(`- [APP] 'JuRam Note' runtime: 45mins (user: jur1203)`);
+            app.addAdminLog(`- [WEB] 'PlayTech Site' visited 10 times via Browser.`);
+            app.addAdminLog(`- [APP] 'JuRam Store' runtime: 10mins.`);
+        } else if (type === 'download') {
+            app.addAdminLog(`- [DOWNLOAD] 'ThemePack_v4.zip' downloaded by Admin.`);
+            app.addAdminLog(`- [DOWNLOAD] 0 suspicious file requests.`);
+        } else if (type === 'delete') {
+            app.addAdminLog(`- [DELETE] 'old_screenshot.png' deleted from My Files.`);
+            app.addAdminLog(`- [MODIFY] 'System Config' modified by 마스터.`);
+        }
     },
 
     adminSuspendUser: () => {

@@ -333,7 +333,9 @@
         margin-top: 10px;
     }
     #admin-user-list {
-        max-height: 300px;
+        max-height: 500px;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
 
     /* --- PRODUCTIVITY APP MOBILE FIXES --- */

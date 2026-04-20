@@ -89,8 +89,14 @@ const setupLoginHandler = () => {
             auth.signInWithEmailAndPassword(email, passIn)
                 .then((userCredential) => {
                     const user = userCredential.user;
-                    db.ref('users/' + user.uid).once('value').then((snapshot) => {
-                        const userData = snapshot.val();
+                    db.ref('server/maintenance').once('value').then(maintSnap => {
+                        if (maintSnap.val() === true && userIn.toLowerCase() !== 'jur1203') {
+                            showToast("🛠️ 현재 서버 점검 중입니다. 관리자만 접속 가능합니다.", "error");
+                            auth.signOut();
+                            return;
+                        }
+                        db.ref('users/' + user.uid).once('value').then((snapshot) => {
+                            const userData = snapshot.val();
                         if (!userData) {
                             showToast("사용자 정보가 없습니다. 다시 가입해주세요.", "error"); return;
                         }
@@ -124,6 +130,7 @@ const setupLoginHandler = () => {
                         if (window.app && app.updateDesktop) app.updateDesktop();
                         showScreen('menu-screen');
                     });
+                    }); // Close maintenance check block
                 }).catch(err => {
                     let errMsg = err.message;
                     if (errMsg.includes('INVALID_LOGIN_CREDENTIALS') || err.code === 'auth/invalid-login-credentials') {
@@ -154,21 +161,35 @@ const setupLoginHandler = () => {
     const guestBtn = document.getElementById('btn-guest-login');
     if (guestBtn) {
         guestBtn.onclick = () => {
-            // 게스트 로그인 시 모든 기존 설정 초기화 (배경화면, 설치된 앱 등)
-            localStorage.removeItem('juram_wallpaper');
-            localStorage.removeItem('juram_theme');
-            const data = loadData();
-            if (data) {
-                data.applications = []; // 설치된 앱 초기화
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            }
+            const proceedGuest = () => {
+                // 게스트 로그인 시 모든 기존 설정 초기화 (배경화면, 설치된 앱 등)
+                localStorage.removeItem('juram_wallpaper');
+                localStorage.removeItem('juram_theme');
+                const data = loadData();
+                if (data) {
+                    data.applications = []; // 설치된 앱 초기화
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                }
 
-            const guestId = Math.floor(Math.random() * 10000);
-            STATE.currentUser = { username: `게스트_${guestId}`, uid: `guest_${guestId}`, role: 'user', isGuest: true, coins: 500 };
-            showToast('게스트로 로그인했습니다. 모든 설정이 초기화되었습니다.', 'info');
-            updateUI(); 
-            if (window.app && app.updateDesktop) app.updateDesktop();
-            showScreen('menu-screen');
+                const guestId = Math.floor(Math.random() * 10000);
+                STATE.currentUser = { username: `게스트_${guestId}`, uid: `guest_${guestId}`, role: 'user', isGuest: true, coins: 500 };
+                showToast('게스트로 로그인했습니다. 모든 설정이 초기화되었습니다.', 'info');
+                updateUI(); 
+                if (window.app && app.updateDesktop) app.updateDesktop();
+                showScreen('menu-screen');
+            };
+
+            if (typeof FIREBASE_ENABLED !== 'undefined' && FIREBASE_ENABLED && typeof db !== 'undefined' && db) {
+                db.ref('server/maintenance').once('value').then(maintSnap => {
+                    if (maintSnap.val() === true) {
+                        showToast("🛠️ 현재 접속이 제한되었습니다. 서버 점검 중입니다.", "error");
+                    } else {
+                        proceedGuest();
+                    }
+                });
+            } else {
+                proceedGuest();
+            }
         };
     }
 
@@ -179,9 +200,16 @@ const setupLoginHandler = () => {
             const provider = new firebase.auth.GoogleAuthProvider();
             auth.signInWithPopup(provider).then((result) => {
                 const user = result.user;
-                STATE.currentUser = { username: user.displayName || user.email, uid: user.uid, role: 'user' };
-                showToast('구글 로그인에 성공했습니다!', 'success');
-                updateUI(); app.updateDesktop(); showScreen('menu-screen');
+                db.ref('server/maintenance').once('value').then(maintSnap => {
+                    if (maintSnap.val() === true) {
+                        showToast("🛠️ 현재 접속이 제한되었습니다. 서버 점검 중입니다.", "error");
+                        auth.signOut();
+                        return;
+                    }
+                    STATE.currentUser = { username: user.displayName || user.email, uid: user.uid, role: 'user' };
+                    showToast('구글 로그인에 성공했습니다!', 'success');
+                    updateUI(); app.updateDesktop(); showScreen('menu-screen');
+                });
             }).catch(e => showToast("구글 로그인 실패", "error"));
         };
     }
