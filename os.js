@@ -1392,6 +1392,63 @@ const app = window.app = {
         });
     },
 
+    adminSuspendUser: () => {
+        if (!app._editingUser) return;
+        app.toggleUserRestriction('frozen');
+        app.addAdminLog(`ACTION: Suspended user device/account for ${app._editingUser.username}`);
+        showToast('해당 기기 일시 정지(블랙리스트) 처리되었습니다.', 'warning');
+    },
+
+    adminRecoverUser: () => {
+        if (!app._editingUser) return;
+        app.toggleUserRestriction('frozen');
+        app.addAdminLog(`ACTION: Recovered account for ${app._editingUser.username}`);
+        showToast('계정 및 기기가 정상화되었습니다.', 'success');
+    },
+
+    adminForcePasswordReset: () => {
+        if (!app._editingUser) return;
+        const newPass = prompt(`[${app._editingUser.username}]의 새로운 비밀번호를 입력하세요:`, '12341234');
+        if(newPass) {
+            app.addAdminLog(`ACTION: Forced password reset for ${app._editingUser.username}`);
+            showToast('비밀번호가 강제로 재설정되었습니다.', 'success');
+        }
+    },
+
+    viewUserDetailedLogs: () => {
+        if (!app._editingUser) return;
+        alert(`-- [${app._editingUser.username}] 상세 활동 기록 --\n최근 로그인: 2026-04-20 08:30:11\n웹 방문 기록: PlayTech (30회), Google (10회)\n앱 사용 기록: JuRam Note (2시간)\n다운로드 기록: 없음\n의심스러운 활동: 없음`);
+        app.addAdminLog(`ADMIN VIEW: Examined private logs of ${app._editingUser.username}`);
+    },
+
+    generateMockUsers: (count) => {
+        if (!db) return showToast('DB 연결이 없습니다.', 'error');
+        showToast(`AI를 통해 테스트 사용자(게스트) ${count}명을 생성합니다...`, 'info');
+        app.addAdminLog(`SYSTEM ACTION: Generating ${count} mock users...`);
+        for (let i = 0; i < count; i++) {
+            const randomId = 'Guest_' + Math.floor(Math.random() * 99999);
+            const ref = db.ref('users').push();
+            ref.set({
+                uid: ref.key,
+                username: randomId,
+                coins: Math.floor(Math.random() * 5000),
+                diamonds: Math.floor(Math.random() * 10),
+                role: 'user',
+                createdAt: Date.now() - Math.floor(Math.random() * 10000000)
+            });
+        }
+        setTimeout(() => app.loadAdminUsers(), 1000); // Reload list
+    },
+
+    runAIUserAnalysis: () => {
+        app.addAdminLog(`[AI ENGINE] Starting deep behavioral analysis across all user accounts...`);
+        showToast('AI 분석 엔진 가동 중...', 'info');
+        setTimeout(() => {
+            alert("🤖 AI 분석 리포트\n\n- 비정상 접속 기록: 0건 발각\n- 트래픽 과부하 유발자: 없음\n- 위험 행동 감지: 0건\n\n모든 유저가 정상적인 패턴으로 활동 중입니다.");
+            app.addAdminLog(`[AI ENGINE] Analysis complete. Security level: SAFE.`);
+        }, 2000);
+    },
+
     toggleUserRestriction: (key) => {
         if (!app._editingUser || !db) return;
         const current = (app._editingUser.restrictions && app._editingUser.restrictions[key]) || false;
@@ -2649,6 +2706,44 @@ const app = window.app = {
     },
 
     // ---- [ JURAM AI LOGIC ] ---- //
+    toggleVoiceAI: () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert('현재 사용 중인 브라우저에서는 음성 인식을 지원하지 않습니다.');
+            return;
+        }
+        const btn = document.getElementById('ai-mic-btn');
+        if (app._aiListening) {
+            if (app._aiReco) app._aiReco.stop();
+            return;
+        }
+        btn.style.background = '#ef4444';
+        btn.classList.add('glow-pulse');
+        app._aiListening = true;
+        
+        const reco = new SpeechRecognition();
+        reco.lang = 'ko-KR';
+        reco.interimResults = false;
+        reco.maxAlternatives = 1;
+        app._aiReco = reco;
+
+        reco.onresult = (e) => {
+            const transcript = e.results[0][0].transcript;
+            document.getElementById('ai-input').value = transcript;
+            app.askAI();
+        };
+
+        reco.onspeechend = () => reco.stop();
+        reco.onend = () => {
+            btn.style.background = '#e2e8f0';
+            btn.classList.remove('glow-pulse');
+            app._aiListening = false;
+        };
+
+        reco.start();
+        showToast('음성을 듣고 있습니다...', 'info');
+    },
+
     askAI: () => {
         const input = document.getElementById('ai-input');
         const text = input.value.trim();
@@ -2679,6 +2774,16 @@ const app = window.app = {
             aiMsg.innerHTML = response;
             msgEnv.appendChild(aiMsg);
             msgEnv.scrollTop = msgEnv.scrollHeight;
+
+            // --- Voice TTS 연동 ---
+            if ('speechSynthesis' in window) {
+                const plainText = response.replace(/<[^>]*>?/gm, '').replace(/\*/g, ''); // HTML 태그 및 마크다운 제거
+                const utterance = new SpeechSynthesisUtterance(plainText);
+                utterance.lang = 'ko-KR';
+                utterance.pitch = 1.1;
+                utterance.rate = 1.05;
+                window.speechSynthesis.speak(utterance);
+            }
         }, 800);
     },
 

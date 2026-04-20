@@ -825,6 +825,10 @@
                         <span style="font-size: 1.4rem; margin-bottom: 4px;">🛡️</span>
                         <div style="font-size: 0.85rem; font-weight: 800;">보안/기록</div>
                     </div>
+                    <div class="admin-tab-btn" onclick="app.switchAdminTab('rules', this)" style="display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: 0.3s; opacity: 0.6; padding: 10px;">
+                        <span style="font-size: 1.4rem; margin-bottom: 4px;">🤖</span>
+                        <div style="font-size: 0.85rem; font-weight: 800;">AI 및 자동화</div>
+                    </div>
                     <div class="admin-tab-btn" onclick="app.switchAdminTab('mythic', this)" style="display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: 0.3s; opacity: 0.6; padding: 10px;">
                         <span style="font-size: 1.4rem; margin-bottom: 4px;">🌌</span>
                         <div style="font-size: 0.85rem; font-weight: 800;">신화적 권능</div>
@@ -993,22 +997,36 @@
                     <p id="edit-user-uid" style="color: #4b5563; font-size: 0.8rem; margin-bottom: 30px;">UID: ...</p>
                     
                     <div style="display: flex; flex-direction: column; gap: 20px;">
-                        <div>
-                            <label style="font-size: 0.85rem; color: #94a3b8; display: block; margin-bottom: 10px;">코인 수정</label>
-                            <input type="number" id="edit-user-coins" style="width: 100%; padding: 12px; background: #0f172a; border: 1px solid #1f2937; color: #fbbf24; border-radius: 10px; font-weight: 800;">
+                        <div style="display: flex; gap: 10px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.85rem; color: #94a3b8; display: block; margin-bottom: 10px;">코인 수정</label>
+                                <input type="number" id="edit-user-coins" style="width: 100%; padding: 12px; background: #0f172a; border: 1px solid #1f2937; color: #fbbf24; border-radius: 10px; font-weight: 800;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.85rem; color: #94a3b8; display: block; margin-bottom: 10px;">할당 그룹(등급)</label>
+                                <select id="edit-user-role" style="width: 100%; padding: 12px; background: #0f172a; border: 1px solid #1f2937; color: #fff; border-radius: 10px; font-weight: 800;">
+                                    <option value="user">일반 유저 (User)</option>
+                                    <option value="vip">스폰서 (VIP)</option>
+                                    <option value="manager">부관리자 (Manager)</option>
+                                    <option value="admin">최고 권한 (Admin)</option>
+                                </select>
+                            </div>
                         </div>
-                        <div>
-                            <label style="font-size: 0.85rem; color: #94a3b8; display: block; margin-bottom: 10px;">등급 수정</label>
-                            <select id="edit-user-role" style="width: 100%; padding: 12px; background: #0f172a; border: 1px solid #1f2937; color: #fff; border-radius: 10px; font-weight: 800;">
-                                <option value="user">User</option>
-                                <option value="vip">VIP</option>
-                                <option value="manager">Manager</option>
-                                <option value="admin">Admin</option>
-                            </select>
+
+                        <!-- Advanced Admin Controls -->
+                        <div style="background: rgba(0,0,0,0.3); border: 1px solid #1f2937; border-radius: 15px; padding: 15px;">
+                            <label style="font-size: 0.85rem; color: #94a3b8; display: block; margin-bottom: 15px;">고급 통제 패널 (Advanced Control)</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <button class="btn" style="background: #eab308; color: black; font-weight: 800; border-radius: 8px; padding: 10px; border: none;" onclick="app.adminSuspendUser()">기기 일시 정지</button>
+                                <button class="btn" style="background: #3b82f6; color: white; font-weight: 800; border-radius: 8px; padding: 10px; border: none;" onclick="app.adminRecoverUser()">계정 정상화(복구)</button>
+                                <button class="btn" style="background: #ef4444; color: white; font-weight: 800; border-radius: 8px; padding: 10px; border: none;" onclick="app.adminForcePasswordReset()">강제 비밀번호 변경</button>
+                                <button class="btn secondary" style="font-weight: 800; border-radius: 8px; padding: 10px; color: #a78bfa;" onclick="app.viewUserDetailedLogs()">로그인/활동 로그 보기</button>
+                            </div>
                         </div>
-                        <div style="display: flex; gap: 10px; margin-top: 20px;">
-                            <button class="btn primary" style="flex: 1;" onclick="app.saveAdminUser()">설명 저장</button>
-                            <button class="btn" style="background: #ef4444; color: white; border: none; width: 100px;" onclick="app.deleteAdminUser()">삭제</button>
+
+                        <div style="display: flex; gap: 10px; margin-top: 15px;">
+                            <button class="btn primary" style="flex: 1; border-radius: 10px; font-size: 1.1rem; padding: 15px;" onclick="app.saveAdminUserField('role'); app.saveAdminUserField('coins');">변경사항 일괄 저장</button>
+                            <button class="btn" style="background: transparent; border: 2px solid #ef4444; color: #ef4444; border-radius: 10px; width: 120px; font-weight: 900;" onclick="app.deleteAdminUser()">완전 삭제</button>
                         </div>
                     </div>
                 </div>
@@ -1091,8 +1109,9 @@
             <div id="ai-messages" style="flex: 1; overflow-y: auto; padding: 25px; display: flex; flex-direction: column; gap: 15px;">
                 <div style="align-self: flex-start; max-width: 80%; padding: 12px 18px; background: white; border-radius: 18px 18px 18px 4px; border: 1px solid #ddd; font-size: 0.95rem;">안녕하세요! 주람 OS의 똑똑한 가이드 **JuRam AI**입니다. 무엇을 도와드릴까요? (조합법, 규칙 등)</div>
             </div>
-            <div style="padding: 20px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px;">
-                <input type="text" id="ai-input" placeholder="AI에게 질문해 보세요..." style="flex: 1; padding: 12px 20px; border: 1px solid #ddd; border-radius: 25px; background: #f0f2f5;">
+            <div style="padding: 20px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px; align-items: center;">
+                <button id="ai-mic-btn" class="btn" onclick="app.toggleVoiceAI()" style="width: 50px; height: 50px; border-radius: 50%; background: #e2e8f0; border: none; font-size: 1.2rem; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center;">🎙️</button>
+                <input type="text" id="ai-input" placeholder="음성으로 말하거나, 타이핑하세요..." style="flex: 1; padding: 12px 20px; border: 1px solid #ddd; border-radius: 25px; background: #f0f2f5;">
                 <button class="btn primary" onclick="app.askAI()" style="width: 50px; height: 50px; padding: 0; border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">🚀</button>
             </div>
         </section>
