@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 블로그 센터</title>
+    <style>
+        :root { --p: #f43f5e; --bg: #ffffff; --text: #1e293b; }
+        body { font-family: 'Pretendard', sans-serif; background: #f1f5f9; color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; }
+        .header { background: white; padding: 15px 30px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .main-layout { flex: 1; display: flex; overflow: hidden; }
+        .sidebar { width: 260px; background: white; border-right: 1px solid #e2e8f0; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .side-item { padding: 12px 15px; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 0.9rem; font-weight: 600; color: #64748b; }
+        .side-item:hover, .side-item.active { background: #fff1f2; color: var(--p); }
+        .editor { flex: 1; background: white; padding: 50px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+        .editor-content { width: 100%; max-width: 800px; }
+        .title-input { border: none; font-size: 2.5rem; font-weight: 900; width: 100%; outline: none; margin-bottom: 30px; color: #000; }
+        .body-input { border: none; font-size: 1.1rem; width: 100%; outline: none; min-height: 400px; line-height: 1.8; color: #334155; resize: none; font-family: inherit; }
+        .btn { padding: 10px 20px; border-radius: 10px; border: none; background: var(--p); color: white; font-weight: 800; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size: 1.5rem;">📝</span>
+            <h1 style="font-size: 1.1rem; margin: 0; font-weight: 800;">JuRam Blog Studio</h1>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn" style="background:#334155;">임시 저장</button>
+            <button class="btn" onclick="alert('블로그에 발행되었습니다!')">포스팅 발행</button>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="sidebar">
+            <div class="side-item active">내 포스트</div>
+            <div class="side-item">통계 분석</div>
+            <div class="side-item">댓글 관리 (3)</div>
+            <div class="side-item">블로그 설정</div>
+            <div style="margin-top:20px; font-size:0.75rem; color:#94a3b8; font-weight:800; padding:0 15px;">최근 발행</div>
+            <div class="side-item" style="font-size:0.8rem">- 주람 OS 업그레이드 후기</div>
+            <div class="side-item" style="font-size:0.8rem">- 효율적인 일정 관리 팁</div>
+        </div>
+        <div class="editor">
+            <div class="editor-content">
+                <input type="text" class="title-input" placeholder="제목을 입력하세요" value="오늘의 주람 OS 라이프">
+                <textarea class="body-input" placeholder="이곳에 내용을 작성하세요...">주람 OS의 새로운 업데이트를 사용해 보았습니다. 특히 화상 회의 기능과 뉴스 리더 인터페이스가 정말 세련되게 변했네요.
+
+오늘 구현된 새로운 생산성 도구들은 사용자 경험을 한 단계 더 끌어올려 줍니다.</textarea>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

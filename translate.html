@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 번역기</title>
+    <style>
+        :root { --p: #10b981; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        .header { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; }
+        .header h1 { font-size: 1.5rem; margin: 0; font-weight: 900; color: var(--p); }
+        .container { display: flex; flex-direction: column; gap: 20px; flex: 1; }
+        .panel { background: var(--card); border-radius: 15px; padding: 20px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 10px; }
+        .label { font-size: 0.8rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+        select { background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; outline: none; }
+        textarea { background: transparent; border: none; color: white; font-size: 1.1rem; min-height: 120px; resize: none; outline: none; font-family: inherit; line-height: 1.5; }
+        .divider { height: 1px; background: rgba(255,255,255,0.05); }
+        .loading { display: none; align-self: center; font-size: 0.9rem; color: var(--p); animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        button.translate-btn { background: var(--p); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.3s; }
+        button.translate-btn:hover { box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="font-size: 2rem;">🌍</div>
+        <h1>주람 번역기</h1>
+    </div>
+    <div class="container">
+        <div class="panel">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="label">입력 언어</div>
+                <select id="src-lang">
+                    <option value="ko">한국어</option>
+                    <option value="en">영어 (English)</option>
+                    <option value="ja">일본어 (日本語)</option>
+                </select>
+            </div>
+            <div class="divider"></div>
+            <textarea id="src-text" placeholder="번역할 내용을 입력하세요..."></textarea>
+        </div>
+
+        <button class="translate-btn" onclick="translateText()">번역하기</button>
+        <div id="loading" class="loading">주람 AI가 텍스트를 분석 중...</div>
+
+        <div class="panel" style="background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="label">번역 결과</div>
+                <select id="target-lang">
+                    <option value="en">영어 (English)</option>
+                    <option value="ko">한국어</option>
+                    <option value="ja">일본어 (日本語)</option>
+                </select>
+            </div>
+            <div class="divider"></div>
+            <div id="target-text" style="min-height: 120px; font-size: 1.1rem; line-height: 1.5; color: #86efac;">번역 결과가 여기에 표시됩니다.</div>
+        </div>
+    </div>
+
+    <script>
+        function translateText() {
+            const src = document.getElementById('src-text').value.trim();
+            const loading = document.getElementById('loading');
+            const target = document.getElementById('target-text');
+            
+            if (!src) return;
+
+            loading.style.display = 'block';
+            target.style.opacity = '0.3';
+
+            // Simulate AI Translation
+            setTimeout(() => {
+                loading.style.display = 'none';
+                target.style.opacity = '1';
+                
+                // Mock responses for demo
+                const responses = {
+                    '안녕': 'Hello / こんにちは',
+                    '살려줘': 'Help me / 助けて',
+                    '배고파': 'I am hungry / お腹が空いた',
+                    '주람 OS 최고': 'JuRam OS is the best / JuRam OSは最高です'
+                };
+                
+                target.textContent = responses[src] || "[주람 AI 알림] 현재 데모 모드에서는 지정된 문장만 번역 가능합니다. 정식 버전은 API 키를 등록하세요.";
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

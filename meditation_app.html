@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 명상 및 휴식</title>
+    <style>
+        :root { --p: #a5f3fc; --bg: #083344; --card: #164e63; --text: #ecfeff; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; justify-content: center; align-items: center; overflow: hidden; }
+        .bg-video { position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; filter: brightness(0.4) blur(5px); }
+        .container { text-align: center; max-width: 600px; padding: 40px; background: rgba(22, 78, 99, 0.4); backdrop-filter: blur(20px); border-radius: 40px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 50px 100px rgba(0,0,0,0.5); }
+        .circle-outer { width: 250px; height: 250px; border: 2px solid rgba(165, 243, 252, 0.2); border-radius: 50%; margin: 0 auto 40px; display: flex; align-items: center; justify-content: center; position: relative; }
+        .breath-circle { width: 100px; height: 100px; background: var(--p); border-radius: 50%; animation: breathe 8s ease-in-out infinite; box-shadow: 0 0 50px rgba(165, 243, 252, 0.4); }
+        @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(2.2); opacity: 1; } }
+        .status { font-size: 1.5rem; font-weight: 800; margin-bottom: 10px; }
+        .timer { font-size: 3rem; font-weight: 900; margin-bottom: 40px; opacity: 0.9; }
+        .sound-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 40px; }
+        .sound-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 15px; border-radius: 20px; font-size: 1.5rem; cursor: pointer; transition: 0.2s; }
+        .sound-btn:hover { background: var(--p); color: var(--bg); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="font-size: 1.1rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 30px; opacity: 0.7;">Mindful Breathing</h1>
+        <div class="circle-outer">
+            <div class="breath-circle"></div>
+        </div>
+        <div class="status" id="status">숨을 깊게 들이마시세요</div>
+        <div class="timer">15:00</div>
+        
+        <div class="sound-grid">
+            <button class="sound-btn" title="빗소리">🌧️</button>
+            <button class="sound-btn" title="숲소리">🌲</button>
+            <button class="sound-btn" title="파도소리">🌊</button>
+            <button class="sound-btn" title="백색소음">💨</button>
+        </div>
+    </div>
+
+    <script>
+        const st = document.getElementById('status');
+        setInterval(() => {
+            const now = Date.now();
+            if(Math.floor(now/4000) % 2 === 0) {
+                st.textContent = "천천히 내쉬세요";
+            } else {
+                st.textContent = "깊게 들이마시세요";
+            }
+        }, 4000);
+    </script>
+</body>
+</html>

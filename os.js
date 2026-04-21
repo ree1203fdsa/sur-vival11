@@ -110,6 +110,7 @@ const app = window.app = {
         'win-bluelight': {title:'블루 차단기',icon:'👁️',screenId:'bluelight-screen'},
         'win-startup': {title:'시작 프로그램',icon:'🚀',screenId:'startup-screen'},
         'win-power': {title:'종료 예약',icon:'🔌',screenId:'power-screen'},
+        'win-weather': {title:'주람 기상청',icon:'🌤️',screenId:'weather-screen'},
     },
     // 테마 설정
     setTheme: (theme) => {

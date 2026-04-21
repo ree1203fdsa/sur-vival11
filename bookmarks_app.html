@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 북마크 관리자</title>
+    <style>
+        :root { --p: #f59e0b; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 30px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .bookmark-card { background: var(--card); border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); padding: 15px; transition: 0.3s; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; }
+        .bookmark-card:hover { transform: translateY(-5px); border-color: var(--p); background: rgba(245, 158, 11, 0.05); }
+        .icon-circle { width: 60px; height: 60px; border-radius: 50%; background: #000; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; border: 1px solid #333; }
+        .name { font-weight: 800; font-size: 0.95rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+        .url { font-size: 0.75rem; color: #64748b; font-family: monospace; }
+        .btn { padding: 10px 20px; border-radius: 10px; border: none; background: var(--p); color: black; font-weight: 800; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 style="font-size: 1.5rem; margin: 0; font-weight: 900;">🔖 북마크 매니저</h1>
+        <button class="btn">+ 새 북마크</button>
+    </div>
+
+    <div class="grid">
+        <div class="bookmark-card">
+            <div class="icon-circle">🤖</div>
+            <div class="name">JuRam AI Center</div>
+            <div class="url">ai.juram.os</div>
+        </div>
+        <div class="bookmark-card">
+            <div class="icon-circle">🎞️</div>
+            <div class="name">JuRam Cinema</div>
+            <div class="url">movie.juram.os</div>
+        </div>
+        <div class="bookmark-card">
+            <div class="icon-circle">🎨</div>
+            <div class="name">Design Inspiration</div>
+            <div class="url">dribbble.com</div>
+        </div>
+        <div class="bookmark-card">
+            <div class="icon-circle">📦</div>
+            <div class="name">JuRam Play Store</div>
+            <div class="url">store.juram.os</div>
+        </div>
+        <div class="bookmark-card">
+            <div class="icon-circle">📂</div>
+            <div class="name">My Cloud Files</div>
+            <div class="url">drive.juram.os</div>
+        </div>
+    </div>
+</body>
+</html>

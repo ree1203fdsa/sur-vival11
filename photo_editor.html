@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 사진 편집기</title>
+    <style>
+        :root { --p: #0095f6; --bg: #121212; --card: #1e1e1e; --text: #efefef; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .toolbar { background: #000; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; }
+        .main-layout { flex: 1; display: flex; overflow: hidden; }
+        .sidebar { width: 300px; background: #000; border-left: 1px solid #222; padding: 25px; display: flex; flex-direction: column; gap: 25px; overflow-y: auto; }
+        .canvas-area { flex: 1; background: #1a1a1a; display: flex; align-items: center; justify-content: center; padding: 40px; position: relative; }
+        .image-preview { max-width: 100%; max-height: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border-radius: 4px; border: 1px solid #333; transition: filter 0.3s; }
+        .ctrl-group label { display: block; font-size: 0.8rem; font-weight: 700; color: #888; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        input[type=range] { width: 100%; accent-color: var(--p); }
+        .val-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.85rem; font-family: monospace; }
+        .filter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .filter-btn { background: #1a1a1a; border: 1px solid #333; padding: 10px 5px; border-radius: 8px; font-size: 0.75rem; color: #ccc; cursor: pointer; text-align: center; }
+        .filter-btn:hover { border-color: var(--p); color: var(--p); }
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; background: var(--p); color: white; font-weight: 700; cursor: pointer; }
+        .btn.outline { background: none; border: 1px solid #444; }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5rem;">🎨</span>
+            <h1 style="font-size: 1.1rem; margin: 0; font-weight: 800;">JuRam Photo Editor Pro</h1>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn outline">수정 취소</button>
+            <button class="btn" onclick="alert('이미지가 저장되었습니다!')">내보내기</button>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="canvas-area">
+            <img id="edit-img" src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200" class="image-preview" style="filter: brightness(100%) contrast(100%) saturate(100%) blur(0px);">
+            <div style="position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; font-size: 0.75rem; color: #aaa;">1920 x 1080 | 1.2 MB</div>
+        </div>
+        
+        <div class="sidebar">
+            <div class="ctrl-group">
+                <div class="val-row"><span>밝기 (Brightness)</span><span id="b-val">100%</span></div>
+                <input type="range" min="0" max="200" value="100" oninput="update('brightness', this.value)">
+            </div>
+            <div class="ctrl-group">
+                <div class="val-row"><span>대비 (Contrast)</span><span id="c-val">100%</span></div>
+                <input type="range" min="0" max="200" value="100" oninput="update('contrast', this.value)">
+            </div>
+            <div class="ctrl-group">
+                <div class="val-row"><span>채도 (Saturate)</span><span id="s-val">100%</span></div>
+                <input type="range" min="0" max="200" value="100" oninput="update('saturate', this.value)">
+            </div>
+            <div class="ctrl-group">
+                <div class="val-row"><span>블러 (Blur)</span><span id="bl-val">0px</span></div>
+                <input type="range" min="0" max="20" value="0" oninput="update('blur', this.value)">
+            </div>
+
+            <div class="ctrl-group">
+                <label>프리셋 필터</label>
+                <div class="filter-grid">
+                    <button class="filter-btn" onclick="preset('sepia(1)')">Sepia</button>
+                    <button class="filter-btn" onclick="preset('grayscale(1)')">B&W</button>
+                    <button class="filter-btn" onclick="preset('invert(1)')">Invert</button>
+                    <button class="filter-btn" onclick="preset('hue-rotate(90deg)')">Hue</button>
+                    <button class="filter-btn" onclick="preset('none')">Reset</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const vals = { brightness: 100, contrast: 100, saturate: 100, blur: 0 };
+        function update(key, val) {
+            vals[key] = val;
+            const suffix = key === 'blur' ? 'px' : '%';
+            document.getElementById(key[0]+'-val').textContent = val + suffix;
+            apply();
+        }
+        function apply() {
+            const img = document.getElementById('edit-img');
+            img.style.filter = `brightness(${vals.brightness}%) contrast(${vals.contrast}%) saturate(${vals.saturate}%) blur(${vals.blur}px)`;
+        }
+        function preset(f) {
+            const img = document.getElementById('edit-img');
+            img.style.filter = f;
+            if(f==='none') {
+                vals.brightness=100; vals.contrast=100; vals.saturate=100; vals.blur=0;
+                apply();
+            }
+        }
+    </script>
+</body>
+</html>

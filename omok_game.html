@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 오목</title>
+    <style>
+        :root { --p: #d97706; --bg: #f8fafc; }
+        body { font-family: 'Pretendard', sans-serif; background: #e2e8f0; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        .board { background: #deb887; padding: 20px; border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); position: relative; border: 4px solid #8b4513; }
+        .grid { display: grid; grid-template-columns: repeat(14, 35px); grid-template-rows: repeat(14, 35px); }
+        @media (max-width: 600px) {
+            .board { padding: 10px; border-width: 2px; }
+            .grid { grid-template-columns: repeat(14, 6vw); grid-template-rows: repeat(14, 6vw); }
+            .cell { width: 6vw; height: 6vw; }
+            .cell::before { top: 3vw; }
+            .cell::after { left: 3vw; }
+            .stone { width: 5vw; height: 5vw; }
+        }
+        .cell { width: 35px; height: 35px; border: 1px solid rgba(139, 69, 19, 0.3); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; }
+        .cell::before { content: ''; position: absolute; top: 17.5px; left: 0; right: 0; height: 1px; background: #8b4513; z-index: 1; }
+        .cell::after { content: ''; position: absolute; left: 17.5px; top: 0; bottom: 0; width: 1px; background: #8b4513; z-index: 1; }
+        .stone { width: 30px; height: 30px; border-radius: 50%; z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .stone.black { background: #000; }
+        .stone.white { background: #fff; border: 1px solid #ccc; }
+        .info { margin-top: 30px; padding: 20px 40px; background: white; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; gap: 30px; align-items: center; }
+        .turn-box { font-weight: 800; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+    <h1 style="margin-bottom: 20px; font-weight: 900;">⚪⚫ 주람 오목 Pro</h1>
+    <div class="board">
+        <div class="grid" id="grid">
+            <!-- 15x15 lines would create 14x14 cells -->
+        </div>
+    </div>
+
+    <div class="info">
+        <div class="turn-box" id="turn">현재 차례: <span style="color: #000">흑(Black)</span></div>
+        <button onclick="location.reload()" style="padding: 10px 25px; border-radius: 12px; border: none; background: #8b4513; color: white; font-weight: 800; cursor: pointer;">대국 재시작</button>
+    </div>
+
+    <script>
+        const grid = document.getElementById('grid');
+        let turn = 'black';
+
+        for(let i=0; i<196; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.onclick = () => {
+                if(cell.children.length > 0) return;
+                const stone = document.createElement('div');
+                stone.className = `stone ${turn}`;
+                cell.appendChild(stone);
+                turn = turn === 'black' ? 'white' : 'black';
+                document.getElementById('turn').innerHTML = `현재 차례: <span style="color: ${turn === 'black' ? '#000' : '#444'}">${turn === 'black' ? '흑(Black)' : '백(White)'}</span>`;
+            };
+            grid.appendChild(cell);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 통합 검색</title>
+    <style>
+        :root { --p: #f59e0b; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        .search-container { max-width: 600px; margin: 50px auto; width: 100%; }
+        .search-box { display: flex; background: var(--card); border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); padding: 5px 15px; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        input { flex: 1; background: none; border: none; color: white; padding: 15px; font-size: 1.1rem; outline: none; }
+        .btn { padding: 10px 20px; background: var(--p); color: black; border-radius: 12px; font-weight: 800; cursor: pointer; border: none; }
+        .results { margin-top: 40px; display: flex; flex-direction: column; gap: 15px; }
+        .res-item { background: rgba(255,255,255,0.03); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); transition: 0.2s; cursor: pointer; }
+        .res-item:hover { background: rgba(255,255,255,0.06); border-color: var(--p); transform: translateY(-3px); }
+        .res-title { font-weight: 800; font-size: 1.1rem; color: var(--p); margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
+        .res-desc { font-size: 0.9rem; color: #94a3b8; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <div class="search-container">
+        <h1 style="text-align: center; font-size: 2.5rem; font-weight: 900; margin-bottom: 30px;"><span style="color:var(--p)">J</span>uRam Search</h1>
+        <div class="search-box">
+            <input type="text" id="query" placeholder="파일, 앱, 또는 웹 검색..." onkeypress="if(event.key==='Enter') search()">
+            <button class="btn" onclick="search()">검색</button>
+        </div>
+        <div class="results" id="results">
+            <!-- Results -->
+        </div>
+    </div>
+
+    <script>
+        const mockData = [
+            { t: "📁 내 문서", d: "사용자의 문서 폴더에서 검색된 결과입니다.", icon: "📂" },
+            { t: "🎮 테트리스", d: "설치된 게임 리스트에 있는 앱입니다.", icon: "🧱" },
+            { t: "💰 주람 뱅크", d: "자산 관리 시스템 바로가기.", icon: "🏦" },
+            { t: "🌐 위키백과: 주람", d: "웹 검색 결과 (외부 링크)", icon: "🌐" }
+        ];
+
+        function search() {
+            const q = document.getElementById('query').value.trim();
+            const res = document.getElementById('results');
+            if(!q) return;
+
+            res.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b;">분석 중...</div>';
+
+            setTimeout(() => {
+                res.innerHTML = '';
+                mockData.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'res-item';
+                    el.innerHTML = `
+                        <div class="res-title"><span>${item.icon}</span> ${item.t}</div>
+                        <div class="res-desc">${item.d}</div>
+                    `;
+                    el.onclick = () => alert(`'${item.t}' 항목으로 이동합니다.`);
+                    res.appendChild(el);
+                });
+            }, 800);
+        }
+    </script>
+</body>
+</html>

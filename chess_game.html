@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 체스</title>
+    <style>
+        :root { --p: #d97706; --bg: #0f172a; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: white; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; box-sizing: border-box; }
+        .board { display: grid; grid-template-columns: repeat(8, 60px); grid-template-rows: repeat(8, 60px); border: 10px solid #334155; border-radius: 8px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        @media (max-width: 600px) {
+            .board { grid-template-columns: repeat(8, 11vw); grid-template-rows: repeat(8, 11vw); border-width: 5px; }
+            .sq { width: 11vw; height: 11vw !important; font-size: 1.5rem !important; }
+        }
+        .sq { width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; cursor: pointer; transition: 0.2s; }
+        .sq.w { background: #f1f5f9; color: #1e293b; }
+        .sq.b { background: #475569; color: #f1f5f9; }
+        .sq:hover { filter: brightness(1.2); }
+        .sq.active { background: #fbbf24 !important; }
+        .hud { margin-top: 30px; display: flex; gap: 40px; align-items: center; }
+        .turn-badge { padding: 8px 20px; border-radius: 20px; font-weight: 800; background: #f1f5f9; color: #000; }
+        .turn-badge.black { background: #000; color: #fff; }
+    </style>
+</head>
+<body>
+    <h1 style="margin-bottom: 20px; font-weight: 900;">♟️ JuRam Chess Pro</h1>
+    
+    <div class="board" id="board">
+        <!-- Rendered by JS -->
+    </div>
+
+    <div class="hud">
+        <div class="turn-badge" id="turn">기물 이동 차례: WHITE</div>
+        <button onclick="location.reload()" style="padding: 10px 25px; border-radius: 12px; border: none; background: #3b82f6; color: white; font-weight: 800; cursor: pointer;">새 게임</button>
+    </div>
+
+    <script>
+        const board = document.getElementById('board');
+        const pieces = {
+            'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
+            'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔', 'P': '♙'
+        };
+        const layout = [
+            'r', 'n', 'b', 'q', 'k', 'b', 'n', 'r',
+            'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p',
+            '', '', '', '', '', '', '', '',
+            '', '', '', '', '', '', '', '',
+            '', '', '', '', '', '', '', '',
+            '', '', '', '', '', '', '', '',
+            'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P',
+            'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'
+        ];
+
+        for(let i=0; i<64; i++) {
+            const sq = document.createElement('div');
+            const row = Math.floor(i / 8);
+            const col = i % 8;
+            sq.className = `sq ${ (row + col) % 2 === 0 ? 'w' : 'b' }`;
+            sq.textContent = pieces[layout[i]] || '';
+            sq.onclick = () => {
+                document.querySelectorAll('.sq').forEach(s => s.classList.remove('active'));
+                sq.classList.add('active');
+            };
+            board.appendChild(sq);
+        }
+    </script>
+</body>
+</html>

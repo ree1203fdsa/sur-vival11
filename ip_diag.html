@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 IP 진단 도구</title>
+    <style>
+        :root { --p: #06b6d4; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'monospace'; background: var(--bg); color: var(--text); margin: 0; padding: 30px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        .terminal { background: #000; border-radius: 15px; padding: 25px; border: 1px solid #333; flex: 1; overflow-y: auto; font-size: 0.95rem; line-height: 1.6; }
+        .p-text { color: var(--p); }
+        .success { color: #10b981; }
+        .warning { color: #f59e0b; }
+        .controls { margin-top: 25px; display: flex; gap: 15px; }
+        .btn { font-family: inherit; padding: 10px 25px; border-radius: 8px; border: 1px solid var(--p); background: transparent; color: var(--p); cursor: pointer; transition: 0.2s; }
+        .btn:hover { background: var(--p); color: black; }
+        .cursor { display: inline-block; width: 8px; height: 18px; background: var(--p); animation: blink 1s infinite; vertical-align: middle; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+    <h1 style="font-family: 'Pretendard'; font-size: 1.5rem; margin-bottom: 20px;">🌐 IP 진단 및 네트워크 분석</h1>
+    <div class="terminal" id="term">
+        <div>[SYSTEM] Initializing Network Diagnostic Suite...</div>
+        <div>[SYSTEM] Local Host: <span class="p-text">JURAM-OS-ULTIMATE</span></div>
+    </div>
+    <div class="controls">
+        <button class="btn" onclick="diagnose()">전체 진단 시작</button>
+        <button class="btn" onclick="clearTerm()">로그 지우기</button>
+    </div>
+
+    <script>
+        const term = document.getElementById('term');
+        function log(msg, type='') {
+            const d = document.createElement('div');
+            if(type) d.className = type;
+            d.innerHTML = `> ${msg}`;
+            term.appendChild(d);
+            term.scrollTop = term.scrollHeight;
+        }
+
+        async function diagnose() {
+            log("Pinging internal gateway (192.168.0.1)...");
+            await wait(800);
+            log("Reply from 192.168.0.1: bytes=32 time=4ms TTL=64", "success");
+            
+            log("Checking External IP mapping...");
+            await wait(1200);
+            log("Global IP: 121.130.XX.XX (South Korea / Seoul)", "p-text");
+            
+            log("DNS Resolution Test (google.com)...");
+            await wait(1000);
+            log("Resolved to 172.217.161.78 in 12ms", "success");
+
+            log("Security Scan: Port Check...");
+            await wait(1500);
+            log("Port 80 (HTTP): OPEN", "warning");
+            log("Port 443 (HTTPS): OPEN", "success");
+            log("Port 22 (SSH): FILTERED", "success");
+
+            log("--- 진단이 완료되었습니다. 네트워크 상태: 우수 ---", "success");
+        }
+
+        function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+        function clearTerm() { term.innerHTML = '<div>[SYSTEM] Log Cleared. Ready.</div>'; }
+    </script>
+</body>
+</html>

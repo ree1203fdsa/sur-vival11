@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 뉴스 리더</title>
+    <style>
+        :root { --p: #3b82f6; --bg: #f8fafc; --text: #1e293b; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; }
+        .header { background: white; padding: 20px 40px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+        .nav { display: flex; gap: 25px; font-weight: 800; font-size: 0.9rem; color: #64748b; }
+        .nav span { cursor: pointer; transition: 0.2s; }
+        .nav span:hover, .nav span.active { color: var(--p); }
+        .container { max-width: 1000px; margin: 40px auto; width: 100%; padding: 0 20px; box-sizing: border-box; }
+        .news-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px; }
+        .news-card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.05); transition: 0.3s; cursor: pointer; border: 1px solid #eee; }
+        .news-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .news-img { width: 100%; height: 180px; background: #eee; object-fit: cover; }
+        .news-body { padding: 20px; }
+        .category { font-size: 0.7rem; color: var(--p); font-weight: 900; text-transform: uppercase; margin-bottom: 10px; display: block; }
+        .title { font-size: 1.1rem; font-weight: 800; margin-bottom: 10px; line-height: 1.4; color: #000; }
+        .summary { font-size: 0.9rem; color: #64748b; line-height: 1.5; height: 3em; overflow: hidden; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 style="font-size: 1.5rem; margin: 0; font-weight: 900;">📰 JuRam Times</h1>
+        <div class="nav">
+            <span class="active">최신</span>
+            <span>정치</span>
+            <span>경제</span>
+            <span>기술</span>
+            <span>문화</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="news-grid">
+            <div class="news-card">
+                <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400" class="news-img">
+                <div class="news-body">
+                    <span class="category">Technology</span>
+                    <div class="title">주람 OS, 상반기 앱 생태계 500% 성장 기록</div>
+                    <div class="summary">개발자 전용 라이브러리 공개 이후 서드파티 앱들의 참여가 폭발적으로 증가하며...</div>
+                </div>
+            </div>
+            <div class="news-card">
+                <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=400" class="news-img">
+                <div class="news-body">
+                    <span class="category">Economy</span>
+                    <div class="title">가계부 앱 사용자 평균 지출 15% 감소 효과</div>
+                    <div class="summary">주람 가계부 시스템의 자동 분석 기능을 활용한 유저들을 대상으로 조사한 결과...</div>
+                </div>
+            </div>
+            <div class="news-card">
+                <img src="https://images.unsplash.com/photo-1504711432869-efd557161dc7?auto=format&fit=crop&w=400" class="news-img">
+                <div class="news-body">
+                    <span class="category">Society</span>
+                    <div class="title">화상 회의 툴, 원격 교육 시장에서 돌풍</div>
+                    <div class="summary">직관적인 인터페이스와 강력한 보안 기능을 갖춘 주람 화상 회의 시스템이...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

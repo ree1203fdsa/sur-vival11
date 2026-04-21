@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 별자리 보기</title>
+    <style>
+        :root { --p: #818cf8; --bg: #020617; --text: #e2e8f0; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .stars-bg { position: fixed; width: 100%; height: 100%; background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%); z-index: -1; }
+        .toolbar { background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .view-port { flex: 1; position: relative; cursor: crosshair; }
+        .constellation { position: absolute; }
+        .star { position: absolute; width: 4px; height: 4px; background: white; border-radius: 50%; box-shadow: 0 0 10px white; }
+        .line { position: absolute; height: 1px; background: rgba(255,255,255,0.15); transform-origin: left; }
+        .hud { position: absolute; bottom: 30px; left: 30px; background: rgba(0,0,0,0.6); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); width: 250px; }
+        .hud h2 { font-size: 1.2rem; margin: 0 0 10px 0; color: var(--p); }
+        .hud p { font-size: 0.8rem; line-height: 1.5; color: #94a3b8; }
+        .search-area { background: rgba(255,255,255,0.05); padding: 5px 15px; border-radius: 20px; display: flex; align-items: center; gap: 10px; }
+        input { background: none; border: none; color: white; padding: 5px; outline: none; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="stars-bg"></div>
+    <div class="toolbar">
+        <h1 style="font-size: 1.2rem; margin: 0; font-weight: 800;">🌌 JuRam Star Map</h1>
+        <div class="search-area">
+            <span>🔍</span>
+            <input type="text" placeholder="별자리 또는 천체 검색...">
+        </div>
+        <button style="padding:8px 16px; border-radius:20px; border:none; background:var(--p); color:white; font-weight:800; cursor:pointer;" onclick="alert('현재 관측 조건이 매우 우수합니다.')">실시간 관측 모드</button>
+    </div>
+
+    <div class="view-port">
+        <!-- Big Dipper Mockup -->
+        <div class="constellation" style="top: 30%; left: 40%;">
+            <div class="star" style="top: 0; left: 0;"></div>
+            <div class="line" style="top:2px; left:2px; width: 60px; transform: rotate(10deg);"></div>
+            <div class="star" style="top: 10px; left: 60px;"></div>
+            <div class="line" style="top:12px; left:62px; width: 70px; transform: rotate(-5deg);"></div>
+            <div class="star" style="top: 5px; left: 130px;"></div>
+            <div class="line" style="top:7px; left:132px; width: 50px; transform: rotate(40deg);"></div>
+            <div class="star" style="top: 40px; left: 165px;"></div>
+        </div>
+
+        <div class="hud">
+            <h2>큰곰자리 (Ursa Major)</h2>
+            <p>북반구의 하늘에서 볼 수 있는 가장 잘 알려진 별자리 중 하나입니다. 북두칠성을 포함하고 있으며, 사계절 내내 관측이 가능합니다.</p>
+            <div style="margin-top:15px; font-size:0.75rem; display:flex; justify-content:space-between; color:#64748b;">
+                <span>적경: 10h 40m</span>
+                <span>적위: +55° 22'</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

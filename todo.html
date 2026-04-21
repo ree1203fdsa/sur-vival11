@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 To-Do</title>
+    <style>
+        :root { --p: #3b82f6; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header h1 { font-size: 1.5rem; margin: 0; font-weight: 900; color: var(--p); }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex: 1; padding: 12px 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: var(--card); color: white; outline: none; transition: 0.2s; }
+        input:focus { border-color: var(--p); box-shadow: 0 0 10px rgba(59,130,246,0.3); }
+        button { padding: 10px 20px; border-radius: 10px; border: none; background: var(--p); color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { opacity: 0.9; transform: translateY(-2px); }
+        .list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .item { background: var(--card); padding: 15px; border-radius: 10px; display: flex; align-items: center; gap: 12px; animation: slideIn 0.3s ease-out; border: 1px solid rgba(255,255,255,0.05); }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        .item.done { opacity: 0.6; }
+        .item.done .text { text-decoration: line-through; }
+        .checkbox { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--p); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .item.done .checkbox { background: var(--p); }
+        .text { flex: 1; font-weight: 500; }
+        .del { color: #ef4444; cursor: pointer; font-size: 1.2rem; padding: 5px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>✅ 주람 To-Do</h1>
+        <div id="stats" style="font-size: 0.8rem; color: #94a3b8;">남은 할 일: 0</div>
+    </div>
+    <div class="input-group">
+        <input type="text" id="todo-input" placeholder="새로운 할 일을 입력하세요..." onkeypress="if(event.key==='Enter') addTodo()">
+        <button onclick="addTodo()">추가</button>
+    </div>
+    <div class="list" id="todo-list"></div>
+
+    <script>
+        let todos = JSON.parse(localStorage.getItem('juram_todos') || '[]');
+
+        function render() {
+            const list = document.getElementById('todo-list');
+            list.innerHTML = '';
+            todos.forEach((t, i) => {
+                const el = document.createElement('div');
+                el.className = `item ${t.done ? 'done' : ''}`;
+                el.innerHTML = `
+                    <div class="checkbox" onclick="toggle(${i})">${t.done ? '✓' : ''}</div>
+                    <div class="text">${t.text}</div>
+                    <div class="del" onclick="remove(${i})">×</div>
+                `;
+                list.appendChild(el);
+            });
+            document.getElementById('stats').textContent = `남은 할 일: ${todos.filter(t => !t.done).length}`;
+            localStorage.setItem('juram_todos', JSON.stringify(todos));
+        }
+
+        function addTodo() {
+            const input = document.getElementById('todo-input');
+            const text = input.value.trim();
+            if (!text) return;
+            todos.unshift({ text, done: false });
+            input.value = '';
+            render();
+        }
+
+        function toggle(i) {
+            todos[i].done = !todos[i].done;
+            render();
+        }
+
+        function remove(i) {
+            todos.splice(i, 1);
+            render();
+        }
+
+        render();
+    </script>
+</body>
+</html>

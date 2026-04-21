@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 마인드맵</title>
+    <style>
+        :root { --p: #a855f7; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .toolbar { background: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; color: #1e293b; z-index: 10; }
+        .canvas-area { flex: 1; background-image: radial-gradient(#334155 1px, transparent 1px); background-size: 30px 30px; position: relative; cursor: grab; }
+        .node { position: absolute; background: white; color: black; padding: 15px 25px; border-radius: 50px; font-weight: 800; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border: 3px solid var(--p); cursor: pointer; transition: transform 0.2s; white-space: nowrap; }
+        .node:hover { transform: scale(1.05); }
+        .node.sub { background: #334155; color: white; border-width: 2px; font-size: 0.9rem; padding: 10px 20px; border-color: #cbd5e1; }
+        .line { position: absolute; height: 2px; background: #475569; transform-origin: left; z-index: -1; }
+        .side-hud { position: absolute; top: 100px; left: 30px; display: flex; flex-direction: column; gap: 10px; }
+        .hud-btn { background: white; color: black; border: 1px solid #ccc; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size: 1.5rem;">🧠</span>
+            <h1 style="font-size: 1.1rem; margin: 0; font-weight: 800;">JuRam Mindmap</h1>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button style="padding:8px 16px; border-radius:8px; border:1px solid #ccc; background:white; cursor:pointer;">최근 프로젝트</button>
+            <button style="padding:8px 24px; border-radius:8px; border:none; background:var(--p); color:white; font-weight:800; cursor:pointer;">내보내기</button>
+        </div>
+    </div>
+
+    <div class="canvas-area">
+        <div class="side-hud">
+            <div class="hud-btn" title="확대">🔍+</div>
+            <div class="hud-btn" title="축소">🔍-</div>
+            <div class="hud-btn" title="중앙 정렬">🎯</div>
+        </div>
+        
+        <!-- Mock Nodes -->
+        <div class="node" style="top: 50%; left: 45%; transform: translate(-50%, -50%);">주람 OS 핵심 계획</div>
+        
+        <div class="line" style="top:50%; left:50%; width: 200px; transform: rotate(-30deg);"></div>
+        <div class="node sub" style="top: 40%; left: 63%;">시스템 안정화</div>
+        
+        <div class="line" style="top:50%; left:50%; width: 200px; transform: rotate(30deg);"></div>
+        <div class="node sub" style="top: 60%; left: 63%;">앱 생태계 확장</div>
+
+        <div class="line" style="top:50%; left:45%; width: 200px; transform: rotate(180deg);"></div>
+        <div class="node sub" style="top: 50%; left: 24%;">사용자 UI 개선</div>
+    </div>
+</body>
+</html>

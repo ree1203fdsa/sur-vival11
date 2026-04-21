@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 기상청</title>
+    <style>
+        :root { --p: #0ea5e9; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .hero { background: linear-gradient(to bottom, #0369a1, #0ea5e9); padding: 40px 30px; text-align: center; position: relative; }
+        .weather-icon { font-size: 6rem; margin-bottom: 20px; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.2)); }
+        .temp { font-size: 4rem; font-weight: 900; margin: 0; }
+        .desc { font-size: 1.2rem; opacity: 0.9; margin-top: 5px; }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); padding: 25px; gap: 15px; background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); }
+        .stat-item { text-align: center; }
+        .stat-val { font-size: 1.1rem; font-weight: 800; display: block; }
+        .stat-label { font-size: 0.75rem; color: #94a3b8; margin-top: 5px; }
+        .forecast { flex: 1; padding: 30px; overflow-y: auto; }
+        .forecast-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .forecast-day { font-weight: 600; width: 80px; }
+        .forecast-icon { font-size: 1.5rem; text-align: center; }
+        .forecast-temp { font-weight: 700; width: 80px; text-align: right; }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <div style="position:absolute; top:20px; left:20px; font-weight: 800; font-size: 1.2rem;">🌤️ JuRam Weather</div>
+        <div class="weather-icon">☀️</div>
+        <h1 class="temp">24°</h1>
+        <div class="desc">맑음, 서울특별시</div>
+    </div>
+    <div class="stats">
+        <div class="stat-item">
+            <span class="stat-val">12%</span>
+            <span class="stat-label">습도</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-val">3m/s</span>
+            <span class="stat-label">풍속</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-val">좋음</span>
+            <span class="stat-label">미세먼지</span>
+        </div>
+    </div>
+    <div class="forecast">
+        <div class="forecast-row">
+            <div class="forecast-day">내일</div>
+            <div class="forecast-icon">⛅</div>
+            <div class="forecast-temp">22° / 14°</div>
+        </div>
+        <div class="forecast-row">
+            <div class="forecast-day">수요일</div>
+            <div class="forecast-icon">🌧️</div>
+            <div class="forecast-temp">18° / 12°</div>
+        </div>
+        <div class="forecast-row">
+            <div class="forecast-day">목요일</div>
+            <div class="forecast-icon">☀️</div>
+            <div class="forecast-temp">25° / 15°</div>
+        </div>
+        <div class="forecast-row">
+            <div class="forecast-day">금요일</div>
+            <div class="forecast-icon">☀️</div>
+            <div class="forecast-temp">27° / 18°</div>
+        </div>
+    </div>
+</body>
+</html>

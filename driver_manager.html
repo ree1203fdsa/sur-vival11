@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 드라이버 매니저</title>
+    <style>
+        :root { --p: #4f46e5; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 30px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .list { display: flex; flex-direction: column; gap: 12px; flex: 1; overflow-y: auto; }
+        .item { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
+        .item.urgent { border-left: 4px solid #ef4444; }
+        .info h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
+        .info p { margin: 0; font-size: 0.85rem; color: #94a3b8; }
+        .btn { padding: 8px 15px; border-radius: 8px; border: none; background: var(--p); color: white; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn.secondary { background: rgba(255,255,255,0.1); color: #94a3b8; }
+        .btn.done { background: rgba(16, 185, 129, 0.2); color: #10b981; pointer-events: none; }
+        .badge { background: #ef4444; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚙️ 드라이버 매니저</h1>
+        <button class="btn" style="background:#22c55e" onclick="updateAll()">전체 업데이트</button>
+    </div>
+    
+    <div class="list" id="driver-list">
+        <div class="item urgent">
+            <div class="info">
+                <h3>GPU - JuRam Engine X v2.4 <span class="badge">URGENT</span></h3>
+                <p>현재 버전: 2.3.8 | 새 버전 있음 | 성능 향상 및 버그 수정</p>
+            </div>
+            <button class="btn" onclick="update(this)">업데이트</button>
+        </div>
+        <div class="item">
+            <div class="info">
+                <h3>오디오 인터페이스 - RealSound 3D</h3>
+                <p>현재 버전: 1.0.2 | 시스템 호환성 개선</p>
+            </div>
+            <button class="btn" onclick="update(this)">업데이트</button>
+        </div>
+        <div class="item">
+            <div class="info">
+                <h3>네트워크 어댑터 - GigaConnect v5</h3>
+                <p>최신 상태입니다</p>
+            </div>
+            <button class="btn done">최신 버전</button>
+        </div>
+        <div class="item">
+            <div class="info">
+                <h3>보안 모듈 - JuGuard Pro</h3>
+                <p>버전: 4.1.0 | 2026-04 보정 패치</p>
+            </div>
+            <button class="btn done">최신 버전</button>
+        </div>
+    </div>
+
+    <script>
+        function update(btn) {
+            btn.textContent = '설정 중...';
+            btn.style.opacity = '0.5';
+            setTimeout(() => {
+                btn.textContent = '최신 버전';
+                btn.className = 'btn done';
+                btn.style.opacity = '1';
+                alert('드라이버가 성공적으로 설치되었습니다.');
+            }, 1500);
+        }
+        function updateAll() {
+            alert('모든 드라이버 업데이트를 시작합니다.');
+            document.querySelectorAll('button.btn:not(.secondary):not(.done)').forEach(b => update(b));
+        }
+    </script>
+</body>
+</html>

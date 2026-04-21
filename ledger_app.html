@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 가계부</title>
+    <style>
+        :root { --p: #10b981; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 30px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: var(--card); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); }
+        .stat-card .label { font-size: 0.8rem; color: #94a3b8; font-weight: 700; margin-bottom: 8px; }
+        .stat-card .val { font-size: 1.8rem; font-weight: 900; }
+        .table-area { flex: 1; background: var(--card); border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; display: flex; flex-direction: column; }
+        .table-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 15px 20px; font-size: 0.8rem; color: #64748b; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        td { padding: 15px 20px; border-bottom: 1px solid rgba(255,0,0,0.02); }
+        .amount.in { color: #10b981; font-weight: 800; }
+        .amount.out { color: #ef4444; font-weight: 800; }
+        .btn { padding: 10px 20px; background: var(--p); color: white; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
+        <h1 style="font-size: 1.5rem; margin:0; font-weight:900">💰 주람 가계부</h1>
+        <button class="btn">+ 내역 추가</button>
+    </div>
+
+    <div class="grid">
+        <div class="stat-card"><div class="label">이번 달 수입</div><div class="val" style="color:#10b981">₩ 2,450,000</div></div>
+        <div class="stat-card"><div class="label">이번 달 지출</div><div class="val" style="color:#ef4444">₩ 1,280,000</div></div>
+        <div class="stat-card"><div class="label">현재 잔액</div><div class="val">₩ 1,170,000</div></div>
+    </div>
+
+    <div class="table-area">
+        <div class="table-header"><h2 style="font-size:1.1rem; margin:0">최근 거래 내역</h2> <div style="font-size:0.8rem; color:#64748b">2026년 4월</div></div>
+        <div style="flex:1; overflow-y:auto;">
+            <table>
+                <thead>
+                    <tr><th>날짜</th><th>카테고리</th><th>내용</th><th>금액</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>04/21</td><td>주거/통신</td><td>스타링크 광랜 요금</td><td class="amount out">- ₩ 55,000</td></tr>
+                    <tr><td>04/20</td><td>식비</td><td>주람 버거 콤보</td><td class="amount out">- ₩ 12,500</td></tr>
+                    <tr><td>04/18</td><td>월급</td><td>(주)주람 정기 급여</td><td class="amount in">+ ₩ 2,450,000</td></tr>
+                    <tr><td>04/15</td><td>문화</td><td>프레젠테이션 프리미엄 구매</td><td class="amount out">- ₩ 9,900</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

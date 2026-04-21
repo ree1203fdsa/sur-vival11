@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 캡처 및 화면 녹화</title>
+    <style>
+        :root { --p: #f97316; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; box-sizing: border-box; }
+        .stage { border: 2px dashed #334155; border-radius: 20px; width: 100%; max-width: 600px; aspect-ratio: 16/9; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); margin-bottom: 40px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 600px; }
+        .opt-card { background: var(--card); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.3s; text-align: center; }
+        .opt-card:hover { transform: translateY(-5px); border-color: var(--p); background: rgba(249, 115, 22, 0.05); }
+        .opt-card i { font-size: 3rem; display: block; margin-bottom: 15px; }
+        .opt-card b { display: block; font-size: 1.1rem; margin-bottom: 5px; }
+        .opt-card span { font-size: 0.8rem; color: #94a3b8; }
+        .btn-main { margin-top: 30px; background: var(--p); color: white; border: none; padding: 15px 50px; border-radius: 30px; font-weight: 800; font-size: 1.1rem; cursor: pointer; display: none; }
+    </style>
+</head>
+<body>
+    <div class="stage">
+        <div style="font-size: 4rem; margin-bottom: 20px;">📸</div>
+        <p style="color: #64748b;">녹화 또는 캡처할 영역을 선택하세요.</p>
+    </div>
+
+    <div class="grid">
+        <div class="opt-card" onclick="select(this, 'cap')">
+            <i>📸</i>
+            <b>전체 화면 캡처</b>
+            <span>JPG / PNG 이미지 저장</span>
+        </div>
+        <div class="opt-card" onclick="select(this, 'rec')">
+            <i>⏺️</i>
+            <b>동영상 녹화</b>
+            <span>MP4 / MKV 고화질 저장</span>
+        </div>
+        <div class="opt-card" onclick="select(this, 'area')">
+            <i>📐</i>
+            <b>영역 지정 캡처</b>
+            <span>원하는 부분만 선택</span>
+        </div>
+        <div class="opt-card" onclick="select(this, 'win')">
+            <i>🪟</i>
+            <b>특정 창 캡처</b>
+            <span>활성화된 창만 자동 감지</span>
+        </div>
+    </div>
+
+    <button class="btn-main" id="start-btn" onclick="execute()">작업 시작</button>
+
+    <script>
+        let mode = '';
+        function select(el, m) {
+            mode = m;
+            document.querySelectorAll('.opt-card').forEach(c => c.style.borderColor = 'rgba(255,255,255,0.05)');
+            el.style.borderColor = '#f97316';
+            document.getElementById('start-btn').style.display = 'block';
+            document.getElementById('start-btn').textContent = (m === 'rec' ? '🔴 녹화 시작' : '📸 캡처 실행');
+        }
+        function execute() {
+            alert(mode === 'rec' ? '화면 녹화를 시작합니다...' : '화면을 캡처하여 갤러리에 저장했습니다!');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 사전</title>
+    <style>
+        :root { --p: #6366f1; --bg: #f8fafc; --text: #1e293b; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; }
+        .header { background: white; padding: 25px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 20px; }
+        .search-inner { flex: 1; max-width: 600px; display: flex; background: #f1f5f9; border-radius: 12px; padding: 5px 15px; align-items: center; }
+        input { flex: 1; border: none; background: none; padding: 10px; font-size: 1.1rem; outline: none; }
+        .container { max-width: 800px; margin: 40px auto; width: 100%; padding: 0 20px; box-sizing: border-box; }
+        .word-card { background: white; padding: 40px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .word { font-size: 3rem; font-weight: 900; color: #000; margin-bottom: 10px; }
+        .phonetic { font-style: italic; color: #64748b; margin-bottom: 25px; display: flex; align-items: center; gap: 10px; }
+        .play-btn { background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .meaning-list { list-style: none; padding: 0; }
+        .meaning-item { border-left: 4px solid var(--p); padding-left: 20px; margin-bottom: 30px; }
+        .type { display: inline-block; padding: 4px 10px; background: rgba(99, 102, 241, 0.1); color: var(--p); border-radius: 6px; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; margin-bottom: 10px; }
+        .def { font-size: 1.1rem; font-weight: 600; line-height: 1.6; margin-bottom: 8px; }
+        .example { font-size: 0.95rem; color: #64748b; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 style="font-size: 1.5rem; margin: 0; font-weight: 900; color: var(--p);">📖 주람 사전</h1>
+        <div class="search-inner">
+            <span>🔍</span>
+            <input type="text" id="query" value="Apple" placeholder="원하는 단어를 입력하세요..." onkeypress="if(event.key==='Enter') search()">
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="word-card" id="result">
+            <div class="word">Apple</div>
+            <div class="phonetic">/ˈæp.əl/ <button class="play-btn">🔊</button></div>
+            
+            <div class="meaning-list">
+                <div class="meaning-item">
+                    <span class="type">명사(Noun)</span>
+                    <div class="def">사과 (둥근 모양의 흔한 과일로 빨간색, 분홍색, 노란색, 보라색 또는 초록색 껍질과 희고 단단한 과육이 있음)</div>
+                    <div class="example">"She took a bite out of the juicy apple."</div>
+                </div>
+                <div class="meaning-item">
+                    <span class="type">고유명사</span>
+                    <div class="def">애플 (미국의 다국적 기술 기업)</div>
+                    <div class="example">"Apple announced a new operating system today."</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function search() {
+            const q = document.getElementById('query').value.trim();
+            if(!q) return;
+            alert(`'${q}'에 대한 최신 사전 데이터를 불러오는 중입니다...`);
+        }
+    </script>
+</body>
+</html>

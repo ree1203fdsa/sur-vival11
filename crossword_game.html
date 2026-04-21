@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 낱말 맞추기</title>
+    <style>
+        :root { --p: #3b82f6; --bg: #f8fafc; --text: #1e293b; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 30px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        .grid-container { flex: 1; display: grid; grid-template-columns: 1fr 300px; gap: 30px; }
+        .crossword-grid { background: #334155; padding: 10px; border-radius: 12px; display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; align-self: start; }
+        .cell { aspect-ratio: 1; background: white; border-radius: 2px; position: relative; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem; }
+        .cell.black { background: #1e293b; }
+        .cell-num { position: absolute; top: 2px; left: 2px; font-size: 0.6rem; color: #64748b; }
+        .cell input { width: 100%; height: 100%; border: none; text-align: center; font-family: inherit; font-size: inherit; font-weight: inherit; outline: none; text-transform: uppercase; border-radius: 2px; }
+        .cell input:focus { background: #dbeafe; }
+        .clues { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid #e2e8f0; overflow-y: auto; }
+        .clue-group h3 { font-size: 1rem; margin: 0 0 15px 0; color: var(--p); border-bottom: 2px solid #eff6ff; padding-bottom: 8px; }
+        .clue-item { font-size: 0.85rem; margin-bottom: 12px; line-height: 1.4; color: #475569; cursor: pointer; }
+        .clue-item:hover { color: var(--p); }
+    </style>
+</head>
+<body>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
+        <h1 style="font-size:1.5rem; margin:0; font-weight:900">🧩 주람 크로스워드</h1>
+        <button onclick="checkAnswers()" style="padding:10px 25px; border-radius:12px; border:none; background:var(--p); color:white; font-weight:800; cursor:pointer;">정답 확인</button>
+    </div>
+
+    <div class="grid-container">
+        <div class="crossword-grid" id="grid">
+            <!-- 10x10 Grid -->
+        </div>
+        
+        <div class="clues">
+            <div class="clue-group">
+                <h3>가로 열쇠 (Across)</h3>
+                <div class="clue-item">1. 대한민국의 수도</div>
+                <div class="clue-item">3. 주람 OS의 마스코트 동물</div>
+                <div class="clue-item">5. 하늘에서 내리는 하얀 얼음 결정</div>
+            </div>
+            <div class="clue-group" style="margin-top:30px;">
+                <h3>세로 열쇠 (Down)</h3>
+                <div class="clue-item">1. 바다 속에서 숨쉬는 동물</div>
+                <div class="clue-item">2. 밤하늘에 떠 있는 은은한 빛</div>
+                <div class="clue-item">4. 겨울에 먹는 대표적 빨간 과일</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const grid = document.getElementById('grid');
+        const layout = [
+            0,1,1,1,0,0,0,0,0,0,
+            1,1,0,1,1,1,0,1,1,1,
+            0,1,0,0,1,0,0,1,0,0,
+            0,1,1,1,1,1,1,1,0,0,
+            0,0,0,1,0,1,0,0,0,0
+        ]; // Simplified for demo
+
+        for(let i=0; i<100; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            if(Math.random() > 0.8) {
+                cell.className += ' black';
+            } else {
+                cell.innerHTML = `${i%7===0?`<span class="cell-num">${Math.floor(i/7)+1}</span>`:''}<input type="text" maxlength="1">`;
+            }
+            grid.appendChild(cell);
+        }
+
+        function checkAnswers() {
+            alert('일부 정답이 일치하지 않습니다. 다시 확인해 보세요!');
+        }
+    </script>
+</body>
+</html>

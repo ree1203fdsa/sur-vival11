@@ -1,26 +1,133 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>주람 앱 - 준비 중</title>
-<style>
-body { font-family: 'Segoe UI',sans-serif; background: #0b0f19; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
-.icon { font-size: 5rem; animation: float 3s infinite; margin-bottom: 20px;}
-@keyframes float { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
-h1 { color: #3b82f6; margin:0 0 10px 0; }
-p { color: #94a3b8; font-size: 1rem; max-width: 80%; line-height:1.5; }
-.badge { background: rgba(59,130,246,0.2); border: 1px solid #3b82f6; color: #60a5fa; padding: 10px 20px; border-radius: 20px; font-weight: bold; margin-top:20px; font-size:0.85rem;}
-</style>
+    <meta charset="UTF-8">
+    <title>주람 서비스 커널</title>
+    <style>
+        :root { --p: #3b82f6; --bg: #0b0f19; --accent: #60a5fa; }
+        body { 
+            font-family: 'Inter', 'Pretendard', sans-serif; 
+            background: var(--bg); 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            margin: 0; 
+            text-align: center;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #1e293b 0%, #0b0f19 100%);
+        }
+        .container {
+            max-width: 400px;
+            width: 90%;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .icon-wrapper {
+            width: 80px;
+            height: 80px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            margin: 0 auto 25px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            animation: float 4s ease-in-out infinite;
+        }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        
+        h1 { font-size: 1.5rem; font-weight: 800; margin: 0 0 10px; letter-spacing: -0.5px; }
+        p { color: #94a3b8; font-size: 0.9rem; line-height: 1.6; margin-bottom: 30px; }
+        
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+            transition: width 0.5s ease-out;
+        }
+        .status-text {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-family: monospace;
+            text-transform: uppercase;
+        }
+        .badge {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 8px 16px;
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+    </style>
 </head>
 <body>
-<div class="icon" id="ic">⏳</div>
-<h1 id="ti">앱 준비 중</h1>
-<p>이 시스템 앱은 최신 주람 OS 업데이트 패키지에 포함되어 있으며, 현재 모듈 초기화 및 심층 설치가 진행 중입니다.</p>
-<div class="badge">🔨 다음 대규모 버전에서 최종 활성화됩니다</div>
-<script>
-    const p = new URLSearchParams(window.location.search);
-    if(p.get('icon')) document.getElementById('ic').textContent = p.get('icon');
-    if(p.get('title')) document.getElementById('ti').textContent = p.get('title');
-</script>
+    <div class="container" id="main-cnt">
+        <div class="icon-wrapper" id="ic">📦</div>
+        <h1 id="ti">서비스 초기화 중</h1>
+        <p id="desc">주람 OS 커널이 애플리케이션 모듈을 동적으로 로드하고 있습니다. 이 작업은 시스템 리소스 최적화 수준에 따라 수 초가 소요될 수 있습니다.</p>
+        
+        <div class="progress-container">
+            <div class="progress-bar" id="pb"></div>
+        </div>
+        <div class="status-text" id="status">CONNECTING TO KERNEL...</div>
+        
+        <div class="badge">PRO-VERSION ENGINE v4.2</div>
+    </div>
+
+    <script>
+        const p = new URLSearchParams(window.location.search);
+        const icon = p.get('icon') || '✨';
+        const title = p.get('title') || '시스템 앱';
+        
+        document.getElementById('ic').textContent = icon;
+        document.getElementById('ti').textContent = title;
+
+        const pb = document.getElementById('pb');
+        const st = document.getElementById('status');
+        
+        const stages = [
+            { p: 15, s: "Initializing Sandbox..." },
+            { p: 35, s: "Linking Shared Libraries..." },
+            { p: 60, s: "Syncing User Data with Cloud..." },
+            { p: 85, s: "Finalizing UI Modules..." },
+            { p: 100, s: "Ready to Launch" }
+        ];
+
+        let index = 0;
+        function update() {
+            if(index < stages.length) {
+                pb.style.width = stages[index].p + '%';
+                st.textContent = stages[index].s;
+                index++;
+                setTimeout(update, 800 + Math.random() * 1200);
+            } else {
+                st.style.color = '#10b981';
+                document.getElementById('desc').textContent = `${title} 모듈이 준비되었습니다. 다음 업데이트에서 이 기능을 전체 잠금 해제하여 사용하실 수 있습니다. 현재는 보안 점검 단계입니다.`;
+            }
+        }
+
+        setTimeout(update, 500);
+    </script>
 </body>
 </html>

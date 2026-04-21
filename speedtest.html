@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 속도 측정기</title>
+    <style>
+        :root { --p: #8b5cf6; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; justify-content: center; align-items: center; }
+        .gauge-container { position: relative; width: 300px; height: 300px; display: flex; justify-content: center; align-items: center; }
+        .gauge-svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+        .circle-bg { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 10; }
+        .circle-prog { fill: none; stroke: var(--p); stroke-width: 10; stroke-dasharray: 628; stroke-dashoffset: 628; transition: stroke-dashoffset 0.5s ease-out; stroke-linecap: round; }
+        .center-text { position: absolute; text-align: center; }
+        .mbps { font-size: 4rem; font-weight: 900; line-height: 1; }
+        .unit { font-size: 1.2rem; color: #94a3b8; font-weight: 700; }
+        .btn { margin-top: 50px; padding: 15px 40px; border-radius: 30px; border: none; background: var(--p); color: white; font-weight: 800; cursor: pointer; font-size: 1.1rem; transition: 0.3s; }
+        .btn:hover { background: #a78bfa; transform: translateY(-3px); box-shadow: 0 10px 20px rgba(139, 92, 246, 0.4); }
+        .stats { display: flex; gap: 40px; margin-top: 40px; background: rgba(255,255,255,0.03); padding: 20px 40px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); }
+        .stat { text-align: center; }
+        .stat-val { display: block; font-size: 1.2rem; font-weight: 800; }
+        .stat-label { font-size: 0.8rem; color: #64748b; }
+    </style>
+</head>
+<body>
+    <div class="gauge-container">
+        <svg class="gauge-svg">
+            <circle class="circle-bg" cx="150" cy="150" r="100"></circle>
+            <circle class="circle-prog" id="prog" cx="150" cy="150" r="100"></circle>
+        </svg>
+        <div class="center-text">
+            <div class="mbps" id="mbps">0</div>
+            <div class="unit">Mbps</div>
+        </div>
+    </div>
+
+    <div class="stats">
+        <div class="stat">
+            <span class="stat-val" id="ping">--</span>
+            <span class="stat-label">PING (ms)</span>
+        </div>
+        <div class="stat">
+            <span class="stat-val" id="upload">--</span>
+            <span class="stat-label">UPLOAD</span>
+        </div>
+        <div class="stat">
+            <span class="stat-val" id="jitter">--</span>
+            <span class="stat-label">JITTER</span>
+        </div>
+    </div>
+
+    <button class="btn" id="start-btn" onclick="startTest()">측정 시작</button>
+
+    <script>
+        function startTest() {
+            const btn = document.getElementById('start-btn');
+            const mbpsEl = document.getElementById('mbps');
+            const prog = document.getElementById('prog');
+            const ping = document.getElementById('ping');
+            const upload = document.getElementById('upload');
+            const jitter = document.getElementById('jitter');
+
+            btn.disabled = true;
+            btn.textContent = '측정 중...';
+            btn.style.opacity = '0.5';
+
+            let stage = 0;
+            let currentMbps = 0;
+            const targetMbps = 450 + Math.random() * 300;
+
+            ping.textContent = Math.floor(2 + Math.random() * 5);
+            jitter.textContent = Math.floor(1 + Math.random() * 3);
+
+            const iv = setInterval(() => {
+                currentMbps += (targetMbps - currentMbps) * 0.1;
+                if(currentMbps > targetMbps - 1) {
+                    currentMbps = targetMbps;
+                    clearInterval(iv);
+                    finishTest();
+                }
+                mbpsEl.textContent = Math.floor(currentMbps);
+                // Math: circle length is 2 * PI * 100 = 628
+                const offset = 628 - (currentMbps / 1000) * 628;
+                prog.style.strokeDashoffset = offset;
+            }, 50);
+
+            function finishTest() {
+                setTimeout(() => {
+                    upload.textContent = Math.floor(targetMbps * 0.8) + "Mbps";
+                    btn.disabled = false;
+                    btn.textContent = '다시 측정';
+                    btn.style.opacity = '1';
+                    alert(`측정 완료! 다운로드: ${Math.floor(targetMbps)}Mbps`);
+                }, 1000);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 폰트 관리자</title>
+    <style>
+        :root { --p: #f59e0b; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 30px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        h1 { font-size: 1.8rem; font-weight: 900; margin-bottom: 30px; display: flex; align-items: center; gap: 15px; }
+        .preview-box { background: var(--card); padding: 40px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 30px; text-align: center; }
+        .preview-text { font-size: 2.5rem; margin-bottom: 10px; transition: 0.3s; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; overflow-y: auto; }
+        .font-card { background: rgba(255,255,255,0.03); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.2s; }
+        .font-card:hover { background: rgba(255,255,255,0.08); border-color: var(--p); }
+        .font-card.active { border-color: var(--p); background: rgba(245, 158, 11, 0.1); }
+        .font-name { font-weight: 800; font-size: 1.1rem; margin-bottom: 5px; }
+        .font-desc { font-size: 0.85rem; color: #94a3b8; }
+        .btn { padding: 12px 30px; border-radius: 12px; border: none; background: var(--p); color: black; font-weight: 800; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔤 폰트 관리자</h1>
+    
+    <div class="preview-box">
+        <div class="label" style="font-size:0.8rem; color:var(--p); margin-bottom:10px; font-weight:800;">PREVIEW</div>
+        <div class="preview-text" id="preview">주람 OS의 새로운 모습을 경험하세요.</div>
+        <p style="color:#64748b;">The quick brown fox jumps over the lazy dog.</p>
+    </div>
+
+    <div class="grid" id="font-grid">
+        <div class="font-card active" onclick="applyFont('Inter', this)">
+            <div class="font-name" style="font-family: 'Inter';">Inter (System Default)</div>
+            <div class="font-desc">가독성이 뛰어나고 현대적인 산세리프 폰트</div>
+        </div>
+        <div class="font-card" onclick="applyFont('Pretendard', this)">
+            <div class="font-name" style="font-family: 'Pretendard';">Pretendard</div>
+            <div class="font-desc">가장 표준적이고 깔끔한 한글 폰트</div>
+        </div>
+        <div class="font-card" onclick="applyFont('Outfit', this)">
+            <div class="font-name" style="font-family: 'Outfit';">Outfit</div>
+            <div class="font-desc">둥글고 세련된 디자인의 기하학적 폰트</div>
+        </div>
+        <div class="font-card" onclick="applyFont('monospace', this)">
+            <div class="font-name" style="font-family: 'monospace';">JetBrains Mono</div>
+            <div class="font-desc">개발자와 터미널 사용자를 위한 고정폭 폰트</div>
+        </div>
+    </div>
+
+    <div style="margin-top: 30px; display: flex; justify-content: flex-end;">
+        <button class="btn" onclick="saveSettings()">시스템 전체 적용</button>
+    </div>
+
+    <script>
+        function applyFont(font, el) {
+            document.getElementById('preview').style.fontFamily = font;
+            document.querySelectorAll('.font-card').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+        }
+        function saveSettings() {
+            const font = document.getElementById('preview').style.fontFamily || 'Inter';
+            alert(`시스템 폰트가 '${font}'(으)로 변경되었습니다. 모든 앱을 재시작합니다.`);
+        }
+    </script>
+</body>
+</html>

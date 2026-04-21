@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 달력</title>
+    <style>
+        :root { --p: #8b5cf6; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header h1 { font-size: 1.5rem; margin: 0; font-weight: 900; color: var(--p); }
+        .calendar { background: var(--card); border-radius: 20px; padding: 20px; border: 1px solid rgba(255,255,255,0.05); flex: 1; display: flex; flex-direction: column; }
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; flex: 1; }
+        .day-name { text-align: center; font-size: 0.8rem; color: #94a3b8; font-weight: 700; padding-bottom: 10px; }
+        .day { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; transition: 0.2s; font-weight: 600; font-size: 1rem; position: relative; }
+        .day:hover { background: rgba(139, 92, 246, 0.2); }
+        .day.today { background: var(--p); color: white; box-shadow: 0 0 15px rgba(139, 92, 246, 0.4); }
+        .day.other { opacity: 0.3; }
+        .day.has-event::after { content: ''; position: absolute; bottom: 5px; width: 4px; height: 4px; background: #10b981; border-radius: 50%; }
+        .controls button { background: none; border: 1px solid rgba(255,255,255,0.1); color: white; padding: 5px 12px; border-radius: 8px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📅 주람 달력</h1>
+        <div id="current-time" style="font-size: 0.9rem; color: #94a3b8; font-weight: 600;"></div>
+    </div>
+    <div class="calendar">
+        <div class="cal-header">
+            <h2 id="month-year" style="margin: 0; font-size: 1.2rem; font-weight: 800;">2024년 4월</h2>
+            <div class="controls">
+                <button onclick="changeMonth(-1)">‹</button>
+                <button onclick="resetMonth()">오늘</button>
+                <button onclick="changeMonth(1)">›</button>
+            </div>
+        </div>
+        <div class="cal-grid" id="cal-grid">
+            <!-- Names -->
+            <div class="day-name">일</div><div class="day-name">월</div><div class="day-name">화</div><div class="day-name">수</div><div class="day-name">목</div><div class="day-name">금</div><div class="day-name">토</div>
+            <!-- Days -->
+        </div>
+    </div>
+
+    <script>
+        let current = new Date();
+        const today = new Date();
+
+        function render() {
+            const grid = document.getElementById('cal-grid');
+            const MY = document.getElementById('month-year');
+            const year = current.getFullYear();
+            const month = current.getMonth();
+            
+            MY.textContent = `${year}년 ${month + 1}월`;
+            
+            // Clean grid (keep day names)
+            while(grid.children.length > 7) grid.lastChild.remove();
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            const prevLastDate = new Date(year, month, 0).getDate();
+
+            // Prev month days
+            for(let i = firstDay - 1; i >= 0; i--) {
+                const d = document.createElement('div');
+                d.className = 'day other';
+                d.textContent = prevLastDate - i;
+                grid.appendChild(d);
+            }
+
+            // Current month days
+            for(let i = 1; i <= lastDate; i++) {
+                const d = document.createElement('div');
+                d.className = 'day';
+                if(year === today.getFullYear() && month === today.getMonth() && i === today.getDate()) d.className += ' today';
+                d.textContent = i;
+                d.onclick = () => alert(`${year}-${month+1}-${i} 상세 일정은 다음 업데이트 예정입니다.`);
+                grid.appendChild(d);
+            }
+
+            // Next month days
+            const remaining = 42 - grid.children.length + 7; // fill to 6 rows
+            for(let i = 1; i < remaining; i++) {
+                const d = document.createElement('div');
+                d.className = 'day other';
+                d.textContent = i;
+                grid.appendChild(d);
+            }
+        }
+
+        function changeMonth(delta) {
+            current.setMonth(current.getMonth() + delta);
+            render();
+        }
+
+        function resetMonth() {
+            current = new Date();
+            render();
+        }
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+        }
+
+        setInterval(updateTime, 1000);
+        updateTime();
+        render();
+    </script>
+</body>
+</html>

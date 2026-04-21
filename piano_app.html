@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 가상 피아노</title>
+    <style>
+        :root { --p: #3b82f6; --bg: #0f172a; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: white; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; align-items: center; justify-content: center; overflow: hidden; }
+        .piano-container { display: flex; background: #000; padding: 20px; border-radius: 20px; border: 5px solid #334155; position: relative; }
+        .key { width: 60px; height: 250px; background: white; border: 1px solid #ccc; border-radius: 0 0 8px 8px; cursor: pointer; transition: 0.1s; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 20px; color: #888; font-weight: 800; font-size: 0.8rem; }
+        .key:active, .key.active { background: #e2e8f0; transform: translateY(5px); box-shadow: inset 0 0 20px rgba(0,0,0,0.1); }
+        .key.black { width: 40px; height: 150px; background: #1e293b; border: none; z-index: 10; margin-left: -20px; margin-right: -20px; color: white; }
+        .key.black:active, .key.black.active { background: #000; }
+        .controls { margin-top: 50px; display: flex; gap: 30px; align-items: center; background: rgba(255,255,255,0.05); padding: 20px 40px; border-radius: 40px; border: 1px solid rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body>
+    <h1 style="margin-bottom: 40px; font-weight: 900; letter-spacing: 2px;">🎹 JuRam Virtual Piano Pro</h1>
+    
+    <div class="piano-container">
+        <div class="key" onclick="play('C')">C</div>
+        <div class="key black" onclick="play('C#')">C#</div>
+        <div class="key" onclick="play('D')">D</div>
+        <div class="key black" onclick="play('D#')">D#</div>
+        <div class="key" onclick="play('E')">E</div>
+        <div class="key" onclick="play('F')">F</div>
+        <div class="key black" onclick="play('F#')">F#</div>
+        <div class="key" onclick="play('G')">G</div>
+        <div class="key black" onclick="play('G#')">G#</div>
+        <div class="key" onclick="play('A')">A</div>
+        <div class="key black" onclick="play('A#')">A#</div>
+        <div class="key" onclick="play('B')">B</div>
+        <div class="key" onclick="play('C2')">C2</div>
+    </div>
+
+    <div class="controls">
+        <div style="text-align:center;"><div style="font-size:0.7rem; color:#64748b; margin-bottom:5px;">VELOCITY</div><input type="range" value="80"></div>
+        <div style="text-align:center;"><div style="font-size:0.7rem; color:#64748b; margin-bottom:5px;">REVERB</div><input type="range" value="40"></div>
+        <button style="padding:10px 25px; border-radius:20px; border:none; background:var(--p); color:white; font-weight:800; cursor:pointer;" onclick="alert('Recording started...')">REC 🔴</button>
+    </div>
+
+    <script>
+        function play(note) {
+            console.log(`Playing note: ${note}`);
+            // In a real app, this would play an Audio Buffer
+        }
+    </script>
+</body>
+</html>
