@@ -105,7 +105,10 @@ const initGame = () => {
     document.getElementById('btn-ease').onclick = () => handleCommand('/열중쉬어');
     document.getElementById('btn-fire').onclick = shoot;
 
-    if (STATE.currentUser && STATE.currentUser.username === 'juram1203') initAdminUI();
+    if (STATE.currentUser && STATE.currentUser.username === 'juram1203') {
+        initAdminUI();
+        initMasterUserList();
+    }
 
     initChatSync();
     initSirenSync();
@@ -163,6 +166,33 @@ const initAdminUI = () => {
             });
         }
     };
+};
+
+const initMasterUserList = () => {
+    const listContainer = document.getElementById('master-user-list');
+    if (FIREBASE_ENABLED && db) {
+        db.ref('users').on('value', snap => {
+            const users = snap.val();
+            if (!users) return;
+            
+            listContainer.innerHTML = '';
+            Object.values(users).forEach(user => {
+                const div = document.createElement('div');
+                div.style.padding = '5px';
+                div.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+                div.style.display = 'flex';
+                div.style.justifyContent = 'space-between';
+                div.style.cursor = 'pointer';
+                div.innerHTML = `<span><b>${user.name}</b> (${user.username})</span> <span style="color:var(--gold)">${user.rank}</span>`;
+                
+                div.onclick = () => {
+                    document.getElementById('target-user').value = user.username;
+                    document.getElementById('target-user').dispatchEvent(new Event('input'));
+                };
+                listContainer.appendChild(div);
+            });
+        });
+    }
 };
 
 const handleCommand = (cmd) => {

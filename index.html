@@ -12,6 +12,12 @@
 </head>
 <body>
     <div id="app">
+        <!-- Rotation Hint -->
+        <div id="rotation-hint" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dark); z-index: 10000; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 20px;">🔄</div>
+            <p style="font-size: 1.2rem;">원활한 작전 수행을 위해<br>핸드폰을 <b>가로로</b> 돌려주십시오.</p>
+        </div>
+
         <!-- Siren Alarm Layer -->
         <div id="siren-overlay"></div>
 
@@ -80,7 +86,13 @@
                     <button id="btn-siren-toggle" style="flex: 1; font-size: 0.8rem; background: var(--danger);">🚨 사이렌</button>
                     <button id="btn-send-to-jail" style="flex: 1; font-size: 0.8rem; background: #333;">⚖️ 영창</button>
                 </div>
-                <div id="user-info-display" style="font-size: 0.7rem; color: #0f0; margin-top: 5px;"></div>
+                <div id="user-info-display" style="font-size: 0.7rem; color: #0f0; margin-top: 5px; border-bottom: 1px solid #444; padding-bottom: 5px;"></div>
+                
+                <!-- Live User List -->
+                <p style="font-size: 0.8rem; font-weight: bold; margin: 10px 0 5px;">📋 실시간 전체 요원 명부</p>
+                <div id="master-user-list" style="height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 5px; padding: 5px; font-size: 0.7rem;">
+                    대원 목록을 불러오는 중...
+                </div>
             </div>
         </div>
     </div>
@@ -116,9 +128,35 @@
             const target = document.getElementById(id);
             if (target) {
                 target.style.display = (id === 'game-ui') ? 'block' : 'flex';
-                if (id === 'game-ui') initGame();
+                if (id === 'game-ui') {
+                    initGame();
+                    attemptLandscape();
+                }
             }
         }
+
+        function attemptLandscape() {
+            // Force landscape if supported
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(e => {
+                    console.log("Landscape lock failed, showing hint instead.");
+                    checkOrientation();
+                });
+            } else {
+                checkOrientation();
+            }
+        }
+
+        function checkOrientation() {
+            const hint = document.getElementById('rotation-hint');
+            if (window.innerHeight > window.innerWidth) {
+                hint.style.display = 'flex';
+            } else {
+                hint.style.display = 'none';
+            }
+        }
+
+        window.addEventListener('resize', checkOrientation);
     </script>
 </body>
 </html>
