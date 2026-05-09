@@ -1,5 +1,5 @@
 // config.js - 설정, 저장 및 상태 관리
-const STORAGE_KEY = 'SURVIVAL_3D_DATA';
+const STORAGE_KEY = 'MILITARY_SIM_DATA';
 
 // --- 파이어베이스 시스템 ---
 const FIREBASE_ENABLED = true;
@@ -16,9 +16,26 @@ const firebaseConfig = {
 
 let db = null;
 let auth = null;
-let isSyncingUsers = false;
-let isAdminUserListenerAttached = false;
-let isFirebaseChatAttached = false;
+
+// 계급 목록
+const RANKS = [
+    "이병", "일병", "상병", "병장", 
+    "하사", "중사", "상사", "원사", 
+    "소위", "중위", "대위", 
+    "소령", "중령", "대령", 
+    "준장", "소장", "중장", "대장"
+];
+
+// 부대 부서 (동굴부대 스타일)
+const DIVISIONS = [
+    "육군본부", "군사경찰 (MP)", "교육사령부", "특수전사령부", "정보사령부"
+];
+
+// 팀 목록
+const TEAMS = {
+    SOLDIER: { name: "국군", color: 0x4b5320 },
+    RAIDER: { name: "레이더", color: 0x8b0000 }
+};
 
 // 데이터 로드 함수
 const loadData = () => {
@@ -40,36 +57,22 @@ const STATE = {
     currentUser: null,
     users: savedState ? savedState.users : [
         {
-            username: 'jur1203',
-            password: '관리자',
-            coins: 999999999,
-            diamonds: 999999999,
-            health: 100,
-            hunger: 100,
-            thirst: 100,
+            username: 'ree1203',
+            password: 'hjklfdsa1203',
+            name: '이주람',
+            rank: '대장',
+            branch: '육군',
             role: 'creator'
-        },
-        {
-            username: 'test',
-            password: '123',
-            coins: 1000,
-            diamonds: 10,
-            role: 'user'
         }
     ],
-    applications: (savedState && savedState.applications) ? savedState.applications : [],
     settings: (savedState && savedState.settings) ? savedState.settings : {
         sound: true,
-        graphics: 'medium',
+        graphics: 'high',
         fov: 75,
         sens: 1.0,
-        dist: 100,
-        language: localStorage.getItem('juram_lang') || 'ko',
-        theme: localStorage.getItem('juram_theme') || 'dark'
-    },
-    selectedMap: 'classic',
-    currentServerId: null,
-    threeScene: null
+        language: 'ko',
+        theme: 'military-dark'
+    }
 };
 
 // 데이터 저장 함수
