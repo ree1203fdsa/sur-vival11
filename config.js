@@ -55,6 +55,7 @@ const savedState = loadData();
 // 전역 상태 데이터
 const STATE = {
     currentUser: null,
+    isSirenActive: false,
     users: savedState ? savedState.users : [
         {
             username: 'ree1203',
@@ -63,6 +64,14 @@ const STATE = {
             rank: '대장',
             branch: '육군',
             role: 'creator'
+        },
+        {
+            username: 'juram1203',
+            password: 'hjklfdsa1203',
+            name: '총지휘관',
+            rank: '대장',
+            branch: '육군본부',
+            role: 'master'
         }
     ],
     settings: (savedState && savedState.settings) ? savedState.settings : {

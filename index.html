@@ -2,154 +2,84 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>진짜 군대 시뮬레이션 - Real Military Simulator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>동굴부대 Mobile - 3D Military Sim</title>
     <link rel="stylesheet" href="index.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
-    
-    <!-- External Libs -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 </head>
 <body>
-    <div id="app-container">
-        <!-- Login Screen -->
-        <div id="login-screen" class="screen active">
-            <div class="auth-card">
-                <h1>군대 시뮬레이션</h1>
-                <p>국가와 국민을 위해</p>
-                <form id="login-form">
-                    <div class="input-group">
-                        <label>군번(아이디)</label>
-                        <input type="text" id="username" placeholder="ree1203" required>
-                    </div>
-                    <div class="input-group">
-                        <label>비밀번호</label>
-                        <input type="password" id="password" required>
-                    </div>
-                    <button type="submit">접속하기</button>
-                    <button type="button" class="link-btn" id="go-to-register">회원가입 신청</button>
-                </form>
+    <div id="app">
+        <!-- Siren Alarm Layer -->
+        <div id="siren-overlay"></div>
+
+        <!-- Auth Screen -->
+        <div id="auth-screen" class="screen active">
+            <h1 style="font-size: 3rem; margin-bottom: 20px; text-shadow: 0 0 20px var(--gold);">CAVE UNIT</h1>
+            <div id="login-form" style="width: 80%; display: flex; flex-direction: column; gap: 15px;">
+                <input type="text" id="login-id" placeholder="군번 (아이디)" style="padding: 15px; border-radius: 10px; background: rgba(255,255,255,0.1); border: 1px solid #444; color: white;">
+                <input type="password" id="login-pw" placeholder="암호" style="padding: 15px; border-radius: 10px; background: rgba(255,255,255,0.1); border: 1px solid #444; color: white;">
+                <button id="btn-login" style="width: 100%; padding: 20px;">작전 구역 진입</button>
             </div>
         </div>
 
-        <!-- Register Screen -->
-        <div id="register-screen" class="screen">
-            <div class="auth-card">
-                <h2>신병 가입 신청</h2>
-                <form id="register-form">
-                    <div class="input-group">
-                        <label>희망 군번(아이디)</label>
-                        <input type="text" id="reg-username" required>
-                    </div>
-                    <div class="input-group">
-                        <label>이름</label>
-                        <input type="text" id="reg-name" required>
-                    </div>
-                    <div class="input-group">
-                        <label>비밀번호</label>
-                        <input type="password" id="reg-password" required>
-                    </div>
-                    <div id="register-error" style="color: var(--danger); font-size: 0.8rem; margin-bottom: 10px;"></div>
-                    <button type="submit">입영 신청</button>
-                    <button type="button" class="link-btn" id="go-to-login">로그인으로 돌아가기</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Branch Selection Screen -->
-        <div id="branch-screen" class="screen">
-            <div class="auth-card" style="width: 600px;">
-                <h2>자대 배치 선택</h2>
-                <p>당신의 소속을 결정하십시오.</p>
-                <div class="branch-grid">
-                    <div class="branch-card" data-team="SOLDIER">
-                        <h3>국군 (Soldier)</h3>
-                        <p>부대를 수호하고 진급하십시오.</p>
-                    </div>
-                    <div class="branch-card" data-team="RAIDER">
-                        <h3>레이더 (Raider)</h3>
-                        <p>부대를 습격하고 혼란을 주십시오.</p>
-                    </div>
-                </div>
-                <div id="branch-selection-area" style="display:none; margin-top: 20px;">
-                    <p>자대 배치 선택 (국군 전용)</p>
-                    <div class="branch-grid">
-                        <div class="branch-card" data-branch="육군"><h3>육군</h3></div>
-                        <div class="branch-card" data-branch="해군"><h3>해군</h3></div>
-                        <div class="branch-card" data-branch="공군"><h3>공군</h3></div>
-                        <div class="branch-card" data-branch="해병대"><h3>해병대</h3></div>
-                    </div>
-                </div>
-                <button id="confirm-branch" style="margin-top: 30px;">소속 확정</button>
-            </div>
-        </div>
-
-        <!-- Game Interface -->
-        <div id="game-ui" style="display: none;">
+        <!-- Game Screen -->
+        <div id="game-ui" class="screen" style="display: none;">
             <canvas id="game-canvas"></canvas>
             
-            <div id="start-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; cursor: pointer;">
-                <h2 style="color: var(--gold); font-size: 2rem; margin-bottom: 20px;">작전 구역 진입</h2>
-                <p style="font-size: 1.2rem; margin-bottom: 10px;">[조작법]</p>
-                <ul style="list-style: none; text-align: center; line-height: 1.8;">
-                    <li>W, A, S, D : 이동</li>
-                    <li>마우스 : 시선 전환</li>
-                    <li>마우스 클릭 : 사격 / 시작</li>
-                    <li>ESC : 조작 해제</li>
-                </ul>
-                <p style="margin-top: 30px; animation: pulse 1.5s infinite;">화면을 클릭하여 작전을 시작하십시오.</p>
-            </div>
-
             <div id="hud">
-                <div class="hud-top" style="position: absolute; top: 20px; right: 20px; display: flex; flex-direction: row-reverse; pointer-events: auto;">
-                    <div class="rank-badge" style="border-left: none; border-right: 5px solid var(--gold);">
-                        <span class="rank-name" id="hud-rank">이등병</span>
-                        <span class="branch-name" id="hud-branch">육군</span>
-                    </div>
-                    <div id="user-name-tag" style="background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px; margin-right: 15px;">
-                        <span id="hud-name">홍길동</span>
-                    </div>
-                </div>
-                
-                <div class="crosshair"></div>
-                
-                <!-- Multi-player Chat (Top-Left) -->
-                <div id="chat-container" style="position: absolute; top: 20px; left: 20px; width: 350px; height: 250px; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); border: 1px solid var(--primary-color); border-radius: 10px; pointer-events: auto; display: flex; flex-direction: column; overflow: hidden; z-index: 100;">
-                    <div style="background: var(--primary-color); padding: 5px 10px; font-size: 0.8rem; font-weight: bold; display: flex; justify-content: space-between;">
-                        <span>부대 무전 (CHAT)</span>
-                        <span id="online-count">Online: 1</span>
-                    </div>
-                    <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 10px; font-size: 0.9rem; color: #fff; text-shadow: 1px 1px 2px #000;"></div>
-                    <div style="display: flex; background: rgba(0,0,0,0.8); border-top: 1px solid var(--primary-color);">
-                        <input type="text" id="chat-input" placeholder="메시지를 입력하십시오..." style="flex: 1; background: transparent; border: none; padding: 12px; color: white; outline: none;">
-                        <button id="btn-send-chat" style="width: 60px; margin: 0; border-radius: 0; background: var(--primary-color); padding: 0;">전송</button>
+                <!-- Top HUD -->
+                <div class="hud-top">
+                    <div class="rank-badge">
+                        <span id="hud-rank" class="rank-name">이등병</span>
+                        <span id="hud-branch" class="branch-name">육군</span>
                     </div>
                 </div>
 
-                <!-- Action Menu -->
-                <div id="action-menu" style="position: absolute; bottom: 20px; right: 20px; pointer-events: auto;">
-                    <button id="btn-exam" style="margin: 5px;">승급 시험</button>
-                    <button id="btn-training" style="margin: 5px;">훈련 시작</button>
-                    <button id="btn-hq" style="margin: 5px;">보고하기</button>
+                <!-- Sliding Chat Panel -->
+                <div id="chat-container">
+                    <div style="background: var(--primary-color); padding: 15px; font-weight: bold; display: flex; justify-content: space-between;">
+                        <span>📡 부대 무전기</span>
+                        <span id="online-count">1 Online</span>
+                    </div>
+                    <div id="chat-messages"></div>
+                    <div style="padding: 10px; background: rgba(0,0,0,0.5); display: flex; gap: 10px;">
+                        <input type="text" id="chat-input" placeholder="메시지..." style="flex: 1; padding: 10px; background: transparent; border: 1px solid #444; color: white; border-radius: 5px;">
+                        <button id="btn-send-chat" style="padding: 10px;">전송</button>
+                    </div>
                 </div>
 
-                <!-- Mobile Joystick -->
-                <div id="joystick-container" style="position: absolute; bottom: 40px; left: 40px; width: 120px; height: 120px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); touch-action: none; z-index: 1000; pointer-events: auto; display: none;">
-                    <div id="joystick-knob" style="position: absolute; top: 35px; left: 35px; width: 50px; height: 50px; background: var(--primary-color); border-radius: 50%; box-shadow: 0 0 15px var(--primary-color);"></div>
+                <!-- Action Controls -->
+                <div class="mobile-action-grid">
+                    <button id="btn-exam" style="background: var(--gold); color: black;">승급</button>
+                    <button id="btn-training">훈련</button>
+                    <button id="btn-salute">경례</button>
+                    <button id="btn-ease">쉬어</button>
+                    <button id="btn-fire" class="fire-btn">FIRE</button>
+                </div>
+
+                <!-- Joystick -->
+                <div id="joystick-container">
+                    <div id="joystick-knob"></div>
+                </div>
+
+                <!-- Open Chat Button (Hint) -->
+                <div id="btn-open-chat" style="position: absolute; top: 50%; left: 0; width: 30px; height: 100px; background: var(--primary-color); border-radius: 0 10px 10px 0; display: flex; align-items: center; justify-content: center; pointer-events: auto;">
+                    <span>▶</span>
                 </div>
             </div>
 
-            <!-- Admin Panel (Only for General) -->
-            <div id="admin-panel" style="display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(178, 34, 34, 0.8); padding: 15px; border-radius: 10px; pointer-events: auto; z-index: 100;">
-                <h3 style="margin-bottom: 10px;">지휘관 통제 패널</h3>
-                <input type="text" id="target-user" placeholder="대상 아이디">
-                <input type="number" id="jail-time" placeholder="영창 시간(분)">
-                <button id="btn-send-to-jail" style="background: black; margin-top: 5px;">영창 송치</button>
+            <!-- Admin Panel (Floating) -->
+            <div id="admin-panel" class="admin-mobile" style="display: none;">
+                <h3 style="text-align: center; color: var(--danger); margin-bottom: 10px;">🛡️ 통제실</h3>
+                <input type="text" id="target-user" placeholder="대상 아이디" style="width: 100%; padding: 10px; margin-bottom: 5px;">
+                <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                    <button id="btn-siren-toggle" style="flex: 1; font-size: 0.8rem; background: var(--danger);">🚨 사이렌</button>
+                    <button id="btn-send-to-jail" style="flex: 1; font-size: 0.8rem; background: #333;">⚖️ 영창</button>
+                </div>
+                <div id="user-info-display" style="font-size: 0.7rem; color: #0f0; margin-top: 5px;"></div>
             </div>
         </div>
     </div>
@@ -159,7 +89,6 @@
     <script src="auth.js"></script>
     <script src="military_simulator.js"></script>
     <script>
-        // Init logic
         document.addEventListener('DOMContentLoaded', () => {
             if (FIREBASE_ENABLED) {
                 firebase.initializeApp(firebaseConfig);
@@ -167,23 +96,27 @@
                 auth = firebase.auth();
             }
             initAuth();
+
+            // Sliding Chat Logic
+            const chat = document.getElementById('chat-container');
+            const chatBtn = document.getElementById('btn-open-chat');
+            let chatOpen = false;
+
+            chatBtn.onclick = () => {
+                chatOpen = !chatOpen;
+                chat.classList.toggle('open', chatOpen);
+                chatBtn.innerHTML = chatOpen ? '<span>◀</span>' : '<span>▶</span>';
+                chatBtn.style.left = chatOpen ? '80%' : '0';
+            };
         });
 
         function showScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
             const target = document.getElementById(id);
-            if (target) target.classList.add('active');
-            
-            if (id === 'game-ui') {
-                document.getElementById('game-ui').style.display = 'block';
-                initGame();
-            } else {
-                document.getElementById('game-ui').style.display = 'none';
+            if (target) {
+                target.style.display = (id === 'game-ui') ? 'block' : 'flex';
+                if (id === 'game-ui') initGame();
             }
-        }
-
-        function showToast(msg, type) {
-            alert(msg); // Placeholder for now
         }
     </script>
 </body>
