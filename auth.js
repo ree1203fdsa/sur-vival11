@@ -2,8 +2,11 @@
 
 function initAuth() {
     const loginBtn = document.getElementById('btn-login');
+    const guestBtn = document.getElementById('btn-guest');
     if (!loginBtn) return;
 
+    guestBtn.onclick = guestLogin;
+    
     loginBtn.onclick = () => {
         const idInput = document.getElementById('login-id');
         const pwInput = document.getElementById('login-pw');
@@ -80,6 +83,24 @@ function autoRegister(username, password) {
             finalizeLogin();
         });
     }
+}
+
+function guestLogin() {
+    const randomId = Math.floor(1000 + Math.random() * 9000);
+    const guestUser = {
+        uid: "guest_" + randomId,
+        username: "guest_" + randomId,
+        name: "게스트_" + randomId,
+        rank: "이병",
+        branch: "방문객",
+        role: "guest",
+        team: "SOLDIER",
+        isGuest: true
+    };
+    
+    STATE.currentUser = guestUser;
+    alert("방문객 신분으로 임시 입영합니다.");
+    finalizeLogin();
 }
 
 function finalizeLogin() {
