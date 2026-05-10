@@ -2,162 +2,483 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>동굴부대 Mobile - 3D Military Sim</title>
-    <link rel="stylesheet" href="index.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Military Simulator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4b5320;
+            --primary-light: #556b2f;
+            --accent: #deb887;
+            --danger: #8b0000;
+            --glass: rgba(20, 30, 20, 0.85);
+            --text: #f0f0f0;
+        }
+
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            font-family: 'Pretendard', sans-serif; 
+            background: #0a0a0a; color: var(--text); 
+            overflow: hidden; 
+            user-select: none;
+        }
+
+        .screen { 
+            display: none; width: 100%; height: 100%; 
+            position: absolute; top: 0; left: 0; 
+            flex-direction: column; align-items: center; justify-content: center; 
+            transition: opacity 0.5s ease-in-out;
+            opacity: 0;
+        }
+        .screen.active { display: flex; opacity: 1; }
+        
+        .panel { 
+            background: var(--glass); 
+            border: 1px solid rgba(255,255,255,0.1); 
+            backdrop-filter: blur(20px);
+            padding: 50px; border-radius: 24px; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
+            text-align: center; max-width: 450px; width: 85%; 
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        h1 { 
+            color: var(--accent); margin-bottom: 10px; 
+            font-weight: 900; letter-spacing: 4px; 
+            text-transform: uppercase;
+            font-size: 2.2rem;
+            text-shadow: 0 0 20px rgba(222, 184, 135, 0.3);
+        }
+        
+        .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 30px; letter-spacing: 1px; }
+
+        .input-group { width: 100%; margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; font-size: 0.75rem; color: #666; margin-bottom: 5px; text-transform: uppercase; font-weight: 700; }
+
+        input { 
+            width: 100%; padding: 14px; box-sizing: border-box;
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); 
+            color: white; border-radius: 12px; font-size: 1rem; 
+            transition: 0.3s;
+            outline: none;
+        }
+        input:focus { border-color: var(--accent); background: rgba(0,0,0,0.5); }
+
+        button { 
+            width: 100%; padding: 16px; margin: 20px 0 10px; 
+            background: linear-gradient(135deg, var(--primary), var(--primary-light)); 
+            border: none; color: white; font-weight: 800; 
+            border-radius: 12px; cursor: pointer; font-size: 1.1rem; 
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            box-shadow: 0 4px 15px rgba(75, 83, 32, 0.3);
+        }
+        button:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 8px 25px rgba(75, 83, 32, 0.5);
+            filter: brightness(1.1);
+        }
+        button:active { transform: translateY(0); }
+
+        button.secondary { 
+            background: rgba(255,255,255,0.05); 
+            color: #ccc;
+            box-shadow: none;
+            margin-top: 0;
+        }
+        button.secondary:hover { background: rgba(255,255,255,0.1); color: white; }
+        
+        /* 3D Game UI */
+        #game-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        
+        #hud { 
+            position: absolute; top: 30px; left: 30px; z-index: 10; 
+            background: var(--glass); 
+            backdrop-filter: blur(10px);
+            padding: 20px 30px; border-radius: 16px; 
+            border: 1px solid rgba(255,255,255,0.1);
+            pointer-events: none; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        #hud div { margin: 8px 0; font-size: 1.2rem; font-weight: 800; }
+        .highlight { color: var(--accent); }
+        
+        /* Controls */
+        #joystick-container { 
+            position: absolute; bottom: 40px; left: 40px; 
+            width: 160px; height: 160px; 
+            background: rgba(255,255,255,0.05); 
+            border-radius: 50%; z-index: 10; 
+            border: 2px solid rgba(255,255,255,0.1); 
+            backdrop-filter: blur(5px);
+        }
+        #joystick-knob { 
+            position: absolute; top: 50%; left: 50%; 
+            width: 60px; height: 60px; 
+            background: rgba(255,255,255,0.2); 
+            border-radius: 50%; 
+            transform: translate(-50%, -50%); 
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        #action-buttons { 
+            position: absolute; bottom: 40px; right: 40px; 
+            z-index: 10; display: flex; gap: 20px; 
+        }
+        .action-btn { 
+            width: 80px; height: 80px; border-radius: 20px; 
+            background: var(--glass); 
+            border: 1px solid var(--accent); 
+            color: var(--accent);
+            font-weight: 900; font-size: 0.9rem;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .action-btn:hover { background: var(--accent); color: var(--primary); transform: scale(1.05); }
+        
+        #admin-panel { 
+            position: absolute; top: 30px; right: 30px; z-index: 10; 
+            background: rgba(139, 0, 0, 0.9); 
+            padding: 25px; border-radius: 20px; 
+            border: 1px solid rgba(255,0,0,0.3); 
+            display: none; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            animation: slideInRight 0.5s ease-out;
+        }
+        @keyframes slideInRight { from { transform: translateX(50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* Branch Selection Grid */
+        .branch-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; width: 100%;
+        }
+        .branch-card {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 25px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .branch-card:hover {
+            border-color: var(--accent);
+            background: rgba(222, 184, 135, 0.1);
+            transform: translateY(-5px);
+        }
+        .branch-card span { font-size: 2.5rem; }
+        .branch-card h3 { margin: 0; font-size: 1.2rem; font-weight: 800; }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .panel { padding: 30px; width: 90%; }
+            h1 { font-size: 1.6rem; letter-spacing: 2px; }
+            .branch-grid { grid-template-columns: 1fr; }
+            #hud { top: 10px; left: 10px; padding: 10px 15px; }
+            #hud div { font-size: 0.9rem; margin: 4px 0; }
+            #joystick-container { width: 120px; height: 120px; bottom: 20px; left: 20px; }
+            #joystick-knob { width: 40px; height: 40px; }
+            .action-btn { width: 60px; height: 60px; font-size: 0.7rem; border-radius: 15px; }
+            #action-buttons { bottom: 20px; right: 20px; gap: 10px; }
+            #chat-container { width: 220px; height: 180px; bottom: 100px; left: 15px; font-size: 0.8rem; }
+            
+            /* Admin Dashboard Mobile */
+            #admin-dashboard-screen { flex-direction: column !important; }
+            #admin-dashboard-screen > div:first-child { 
+                width: 100% !important; height: auto !important; padding: 15px !important; 
+                flex-direction: row !important; align-items: center !important; justify-content: space-between !important;
+                border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+            }
+            #admin-dashboard-screen > div:first-child div:first-child { display: none; } /* Hide icon on mobile nav */
+            #admin-nav { flex-direction: row !important; gap: 5px !important; flex: none !important; }
+            #admin-nav button { padding: 8px !important; font-size: 0.8rem !important; }
+        }
+
+        /* Chat */
+        #chat-container {
+            position: absolute; bottom: 140px; left: 30px; 
+            width: 320px; height: 250px; 
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(10px);
+            border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);
+            display: flex; flex-direction: column; z-index: 15;
+            pointer-events: auto;
+            transition: 0.3s;
+        }
+        #chat-messages {
+            flex: 1; overflow-y: auto; padding: 15px;
+            font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px;
+        }
+        #chat-input-wrapper {
+            padding: 10px; display: flex; gap: 8px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        #chat-input {
+            flex: 1; background: rgba(255,255,255,0.1); border: none;
+            border-radius: 8px; padding: 8px 12px; color: white; outline: none;
+        }
+        .chat-msg { line-height: 1.4; word-break: break-all; }
+        .chat-rank { color: var(--accent); font-weight: 800; margin-right: 5px; }
+        .chat-name { color: #aaa; margin-right: 5px; }
+    </style>
+
 </head>
 <body>
-    <div id="app">
-        <!-- Rotation Hint -->
-        <div id="rotation-hint" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dark); z-index: 10000; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-            <div style="font-size: 3rem; margin-bottom: 20px;">🔄</div>
-            <p style="font-size: 1.2rem;">원활한 작전 수행을 위해<br>핸드폰을 <b>가로로</b> 돌려주십시오.</p>
-        </div>
-
-        <!-- Siren Alarm Layer -->
-        <div id="siren-overlay"></div>
-
-        <!-- Auth Screen -->
-        <div id="auth-screen" class="screen active">
-            <h1 style="font-size: 3rem; margin-bottom: 20px; text-shadow: 0 0 20px var(--gold);">CAVE UNIT</h1>
-            <div id="login-form" style="width: 80%; display: flex; flex-direction: column; gap: 15px;">
-                <input type="text" id="login-id" placeholder="군번 (아이디)" style="padding: 15px; border-radius: 10px; background: rgba(255,255,255,0.1); border: 1px solid #444; color: white;">
-                <input type="password" id="login-pw" placeholder="암호" style="padding: 15px; border-radius: 10px; background: rgba(255,255,255,0.1); border: 1px solid #444; color: white;">
-                <button id="btn-login" style="width: 100%; padding: 20px;">작전 구역 진입</button>
-                <button id="btn-guest" style="width: 100%; padding: 15px; background: rgba(255,255,255,0.05); border: 1px solid #444; font-size: 0.9rem;">게스트로 둘러보기</button>
-            </div>
-        </div>
-
-        <!-- Game Screen -->
-        <div id="game-ui" class="screen" style="display: none;">
-            <canvas id="game-canvas"></canvas>
+    <div id="login-screen" class="screen active" style="background: radial-gradient(circle at center, #1a2310 0%, #050505 100%), linear-gradient(rgba(255,255,255,0.01) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.01) 1px, transparent 1px); background-size: cover, 50px 50px, 50px 50px;">
+        <div class="panel">
+            <h1>MILITARY<br>SIMULATOR</h1>
+            <p class="subtitle">실제 군대 기반 3D 전술 훈련 시스템</p>
             
-            <div id="hud">
-                <!-- Top HUD -->
-                <div class="hud-top">
-                    <div class="rank-badge">
-                        <span id="hud-name" style="font-size: 0.9rem; margin-bottom: 2px; color: white;">홍길동 요원</span>
-                        <span id="hud-rank" class="rank-name">이등병</span>
-                        <span id="hud-branch" class="branch-name">육군</span>
-                    </div>
-                </div>
-
-                <!-- Sliding Chat Panel -->
-                <div id="chat-container">
-                    <div style="background: var(--primary-color); padding: 15px; font-weight: bold; display: flex; justify-content: space-between;">
-                        <span>📡 부대 무전기</span>
-                        <span id="online-count">1 Online</span>
-                    </div>
-                    <div id="chat-messages"></div>
-                    <div style="padding: 10px; background: rgba(0,0,0,0.5); display: flex; gap: 10px;">
-                        <input type="text" id="chat-input" placeholder="메시지..." style="flex: 1; padding: 10px; background: transparent; border: 1px solid #444; color: white; border-radius: 5px;">
-                        <button id="btn-send-chat" style="padding: 10px;">전송</button>
-                    </div>
-                </div>
-
-                <!-- Action Controls -->
-                <div class="mobile-action-grid">
-                    <button id="btn-exam" style="background: var(--gold); color: black;">승급</button>
-                    <button id="btn-training">훈련</button>
-                    <button id="btn-salute">경례</button>
-                    <button id="btn-ease">쉬어</button>
-                    <button id="btn-fire" class="fire-btn">FIRE</button>
-                </div>
-
-                <!-- Joystick -->
-                <div id="joystick-container">
-                    <div id="joystick-knob"></div>
-                </div>
-
-                <!-- Open Chat Button (Hint) -->
-                <div id="btn-open-chat" style="position: absolute; top: 50%; left: 0; width: 30px; height: 100px; background: var(--primary-color); border-radius: 0 10px 10px 0; display: flex; align-items: center; justify-content: center; pointer-events: auto;">
-                    <span>▶</span>
-                </div>
+            <div class="input-group">
+                <label>Service ID (군번)</label>
+                <input type="text" id="login-id" placeholder="ID">
             </div>
+            
+            <div class="input-group">
+                <label>Authentication Code (비밀번호)</label>
+                <input type="password" id="login-pw" placeholder="PASSWORD">
+            </div>
+            
+            <button id="btn-login">DEPLOY (입영)</button>
+            <button class="secondary" onclick="showScreen('register-screen')">NEW RECRUIT (신병 등록)</button>
+        </div>
+    </div>
 
-            <!-- Admin Panel (Floating) -->
-            <div id="admin-panel" class="admin-mobile" style="display: none;">
-                <h3 style="text-align: center; color: var(--danger); margin-bottom: 10px;">🛡️ 통제실</h3>
-                <input type="text" id="target-user" placeholder="대상 아이디" style="width: 100%; padding: 10px; margin-bottom: 5px;">
-                <div style="display: flex; gap: 5px; margin-bottom: 5px;">
-                    <button id="btn-siren-toggle" style="flex: 1; font-size: 0.8rem; background: var(--danger);">🚨 사이렌</button>
-                    <button id="btn-send-to-jail" style="flex: 1; font-size: 0.8rem; background: #333;">⚖️ 영창</button>
+    <!-- 2. REGISTER SCREEN -->
+    <div id="register-screen" class="screen" style="background: #111;">
+        <div class="panel">
+            <h1>NEW RECRUIT</h1>
+            <p class="subtitle">전우가 될 준비가 되셨습니까?</p>
+            
+            <div class="input-group">
+                <label>ID</label>
+                <input type="text" id="reg-id" placeholder="사용할 아이디">
+            </div>
+            
+            <div class="input-group">
+                <label>PASSWORD</label>
+                <input type="password" id="reg-pw" placeholder="비밀번호">
+            </div>
+            
+            <div class="input-group">
+                <label>REAL NAME</label>
+                <input type="text" id="reg-name" placeholder="성함">
+            </div>
+            
+            <button id="btn-register-submit">REGISTER (등록)</button>
+            <button class="secondary" onclick="showScreen('login-screen')">CANCEL (취소)</button>
+        </div>
+    </div>
+
+    <!-- 3. BRANCH SELECTION SCREEN -->
+    <div id="branch-screen" class="screen" style="background: linear-gradient(135deg, #0f172a, #1e293b);">
+        <div class="panel" style="max-width: 650px;">
+            <h1>SELECT BRANCH</h1>
+            <p class="subtitle">당신의 소속 부대를 결정하십시오.</p>
+            
+            <div class="branch-grid">
+                <div class="branch-card" id="btn-branch-army">
+                    <span>🪖</span>
+                    <h3>육군 (ARMY)</h3>
                 </div>
-                <div id="user-info-display" style="font-size: 0.7rem; color: #0f0; margin-top: 5px; border-bottom: 1px solid #444; padding-bottom: 5px;"></div>
-                
-                <!-- Live User List -->
-                <p style="font-size: 0.8rem; font-weight: bold; margin: 10px 0 5px;">📋 실시간 전체 요원 명부</p>
-                <div id="master-user-list" style="height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 5px; padding: 5px; font-size: 0.7rem;">
-                    대원 목록을 불러오는 중...
+                <div class="branch-card" id="btn-branch-navy">
+                    <span>⚓</span>
+                    <h3>해군 (NAVY)</h3>
+                </div>
+                <div class="branch-card" id="btn-branch-air">
+                    <span>✈️</span>
+                    <h3>공군 (AIR FORCE)</h3>
+                </div>
+                <div class="branch-card" id="btn-branch-marine">
+                    <span>🛡️</span>
+                    <h3>해병대 (MARINES)</h3>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 4. 3D GAME SCREEN -->
+    <div id="game-screen" class="screen">
+        <canvas id="game-canvas"></canvas>
+        
+        <!-- HUD -->
+        <div id="hud">
+            <div>이름: <span id="hud-name" class="highlight"></span></div>
+            <div>계급: <span id="hud-rank" class="highlight">이병</span></div>
+            <div>소속: <span id="hud-branch" class="highlight"></span></div>
+        </div>
+
+        <!-- Admin Control (General ree1203 only) -->
+        <div id="admin-panel">
+            <h3 style="margin: 0 0 10px 0; color: #ffcccc;">대장 지휘 통제실</h3>
+            <input type="text" id="jail-target" placeholder="영창 보낼 아이디" style="width: 150px; padding: 8px;">
+            <input type="number" id="jail-time" placeholder="분" value="10" style="width: 50px; padding: 8px;">
+            <button id="btn-send-jail" style="background: #ff0000; padding: 10px; margin-top: 10px;">영창 보내기</button>
+        </div>
+
+        <!-- Mobile Controls -->
+        <div id="joystick-container">
+            <div id="joystick-knob"></div>
+        </div>
+        <div id="action-buttons">
+            <button id="btn-training" class="action-btn">훈련<br>(미션)</button>
+            <button id="btn-promote" class="action-btn" style="background: #cd7f32;">진급<br>시험</button>
+        </div>
+
+        <!-- Chat -->
+        <div id="chat-container">
+            <div id="chat-messages"></div>
+            <div id="chat-input-wrapper">
+                <input type="text" id="chat-input" placeholder="메시지를 입력하세요...">
+                <button id="btn-chat-send" style="width: auto; margin: 0; padding: 8px 15px; font-size: 0.8rem;">전송</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. MASTER ADMIN DASHBOARD (juram1203 Only) -->
+    <div id="admin-dashboard-screen" class="screen" style="background: #0f172a; flex-direction: row; align-items: stretch; justify-content: flex-start; overflow: hidden;">
+        <!-- Sidebar -->
+        <div style="width: 280px; background: #1e293b; border-right: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; padding: 30px;">
+            <div style="margin-bottom: 40px; text-align: center;">
+                <div style="font-size: 3rem; margin-bottom: 10px;">🛡️</div>
+                <h2 style="font-size: 1.2rem; font-weight: 900; color: var(--accent);">마스터 통제 센터</h2>
+                <p style="font-size: 0.8rem; color: #888;">지휘관: 이주람 대장</p>
+            </div>
+            
+            <nav id="admin-nav" style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
+                <button class="action-btn" onclick="switchAdminTab('users')" style="width: 100%; height: auto; padding: 15px; border-radius: 12px; font-size: 1rem; border: none; background: rgba(255,255,255,0.05); color: white;">👥 유저 관리</button>
+                <button class="action-btn" onclick="switchAdminTab('military')" style="width: 100%; height: auto; padding: 15px; border-radius: 12px; font-size: 1rem; border: none; background: rgba(255,255,255,0.05); color: white;">🎖️ 부대/병사 관리</button>
+                <button class="action-btn" onclick="switchAdminTab('system')" style="width: 100%; height: auto; padding: 15px; border-radius: 12px; font-size: 1rem; border: none; background: rgba(255,255,255,0.05); color: white;">⚙️ 시스템/세금</button>
+            </nav>
+            
+            <button class="btn secondary" onclick="location.reload()" style="margin-top: auto; padding: 15px;">로그아웃</button>
+        </div>
+        
+        <!-- Main Content Area -->
+        <div style="flex: 1; padding: 40px; overflow-y: auto; background: #0f172a;">
+            <!-- Tab: Users -->
+            <div id="tab-users" class="admin-tab">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <h2 style="font-size: 1.8rem; font-weight: 900;">전체 유저 데이터베이스</h2>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn primary" onclick="toggleMaintenanceMode()" id="btn-maint" style="width: auto; padding: 10px 20px;">점검 모드: OFF</button>
+                        <button class="btn" onclick="toggleGlobalSiren()" id="btn-global-siren" style="width: auto; padding: 10px 20px; background: #8b0000;">⚠️ 사이렌 울리기</button>
+                    </div>
+                </div>
+                
+                <table style="width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.02); border-radius: 15px; overflow: hidden;">
+                    <thead style="background: rgba(255,255,255,0.05); text-align: left;">
+                        <tr>
+                            <th style="padding: 15px;">ID (군번)</th>
+                            <th style="padding: 15px;">이름</th>
+                            <th style="padding: 15px;">비밀번호</th>
+                            <th style="padding: 15px;">계급</th>
+                            <th style="padding: 15px;">잔고</th>
+                            <th style="padding: 15px;">상태</th>
+                            <th style="padding: 15px;">조작</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-user-table">
+                        <!-- Dynamic -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Tab: Military -->
+            <div id="tab-military" class="admin-tab" style="display: none;">
+                <h2 style="font-size: 1.8rem; font-weight: 900; margin-bottom: 30px;">부대 및 AI 병사 지휘</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <div class="panel" style="max-width: none; text-align: left; padding: 30px; background: #1e293b;">
+                        <h3 style="color: var(--accent);">🤖 AI 병사 관리</h3>
+                        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                            <input type="text" id="ai-name" placeholder="AI 이름" style="flex: 1;">
+                            <select id="ai-rank" style="background: #333; color: white; border: 1px solid #555; padding: 10px; border-radius: 5px;">
+                                <option>이병</option><option>일병</option><option>상병</option><option>병장</option>
+                            </select>
+                            <button onclick="createAISoldier()" style="width: auto; padding: 10px 20px; margin: 0;">생성</button>
+                        </div>
+                        <div id="ai-list" style="max-height: 300px; overflow-y: auto;"></div>
+                    </div>
+                    
+                    <div class="panel" style="max-width: none; text-align: left; padding: 30px; background: #1e293b;">
+                        <h3 style="color: var(--accent);">🏰 부대(Squad) 관리</h3>
+                        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                            <input type="text" id="unit-name" placeholder="부대 이름 (예: 동굴부대)" style="flex: 1;">
+                            <button onclick="createUnit()" style="width: auto; padding: 10px 20px; margin: 0;">부대 생성</button>
+                        </div>
+                        <div id="unit-list" style="max-height: 300px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: System -->
+            <div id="tab-system" class="admin-tab" style="display: none;">
+                <h2 style="font-size: 1.8rem; font-weight: 900; margin-bottom: 30px;">시스템 경제 및 설정</h2>
+                <div class="panel" style="max-width: 500px; text-align: left; background: #1e293b;">
+                    <h3 style="color: var(--accent);">💰 세금 시스템</h3>
+                    <p style="color: #888; font-size: 0.9rem;">전체 인원에게서 일정 세금을 일괄 징수합니다.</p>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="number" id="tax-amount" placeholder="징수액" value="500">
+                        <button onclick="collectTax()" style="margin: 0; width: auto;">일괄 징수 실행</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Edit Modal -->
+        <div id="user-edit-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;">
+            <div class="panel" style="max-width: 500px; text-align: left;">
+                <h2 id="edit-user-title">유저 정보 수정</h2>
+                <input type="hidden" id="edit-uid">
+                <div class="input-group"><label>아이디</label><input type="text" id="edit-username"></div>
+                <div class="input-group"><label>비밀번호</label><input type="text" id="edit-password"></div>
+                <div class="input-group"><label>이름</label><input type="text" id="edit-name"></div>
+                <div class="input-group">
+                    <label>계급</label>
+                    <select id="edit-rank" style="width:100%; padding:10px; background:#333; color:white; border-radius:8px;">
+                        <!-- Options generated -->
+                    </select>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
+                    <button onclick="saveUserEdit()">저장</button>
+                    <button class="secondary" onclick="document.getElementById('user-edit-modal').style.display='none'">취소</button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button style="background: #10b981;" onclick="modifyMoney(1000)">머니 지급 (+1000)</button>
+                    <button style="background: #ef4444;" onclick="modifyMoney(-1000)">머니 회수 (-1000)</button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button style="background: #3b82f6;" onclick="toggleFlightMode()">비행 모드 토글</button>
+                    <button style="background: #e11d48;" onclick="banUser()">임시 밴</button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button style="background: #7c3aed;" onclick="toggleUnlimited()">무제한 모드: OFF</button>
+                    <button style="background: #0891b2;" onclick="punishUser('얼차려')">얼차려 부여</button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button style="background: #ea580c;" onclick="punishUser('PT체조')">PT체조 강제</button>
+                    <button class="secondary" onclick="document.getElementById('user-edit-modal').style.display='none'">닫기</button>
+                </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
     <script src="config.js"></script>
-    <script src="auth.js"></script>
-    <script src="military_simulator.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (FIREBASE_ENABLED) {
-                firebase.initializeApp(firebaseConfig);
-                db = firebase.database();
-                auth = firebase.auth();
-            }
-            initAuth();
-
-            // Sliding Chat Logic
-            const chat = document.getElementById('chat-container');
-            const chatBtn = document.getElementById('btn-open-chat');
-            let chatOpen = false;
-
-            chatBtn.onclick = () => {
-                chatOpen = !chatOpen;
-                chat.classList.toggle('open', chatOpen);
-                chatBtn.innerHTML = chatOpen ? '<span>◀</span>' : '<span>▶</span>';
-                chatBtn.style.left = chatOpen ? '80%' : '0';
-            };
-        });
-
-        function showScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-            const target = document.getElementById(id);
-            if (target) {
-                target.style.display = (id === 'game-ui') ? 'block' : 'flex';
-                if (id === 'game-ui') {
-                    initGame();
-                    attemptLandscape();
-                }
-            }
-        }
-
-        function attemptLandscape() {
-            // Force landscape if supported
-            if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock('landscape').catch(e => {
-                    console.log("Landscape lock failed, showing hint instead.");
-                    checkOrientation();
-                });
-            } else {
-                checkOrientation();
-            }
-        }
-
-        function checkOrientation() {
-            const hint = document.getElementById('rotation-hint');
-            if (window.innerHeight > window.innerWidth) {
-                hint.style.display = 'flex';
-            } else {
-                hint.style.display = 'none';
-            }
-        }
-
-        window.addEventListener('resize', checkOrientation);
-    </script>
+    <script src="military_game.js"></script>
 </body>
 </html>

@@ -14,8 +14,13 @@ const firebaseConfig = {
     measurementId: "G-KEF6NJTG6H"
 };
 
-let db = null;
-let auth = null;
+if (typeof firebase !== 'undefined') {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    auth = firebase.auth();
+} else {
+    console.warn("Firebase script not loaded yet or failed.");
+}
 
 // 계급 목록
 const RANKS = [
@@ -26,9 +31,9 @@ const RANKS = [
     "준장", "소장", "중장", "대장"
 ];
 
-// 부대 부서 (동굴부대 스타일)
-const DIVISIONS = [
-    "육군본부", "군사경찰 (MP)", "교육사령부", "특수전사령부", "정보사령부"
+// 부대 종류
+const BRANCHES = [
+    "육군", "해군", "공군", "해병대"
 ];
 
 // 팀 목록
@@ -63,7 +68,7 @@ const STATE = {
             name: '이주람',
             rank: '대장',
             branch: '육군',
-            role: 'creator'
+            role: 'master'
         },
         {
             username: 'juram1203',
@@ -72,6 +77,14 @@ const STATE = {
             rank: '대장',
             branch: '육군본부',
             role: 'master'
+        },
+        {
+            username: '영창',
+            password: '123456',
+            name: '죄수번호 001',
+            rank: '훈련병',
+            branch: '영창',
+            role: 'user'
         }
     ],
     settings: (savedState && savedState.settings) ? savedState.settings : {
@@ -104,3 +117,5 @@ const saveData = () => {
 window.STATE = STATE;
 window.saveData = saveData;
 window.loadData = loadData;
+window.RANKS = RANKS;
+window.BRANCHES = BRANCHES;

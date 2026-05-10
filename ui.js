@@ -59,6 +59,12 @@ const showToast = (message, type = 'info') => {
 
 // 화면 전환 함수
 const showScreen = (screenId) => {
+    if (screenId === 'login-screen' || screenId === 'register-screen') {
+        document.body.classList.add('is-pre-login');
+    } else {
+        document.body.classList.remove('is-pre-login');
+    }
+
     if (screenId === 'menu-screen' || screenId === 'os-layer') {
         document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
         const osLayer = document.getElementById('os-layer');
