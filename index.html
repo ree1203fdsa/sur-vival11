@@ -402,14 +402,21 @@
             #discipline-hud { display: none !important; }
             .big-modal-box { padding: 20px; }
 
-            #action-buttons {
+            #menu-toggle-btn {
                 bottom: 10px;
                 right: 10px;
-                left: 10px;
+                width: 60px;
+                height: 60px;
+                font-size: 0.8rem;
+            }
+            #action-buttons {
+                bottom: 80px;
+                right: 10px;
+                left: auto;
+                grid-template-columns: repeat(3, 1fr);
+                padding: 15px;
                 gap: 10px;
-                overflow-x: auto;
-                justify-content: flex-start;
-                padding-bottom: 5px;
+                overflow-x: visible;
             }
             .action-btn {
                 flex: 0 0 auto;
@@ -477,13 +484,52 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        #action-buttons {
+        #menu-toggle-btn {
             position: absolute;
             bottom: 40px;
             right: 40px;
-            z-index: 10;
+            z-index: 20;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            font-size: 1rem;
+            font-weight: 900;
             display: flex;
-            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            transition: 0.3s;
+        }
+
+        #menu-toggle-btn:hover {
+            transform: scale(1.05);
+            background: var(--accent);
+            color: var(--primary);
+        }
+
+        #action-buttons {
+            display: none;
+            position: absolute;
+            bottom: 130px;
+            right: 40px;
+            z-index: 15;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+        
+        #action-buttons.active {
+            display: grid;
         }
 
         .action-btn {
@@ -989,6 +1035,9 @@
         <div id="joystick-container">
             <div id="joystick-knob"></div>
         </div>
+        
+        <button id="menu-toggle-btn" onclick="document.getElementById('action-buttons').classList.toggle('active')">메뉴<br>☰</button>
+        
         <div id="action-buttons">
             <button id="btn-training" class="action-btn">훈련<br>(미션)</button>
             <button id="btn-promote" class="action-btn" style="background: #cd7f32;">진급<br>시험</button>
