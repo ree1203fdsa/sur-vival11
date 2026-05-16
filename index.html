@@ -260,6 +260,17 @@
             transition: background 2s;
         }
 
+        #weather-overlay.siren-active {
+            background: rgba(255, 0, 0, 0.3) !important;
+            animation: blink 0.5s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 0.3; }
+            50% { opacity: 0.7; }
+            100% { opacity: 0.3; }
+        }
+
         #weather-hud {
             position: absolute;
             top: 30px;
@@ -397,74 +408,85 @@
         .rank-item .rank-pos { font-size: 1.5rem; font-weight: 900; color: var(--accent); min-width: 40px; }
 
         @media (max-width: 768px) {
-            #minimap { width: 90px; height: 90px; top: 10px; right: 10px; }
-            #exp-bar-wrap { width: 180px; bottom: 140px; }
+            #minimap { width: 80px; height: 80px; top: 10px; right: 10px; }
+            #exp-bar-wrap { 
+                width: 60%; 
+                bottom: 15px; 
+                left: 50%; 
+                transform: translateX(-50%); 
+                height: 12px;
+            }
             #discipline-hud { display: none !important; }
-            .big-modal-box { padding: 15px; width: 95%; }
+            .big-modal-box { padding: 10px; width: 95%; max-height: 90vh; }
 
             #menu-toggle-btn {
-                bottom: 20px;
+                bottom: 25px;
                 right: 20px;
-                width: 55px;
-                height: 55px;
-                font-size: 0.75rem;
+                width: 50px;
+                height: 50px;
+                font-size: 0.7rem;
             }
             #action-buttons {
-                bottom: 85px;
+                bottom: 80px;
                 right: 20px;
                 left: auto;
                 grid-template-columns: repeat(3, 1fr);
-                padding: 12px;
-                gap: 8px;
-                background: rgba(0, 0, 0, 0.8);
+                padding: 10px;
+                gap: 6px;
+                background: rgba(0, 0, 0, 0.85);
             }
             .action-btn {
-                width: 55px;
-                height: 55px;
-                font-size: 0.7rem;
-                border-radius: 12px;
+                width: 50px;
+                height: 50px;
+                font-size: 0.65rem;
+                border-radius: 10px;
             }
             #chat-container {
-                bottom: 150px;
+                bottom: 145px;
                 left: 15px;
-                width: 240px;
-                height: 140px;
-                background: rgba(0, 0, 0, 0.5);
-                backdrop-filter: blur(8px);
-                border-radius: 12px;
+                width: 220px;
+                height: 120px;
+                background: rgba(0, 0, 0, 0.4);
+                backdrop-filter: blur(10px);
+                border-radius: 10px;
+                font-size: 0.75rem;
             }
             #chat-container.minimized {
-                height: 35px;
-                overflow: hidden;
+                height: 30px;
+            }
+            #chat-input-wrapper input {
+                padding: 5px;
+                font-size: 0.75rem;
+            }
+            #btn-chat-send {
+                padding: 4px 10px !important;
+                font-size: 0.7rem !important;
             }
             #joystick-container {
-                bottom: 20px;
+                bottom: 25px;
                 left: 20px;
-                width: 110px;
-                height: 110px;
-                background: rgba(255, 255, 255, 0.1);
+                width: 100px;
+                height: 100px;
+                background: rgba(255, 255, 255, 0.05);
             }
             #joystick-knob {
-                width: 45px;
-                height: 45px;
+                width: 40px;
+                height: 40px;
             }
-            #vehicle-hud {
-                bottom: 140px;
-                font-size: 0.75rem;
+            #weather-hud {
+                top: 15px;
+                font-size: 0.8rem;
                 padding: 6px 12px;
-                width: 70%;
+                transform: scale(0.9);
             }
             #hud {
                 top: 10px;
                 left: 10px;
-                padding: 8px 12px;
-                min-width: 120px;
-                transform: scale(0.9);
+                padding: 6px 10px;
+                min-width: 100px;
+                transform: scale(0.85);
                 transform-origin: top left;
-            }
-            #hud div {
-                font-size: 0.8rem;
-                margin: 3px 0;
+                background: rgba(0, 0, 0, 0.3);
             }
         }
 

@@ -1316,10 +1316,21 @@ const initChat = () => {
         };
         applyWeather(0);
 
-        // Change weather every 3 minutes randomly
+        // Sync weather with Firebase
+        db.ref('system/weather').on('value', snap => {
+            const val = snap.val();
+            if (val !== null) {
+                currentWeatherIdx = val;
+                applyWeather(currentWeatherIdx);
+            }
+        });
+
+        // Only one person (admin or first user) updates the weather randomly
         setInterval(() => {
-            currentWeatherIdx = Math.floor(Math.random() * weatherStates.length);
-            applyWeather(currentWeatherIdx);
+            if (STATE.currentUser && (STATE.currentUser.username === 'ree1203' || !Object.keys(otherPlayers).length)) {
+                const nextIdx = Math.floor(Math.random() * weatherStates.length);
+                db.ref('system/weather').set(nextIdx);
+            }
         }, 180000);
 
         // Day/Night: update sun light based on real clock
@@ -1327,7 +1338,30 @@ const initChat = () => {
         setInterval(() => {
             const h = new Date().getHours();
             const isDaytime = h >= 6 && h < 20;
-            const ambientLight = scene.children.find(c => c.isAmbientLight);
+            // System Siren Sync
+        db.ref('system/siren').on('value', snap => {
+            const active = snap.val();
+            const overlay = document.getElementById('weather-overlay');
+            if (active) {
+                overlay.classList.add('siren-active');
+                showToast("⚠️ 전 부대 비상 소집! 사이렌 발령!", "#ff0000");
+                // Play siren sound logic here if available
+            } else {
+                overlay.classList.remove('siren-active');
+            }
+        });
+
+        // Global Admin Message Sync
+        db.ref('system/message').on('value', snap => {
+            const msg = snap.val();
+            if (msg) {
+                const toast = document.createElement('div');
+                toast.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(139,0,0,0.9); color:white; padding:30px 60px; border-radius:15px; font-size:2rem; font-weight:900; z-index:9999; border:4px solid #fff; box-shadow:0 0 50px rgba(0,0,0,0.8); text-align:center; animation: blink 0.5s infinite;';
+                toast.innerHTML = `📢 대장 공지:<br>${msg}`;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 8000);
+            }
+        });
             if (isDaytime) {
                 if (sunLight) { sunLight.intensity = 1.0; sunLight.color.setHex(0xffffff); }
                 if (ambientLight) ambientLight.intensity = 0.5;
@@ -1463,11 +1497,29 @@ const initChat = () => {
 
         window.truckMesh = makeTruck();
         window.truckMesh.position.set(-70, 0, 50);
+        window.truckMesh.userData.id = 'truck';
         scene.add(window.truckMesh);
 
         window.tankMesh = makeTank();
         window.tankMesh.position.set(-50, 0, 50);
+        window.tankMesh.userData.id = 'tank';
         scene.add(window.tankMesh);
+        
+        if (window.helicopterMesh) window.helicopterMesh.userData.id = 'helicopter';
+
+        db.ref('vehicles').on('value', snap => {
+            const data = snap.val();
+            if (!data) return;
+            const vMap = { 'truck': window.truckMesh, 'tank': window.tankMesh, 'helicopter': window.helicopterMesh };
+            Object.keys(data).forEach(id => {
+                const v = vMap[id];
+                if (v && (!window.inVehicle || window.currentVehicle !== v)) {
+                    const d = data[id];
+                    v.position.set(d.x, d.y, d.z);
+                    v.rotation.y = d.ry || 0;
+                }
+            });
+        });
 
         const tryEnterVehicle = () => {
             if (window.inVehicle) {
@@ -1926,7 +1978,7 @@ const initChat = () => {
 
             camera.position.addScaledVector(forward, -velocity.z * delta);
             const right = new THREE.Vector3(-forward.z, 0, forward.x);
-            camera.position.addScaledVector(right, -velocity.x * delta);
+            camera.position.addScaledVector(right, velocity.x * delta);
 
             // Clamp again after move
             camera.position.x = Math.max(JAIL_CONFIG.pos.x - limit, Math.min(JAIL_CONFIG.pos.x + limit, camera.position.x));
@@ -1936,7 +1988,7 @@ const initChat = () => {
             // Normal Movement
             camera.position.addScaledVector(forward, -velocity.z * delta);
             const right = new THREE.Vector3(-forward.z, 0, forward.x);
-            camera.position.addScaledVector(right, -velocity.x * delta);
+            camera.position.addScaledVector(right, velocity.x * delta);
 
             // Prevent normal users from entering the jail cell (Collision)
             const dx = camera.position.x - JAIL_CONFIG.pos.x;
@@ -1976,19 +2028,32 @@ const initChat = () => {
             }
         }
 
-        // Sync Helicopter Mesh with Camera if flying
-        if (window.helicopterMesh) {
-            if (window.inHelicopter) {
-                window.helicopterMesh.position.set(camera.position.x, camera.position.y - 2, camera.position.z);
-                window.helicopterMesh.rotation.y = camera.rotation.y;
+        // Sync Ground & Air Vehicle Mesh with Camera if driving
+        if (window.inVehicle && window.currentVehicle) {
+            const v = window.currentVehicle;
+            const isHeli = v === window.helicopterMesh;
+            v.position.set(camera.position.x, isHeli ? camera.position.y - 2 : 0, camera.position.z);
+            v.rotation.y = camera.rotation.y;
+            
+            if (isHeli) {
                 if (window.heliRotor) window.heliRotor.rotation.y += 20 * delta;
                 if (window.heliTailRotor) window.heliTailRotor.rotation.x += 20 * delta;
-                if (window.heliLabel) window.heliLabel.visible = false;
-            } else {
-                if (window.heliLabel) window.heliLabel.visible = true;
-                // Idle rotor spin
-                if (window.heliRotor) window.heliRotor.rotation.y += 0.5 * delta;
-                if (window.heliTailRotor) window.heliTailRotor.rotation.x += 0.5 * delta;
+            }
+
+            // Sync to Firebase
+            if (STATE.currentUser && STATE.currentUser.uid) {
+                db.ref('vehicles/' + v.userData.id).set({
+                    x: v.position.x, y: v.position.y, z: v.position.z,
+                    ry: v.rotation.y,
+                    driver: STATE.currentUser.name || "신병",
+                    timestamp: Date.now()
+                });
+            }
+        } else {
+            // Idle animations for non-driven vehicles
+            if (window.helicopterMesh && window.heliRotor) {
+                window.heliRotor.rotation.y += 0.5 * delta;
+                window.heliTailRotor.rotation.x += 0.5 * delta;
             }
         }
 
