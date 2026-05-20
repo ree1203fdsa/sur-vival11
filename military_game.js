@@ -61,6 +61,9 @@ window.showScreen = showScreen;
 
 const initAuth = () => {
     document.getElementById('btn-login').onclick = () => {
+        if (typeof db === 'undefined' || !db) {
+            return alert("데이터베이스 연결 대기 중... 잠시 후 다시 시도하세요.");
+        }
         const uid = document.getElementById('login-id').value.trim();
         const pw = document.getElementById('login-pw').value.trim();
         if (!uid || !pw) return alert("입력해주세요!");
@@ -94,6 +97,12 @@ const initAuth = () => {
             const forever = Date.now() + (999 * 365 * 24 * 60 * 60 * 1000); // 999 years
             STATE.currentUser = { username: uid, name: '죄수번호 001', rank: '훈련병', branch: '영창', role: 'user', jailTime: forever, uid: 'jail_bot' };
             db.ref('users/jail_bot').set(STATE.currentUser);
+            startGame();
+            return;
+        }
+        if (uid === 'test' && pw === '1234') {
+            STATE.currentUser = { username: uid, name: '테스트대원', rank: '이병', branch: '육군', role: 'user', uid: 'test_user', money: 5000 };
+            db.ref('users/test_user').set(STATE.currentUser);
             startGame();
             return;
         }
@@ -156,25 +165,357 @@ const selectBranch = (branch) => {
     startGame();
 };
 
-const startGame = () => {
-    showScreen('game-screen');
-    document.getElementById('hud-name').textContent = STATE.currentUser.name;
-    document.getElementById('hud-rank').textContent = STATE.currentUser.rank;
-    document.getElementById('hud-branch').textContent = STATE.currentUser.branch;
+const showLobby = () => {
+    try {
+        // Show lobby screen active overlay
+        const lobbyScreen = document.getElementById('lobby-screen');
+        if (lobbyScreen) lobbyScreen.classList.add('active');
 
-    if (db && STATE.currentUser.uid) {
-        db.ref('users/' + STATE.currentUser.uid).on('value', snap => {
-            const data = snap.val();
-            if (!data) return;
-            STATE.currentUser = { ...STATE.currentUser, ...data };
-            document.getElementById('hud-rank').textContent = STATE.currentUser.rank;
-            document.getElementById('hud-branch').textContent = STATE.currentUser.branch;
-        });
+        const updateLobbyStats = () => {
+            if (!STATE.currentUser) return;
+            
+            const rEl = document.getElementById('lobby-rank');
+            if (rEl) rEl.textContent = `[${STATE.currentUser.rank || '이병'}]`;
+            
+            const nEl = document.getElementById('lobby-name');
+            if (nEl) nEl.textContent = STATE.currentUser.name || '신병';
+            
+            const bEl = document.getElementById('lobby-branch');
+            if (bEl) bEl.textContent = STATE.currentUser.branch || '육군';
+
+            const money = STATE.currentUser.username === 'ree1203' ? '∞' : (STATE.currentUser.money || 0).toLocaleString();
+            const mEl = document.getElementById('lobby-money');
+            if (mEl) mEl.textContent = money;
+
+            const exp = STATE.currentUser.exp || 0;
+            const needed = (window.EXP_TO_RANK && window.EXP_TO_RANK[STATE.currentUser.rank]) ? window.EXP_TO_RANK[STATE.currentUser.rank] : 100;
+            
+            const eEl = document.getElementById('lobby-exp');
+            if (eEl) eEl.textContent = exp;
+            
+            const emEl = document.getElementById('lobby-exp-max');
+            if (emEl) emEl.textContent = needed;
+            
+            const efEl = document.getElementById('lobby-exp-fill');
+            if (efEl) efEl.style.width = Math.min(100, (exp / needed) * 100) + '%';
+        };
+        updateLobbyStats();
+
+        // Listen to real-time updates for Lobby stats
+        if (db && STATE.currentUser.uid) {
+            db.ref('users/' + STATE.currentUser.uid).on('value', snap => {
+                const data = snap.val();
+                if (!data) return;
+                STATE.currentUser = { ...STATE.currentUser, ...data };
+                updateLobbyStats();
+            });
+        }
+
+        // Connect lobby shortcut buttons to actual action buttons with safe presence checks
+        const invBtn = document.getElementById('btn-lobby-inventory');
+        if (invBtn) {
+            invBtn.onclick = () => {
+                const btn = document.getElementById('btn-inventory');
+                if (btn) btn.click();
+            };
+        }
+        
+        const shopBtn = document.getElementById('btn-lobby-shop');
+        if (shopBtn) {
+            shopBtn.onclick = () => {
+                const btn = document.getElementById('btn-shop');
+                if (btn) btn.click();
+            };
+        }
+        
+        const idBtn = document.getElementById('btn-lobby-id-card');
+        if (idBtn) {
+            idBtn.onclick = () => {
+                const btn = document.getElementById('btn-id-card');
+                if (btn) btn.click();
+            };
+        }
+        
+        const leadBtn = document.getElementById('btn-lobby-leaderboard');
+        if (leadBtn) {
+            leadBtn.onclick = () => {
+                const btn = document.getElementById('btn-leaderboard');
+                if (btn) btn.click();
+            };
+        }
+
+        // Deploy Field Button
+        const deployBtn = document.getElementById('btn-deploy-field');
+        if (deployBtn) {
+            deployBtn.onclick = () => {
+                const ls = document.getElementById('lobby-screen');
+                if (ls) ls.classList.remove('active');
+                showToast("⚔️ 작전 구역에 배치되었습니다. 대기선으로 이동하세요!", "#deb887");
+                
+                // Request pointer lock for PC mouse looking
+                const canvas = document.getElementById('game-canvas');
+                if (canvas && typeof canvas.requestPointerLock === 'function' && !window.joystickActive) {
+                    canvas.requestPointerLock();
+                }
+
+                // Ensure Admin Panel is active on deployment
+                initAdminPanel();
+            };
+        }
+    } catch (err) {
+        console.error("showLobby Error:", err);
     }
+};
 
-    initChat();
-    initTrainingCommandListener();
-    init3D();
+const initAdminPanel = () => {
+    try {
+        if (!STATE.currentUser) return;
+        const isMaster = STATE.currentUser.username === 'ree1203' || STATE.currentUser.uid === 'master_ree' || STATE.currentUser.rank === '대장';
+        if (!isMaster) return;
+
+        const panel = document.getElementById('admin-panel');
+        if (panel) {
+            panel.style.display = 'block';
+        }
+
+        const select = document.getElementById('admin-target-user');
+        const populateUserList = () => {
+            if (!select) return;
+            db.ref('presence').once('value', snap => {
+                const players = snap.val() || {};
+                const originalVal = select.value;
+                select.innerHTML = '<option value="">선택 안함</option>';
+                
+                Object.keys(players).forEach(uid => {
+                    if (uid === STATE.currentUser.uid) return;
+                    const p = players[uid];
+                    const opt = document.createElement('option');
+                    opt.value = uid;
+                    opt.textContent = `${p.name || '신병'} (${p.rank || '이병'})`;
+                    select.appendChild(opt);
+                });
+                select.value = originalVal;
+            });
+        };
+        populateUserList();
+        setInterval(populateUserList, 5000);
+
+        // 🚨 비상소집
+        const sirenBtn = document.getElementById('btn-admin-siren');
+        if (sirenBtn) {
+            sirenBtn.onclick = () => {
+                if (confirm("전체 플레이어를 연병장으로 강제 소집하시겠습니까?")) {
+                    db.ref('system/siren_assemble').set({ time: Date.now() });
+                    showToast("🚨 비상소집 명령을 발령했습니다!", "#b91c1c");
+                }
+            };
+        }
+
+        // ⚡ 번개벌
+        const lightningBtn = document.getElementById('btn-admin-lightning');
+        if (lightningBtn) {
+            lightningBtn.onclick = () => {
+                const target = select.value;
+                if (!target) return alert("대상을 지정해 주세요!");
+                db.ref('system/lightning').set({ targetUid: target, time: Date.now() });
+                showToast("⚡ 벼락 신벌을 내려쳤습니다!", "#d97706");
+            };
+        }
+
+        // 🛰️ CCTV 감시
+        const cctvBtn = document.getElementById('btn-admin-cctv');
+        if (cctvBtn) {
+            cctvBtn.onclick = () => {
+                const target = select.value;
+                if (!target) {
+                    window.cctvTargetUid = null;
+                    showToast("🛰️ CCTV 감시를 종료하고 복귀했습니다.", "#4f46e5");
+                    if (window.localPlayerBody) window.localPlayerBody.visible = window.isThirdPerson;
+                    return;
+                }
+                window.cctvTargetUid = target;
+                showToast("🛰️ 실시간 감시 위성을 가동합니다...", "#4f46e5");
+                if (window.localPlayerBody) window.localPlayerBody.visible = false;
+            };
+        }
+
+        // 📦 보급투하
+        const crateBtn = document.getElementById('btn-admin-crate');
+        if (crateBtn) {
+            crateBtn.onclick = () => {
+                db.ref('system/supply_crate').set({ x: camera.position.x, z: camera.position.z, time: Date.now() });
+                showToast("📦 현재 대장님 위치에 보급 상자를 투하했습니다!", "#059669");
+            };
+        }
+
+        // ⏰ 낮밤변경
+        const timeBtn = document.getElementById('btn-admin-time');
+        if (timeBtn) {
+            timeBtn.onclick = () => {
+                db.ref('system/time_override').once('value', snap => {
+                    const current = snap.val() || 0;
+                    const next = current === 1 ? 0 : 1;
+                    db.ref('system/time_override').set(next);
+                });
+            };
+        }
+
+        // 🔑 특사사면
+        const pardonBtn = document.getElementById('btn-admin-pardon');
+        if (pardonBtn) {
+            pardonBtn.onclick = () => {
+                const target = select.value;
+                if (!target) return alert("사면할 대상 부하를 선택하세요!");
+                db.ref('users/' + target).update({ jailTime: 0 })
+                    .then(() => showToast("🔑 대상 대원을 성공적으로 특사 사면했습니다!", "#10b981"));
+            };
+        }
+
+        // ⛓️ 강제 영창 송치
+        const sendJailBtn = document.getElementById('btn-send-jail');
+        if (sendJailBtn) {
+            sendJailBtn.onclick = () => {
+                const target = select.value;
+                if (!target) return alert("영창에 보낼 대상을 선택하세요!");
+                const min = parseInt(document.getElementById('jail-time').value) || 10;
+                const releaseTime = Date.now() + (min * 60 * 1000);
+                db.ref('users/' + target).update({ jailTime: releaseTime })
+                    .then(() => showToast("⛓️ 대원을 영창으로 즉시 송치했습니다!", "#ef4444"));
+            };
+        }
+    } catch (err) {
+        console.error("initAdminPanel Error:", err);
+    }
+};
+
+const startGame = () => {
+    try {
+        showScreen('game-screen');
+        const hName = document.getElementById('hud-name');
+        if (hName) hName.textContent = STATE.currentUser.name || '';
+        const hRank = document.getElementById('hud-rank');
+        if (hRank) hRank.textContent = STATE.currentUser.rank || '이병';
+        const hBranch = document.getElementById('hud-branch');
+        if (hBranch) hBranch.textContent = STATE.currentUser.branch || '';
+
+        if (db && STATE.currentUser.uid) {
+            try {
+                db.ref('users/' + STATE.currentUser.uid).on('value', snap => {
+                    const data = snap.val();
+                    if (!data) return;
+                    STATE.currentUser = { ...STATE.currentUser, ...data };
+                    if (hRank) hRank.textContent = STATE.currentUser.rank || '이병';
+                    if (hBranch) hBranch.textContent = STATE.currentUser.branch || '';
+                });
+            } catch (e) {
+                console.error("User db listener error:", e);
+            }
+
+            // 👑 Special entrance announcement for ree1203 General!
+            if (STATE.currentUser && (STATE.currentUser.username === 'ree1203' || STATE.currentUser.uid === 'master_ree')) {
+                try {
+                    db.ref('chat').push({
+                        uid: 'system',
+                        name: '📢 [부대보고]',
+                        rank: '시스템',
+                        text: '🫡 대장(이주람)님께서 연병장에 입장하셨습니다. 전 부대 차렷!! 🫡',
+                        timestamp: Date.now()
+                    });
+                } catch (e) {
+                    console.error("Entrance chat push error:", e);
+                }
+            }
+
+            try {
+                // Listeners for Admin commands
+                // 1. 비상소집
+                db.ref('system/siren_assemble').on('value', snap => {
+                    const val = snap.val();
+                    if (!val || val.time < Date.now() - 5000) return;
+                    showToast("🚨 대장님의 비상 소집 명령! 연병장으로 강제 이동되었습니다!", "#ff3333");
+                    if (typeof camera !== 'undefined') camera.position.set(0, 1.6, 0); // parade ground
+                });
+
+                // 2. 번개벌
+                db.ref('system/lightning').on('value', snap => {
+                    const val = snap.val();
+                    if (!val || val.time < Date.now() - 5000) return;
+                    if (STATE.currentUser && STATE.currentUser.uid === val.targetUid) {
+                        // Flash yellow
+                        const flash = document.createElement('div');
+                        flash.style.cssText = 'position:fixed; inset:0; background:#ffffaa; z-index:999999; pointer-events:none;';
+                        document.body.appendChild(flash);
+                        setTimeout(() => {
+                            if (typeof TWEEN !== 'undefined') {
+                                new TWEEN.Tween(flash.style)
+                                    .to({ opacity: 0 }, 1000)
+                                    .onComplete(() => flash.remove())
+                                    .start();
+                            } else {
+                                flash.remove();
+                            }
+                        }, 50);
+
+                        // Lock movement & knockback
+                        window.lightningStunActive = true;
+                        if (typeof velocity !== 'undefined') {
+                            velocity.set((Math.random() - 0.5) * 50, 15, (Math.random() - 0.5) * 50);
+                        }
+                        showToast("⚡ 대장님의 하느님 번개 심판을 받아 5초간 마비되었습니다!", "#ef4444");
+                        setTimeout(() => {
+                            window.lightningStunActive = false;
+                        }, 5000);
+                    }
+                });
+
+                // 3. 보급투하
+                db.ref('system/supply_crate').on('value', snap => {
+                    const val = snap.val();
+                    if (!val) return;
+                    
+                    // Render 3D crate in scene
+                    if (typeof THREE !== 'undefined' && typeof scene !== 'undefined') {
+                        if (window.supplyCrateMesh) scene.remove(window.supplyCrateMesh);
+                        
+                        const geom = new THREE.BoxGeometry(2.5, 2.5, 2.5);
+                        const mat = new THREE.MeshStandardMaterial({ color: 0x8b0000, roughness: 0.7, metalness: 0.2 });
+                        window.supplyCrateMesh = new THREE.Mesh(geom, mat);
+                        window.supplyCrateMesh.position.set(val.x, 1.25, val.z);
+                        scene.add(window.supplyCrateMesh);
+                    }
+                    
+                    showToast("📦 전장에 보급품 상자가 낙하 완료되었습니다!", "#059669");
+                });
+
+                // 4. 낮밤변경
+                db.ref('system/time_override').on('value', snap => {
+                    const val = snap.val();
+                    if (val === null) return;
+                    const isNight = val === 1;
+                    if (typeof scene !== 'undefined') {
+                        const sun = (scene && scene.children) ? scene.children.find(c => c.isDirectionalLight) : null;
+                        if (sun) sun.intensity = isNight ? 0.05 : 1.0;
+                        scene.background = new THREE.Color(isNight ? 0x050510 : 0x87ceeb);
+                    }
+                    showToast(`⏰ 부대 시간대가 ${isNight ? '야간' : '주간'}으로 강제 전환되었습니다.`, "#deb887");
+                });
+            } catch (e) {
+                console.error("Admin system listeners error:", e);
+            }
+        }
+
+        try { initChat(); } catch (e) { console.error("initChat error:", e); }
+        try { initTrainingCommandListener(); } catch (e) { console.error("initTrainingCommandListener error:", e); }
+        try { init3D(); } catch (e) { console.error("init3D error:", e); }
+
+        // Show Lobby Screen overlay on top of game screen
+        try { showLobby(); } catch (e) { console.error("showLobby error:", e); }
+
+        // Show/Initialize Admin panel for ree1203
+        try { initAdminPanel(); } catch (e) { console.error("initAdminPanel error:", e); }
+    } catch (err) {
+        console.error("startGame fatal error:", err);
+    }
 };
 
 const initTrainingCommandListener = () => {
@@ -254,6 +595,16 @@ const initTrainingCommandListener = () => {
     setupMobileControls();
 };
 
+window.deleteChatMessage = (key) => {
+    if (!db) return;
+    if (confirm("이 메세지를 삭제하시겠습니까?")) {
+        db.ref('chat/' + key).remove()
+            .catch(err => {
+                alert("삭제 실패: " + err.message);
+            });
+    }
+};
+
 const initChat = () => {
     if (!db) return;
     const messagesDiv = document.getElementById('chat-messages');
@@ -265,9 +616,20 @@ const initChat = () => {
         messagesDiv.innerHTML = '';
         snap.forEach(child => {
             const m = child.val();
+            if (!m) return;
+            const key = child.key;
+
+            // Check if current user is Lee Ju-ram (ree1203) or Han Woo-ju (한sapce)
+            const canDelete = STATE.currentUser && ['ree1203', '한sapce'].includes(STATE.currentUser.username);
+            const delBtn = canDelete ? `<span style="color: #ff4d4d; margin-left: 8px; cursor: pointer; font-weight: 900; user-select: none;" onclick="deleteChatMessage('${key}')" title="메시지 삭제">❌</span>` : '';
+
             const div = document.createElement('div');
             div.className = 'chat-msg';
-            div.innerHTML = `<span class="chat-rank">[${m.rank}]</span><span class="chat-name">${m.name}:</span> ${m.text}`;
+            if (m.uid === 'master_ree') {
+                div.innerHTML = `<span class="chat-rank" style="color: #ffd700; font-weight: bold; text-shadow: 0 0 5px rgba(255, 215, 0, 0.8);">[👑총지휘관]</span><span class="chat-name" style="color: #ffa500; font-weight: bold;">${m.name || '이주람'}:</span> <span style="color: #ffffff; font-weight: bold; text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);">${m.text || ''}</span>${delBtn}`;
+            } else {
+                div.innerHTML = `<span class="chat-rank">[${m.rank || '이병'}]</span><span class="chat-name">${m.name || '신병'}:</span> ${m.text || ''}${delBtn}`;
+            }
             messagesDiv.appendChild(div);
         });
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -483,17 +845,26 @@ const initChat = () => {
 
     const initAdminDashboard = () => {
         showScreen('admin-dashboard-screen');
+        if (typeof db === 'undefined' || !db) {
+            return alert("데이터베이스 연결 실패. 페이지를 새로고침 해보세요.");
+        }
         const rankSelect = document.getElementById('edit-rank');
-        RANKS.forEach(r => {
-            const opt = document.createElement('option');
-            opt.value = r; opt.textContent = r;
-            rankSelect.appendChild(opt);
-        });
+        if (rankSelect) {
+            rankSelect.innerHTML = '';
+            if (typeof RANKS !== 'undefined' && Array.isArray(RANKS)) {
+                RANKS.forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r; opt.textContent = r;
+                    rankSelect.appendChild(opt);
+                });
+            }
+        }
 
         // Sync Users
         db.ref('users').on('value', snap => {
             const users = snap.val();
             const table = document.getElementById('admin-user-table');
+            if (!table) return;
             table.innerHTML = '';
             if (!users) {
                 table.innerHTML = '<tr><td colspan="7" style="padding: 50px; text-align: center; color: #888;">등록된 유저가 없습니다. 신병 등록을 먼저 진행해 주세요.</td></tr>';
@@ -502,15 +873,16 @@ const initChat = () => {
 
             Object.keys(users).forEach(uid => {
                 const u = users[uid];
+                if (!u) return;
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
                 tr.innerHTML = `
-                <td style="padding: 15px;">${u.username}</td>
-                <td style="padding: 15px;">${u.name}</td>
-                <td style="padding: 15px;">${u.password}</td>
-                <td style="padding: 15px;">${u.rank}</td>
-                <td style="padding: 15px;">${u.money || 0}G</td>
-                <td style="padding: 15px;">${u.isBanned ? '🚫 밴' : '✅ 정상'}</td>
+                <td style="padding: 15px;">${u.username || ''}</td>
+                <td style="padding: 15px;">${u.name || ''}</td>
+                <td style="padding: 15px;" class="hide-on-mobile">${u.password || ''}</td>
+                <td style="padding: 15px;">${u.rank || ''}</td>
+                <td style="padding: 15px;" class="hide-on-mobile">${u.money || 0}G</td>
+                <td style="padding: 15px;" class="hide-on-mobile">${u.isBanned ? '🚫 밴' : '✅ 정상'}</td>
                 <td style="padding: 15px;">
                     <button class="btn" onclick="openUserEdit('${uid}')" style="width: auto; padding: 5px 10px; margin: 0; font-size: 0.8rem;">관리</button>
                 </td>
@@ -523,13 +895,15 @@ const initChat = () => {
         db.ref('system/ai_soldiers').on('value', snap => {
             const ais = snap.val();
             const list = document.getElementById('ai-list');
+            if (!list) return;
             list.innerHTML = '';
             if (!ais) return;
             Object.keys(ais).forEach(aid => {
                 const a = ais[aid];
+                if (!a) return;
                 const div = document.createElement('div');
                 div.style.cssText = 'padding: 10px; background: rgba(255,255,255,0.05); margin-bottom: 5px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;';
-                div.innerHTML = `<span>[${a.rank}] ${a.name}</span> <button onclick="removeAISoldier('${aid}')" style="width: auto; padding: 5px 10px; background: #8b0000; font-size: 0.7rem; margin:0;">삭제</button>`;
+                div.innerHTML = `<span>[${a.rank || ''}] ${a.name || ''}</span> <button onclick="removeAISoldier('${aid}')" style="width: auto; padding: 5px 10px; background: #8b0000; font-size: 0.7rem; margin:0;">삭제</button>`;
                 list.appendChild(div);
             });
         });
@@ -538,13 +912,15 @@ const initChat = () => {
         db.ref('system/units').on('value', snap => {
             const units = snap.val();
             const list = document.getElementById('unit-list');
+            if (!list) return;
             list.innerHTML = '';
             if (!units) return;
             Object.keys(units).forEach(uid => {
                 const u = units[uid];
+                if (!u) return;
                 const div = document.createElement('div');
                 div.style.cssText = 'padding: 10px; background: rgba(255,255,255,0.05); margin-bottom: 5px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;';
-                div.innerHTML = `<span>🏰 ${u.name}</span> <button onclick="removeUnit('${uid}')" style="width: auto; padding: 5px 10px; background: #8b0000; font-size: 0.7rem; margin:0;">삭제</button>`;
+                div.innerHTML = `<span>🏰 ${u.name || ''}</span> <button onclick="removeUnit('${uid}')" style="width: auto; padding: 5px 10px; background: #8b0000; font-size: 0.7rem; margin:0;">삭제</button>`;
                 list.appendChild(div);
             });
         });
@@ -711,7 +1087,8 @@ const initChat = () => {
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.shadowMap.enabled = true;
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
         const sun = new THREE.DirectionalLight(0xffffff, 1.0);
         sun.position.set(100, 200, 100);
         sun.castShadow = true;
@@ -1049,18 +1426,21 @@ const initChat = () => {
         setupPCControls();
 
         // Bind Action Buttons
-        document.getElementById('btn-promote').onclick = () => {
-            const curIdx = RANKS.indexOf(STATE.currentUser.rank);
-            if (curIdx < RANKS.length - 1) {
-                const nextRank = RANKS[curIdx + 1];
-                STATE.currentUser.rank = nextRank;
-                document.getElementById('hud-rank').textContent = nextRank;
-                if (db) db.ref('users/' + STATE.currentUser.uid).update({ rank: nextRank });
-                alert(`축하합니다! ${nextRank} (으)로 진급하셨습니다.\n${RANK_INFO[nextRank]}`);
-            } else {
-                alert("최고 계급입니다.");
-            }
-        };
+        const btnPromote = document.getElementById('btn-promote');
+        if (btnPromote) {
+            btnPromote.onclick = () => {
+                const curIdx = RANKS.indexOf(STATE.currentUser.rank);
+                if (curIdx < RANKS.length - 1) {
+                    const nextRank = RANKS[curIdx + 1];
+                    STATE.currentUser.rank = nextRank;
+                    document.getElementById('hud-rank').textContent = nextRank;
+                    if (db) db.ref('users/' + STATE.currentUser.uid).update({ rank: nextRank });
+                    alert(`축하합니다! ${nextRank} (으)로 진급하셨습니다.\n${RANK_INFO[nextRank]}`);
+                } else {
+                    alert("최고 계급입니다.");
+                }
+            };
+        }
 
         document.getElementById('btn-training').onclick = () => {
             alert(`${STATE.currentUser.rank} 훈련:\n${RANK_INFO[STATE.currentUser.rank]}`);
@@ -1308,67 +1688,74 @@ const initChat = () => {
 
         const applyWeather = (idx) => {
             const w = weatherStates[idx];
+            if (!w || !scene || !scene.fog) return;
             scene.fog.far = w.fog;
             scene.background = new THREE.Color(w.skyColor);
-            weatherOverlay.style.background = w.overlay;
-            weatherHud.textContent = w.name;
-            weatherHud.style.display = 'block';
+            if (weatherOverlay) weatherOverlay.style.background = w.overlay;
+            if (weatherHud) {
+                weatherHud.textContent = w.name;
+                weatherHud.style.display = 'block';
+            }
         };
         applyWeather(0);
 
         // Sync weather with Firebase
-        db.ref('system/weather').on('value', snap => {
-            const val = snap.val();
-            if (val !== null) {
-                currentWeatherIdx = val;
-                applyWeather(currentWeatherIdx);
-            }
-        });
+        if (db) {
+            db.ref('system/weather').on('value', snap => {
+                const val = snap.val();
+                if (val !== null) {
+                    currentWeatherIdx = val;
+                    applyWeather(currentWeatherIdx);
+                }
+            });
+        }
 
-        // Only one person (admin or first user) updates the weather randomly
-        setInterval(() => {
-            if (STATE.currentUser && (STATE.currentUser.username === 'ree1203' || !Object.keys(otherPlayers).length)) {
-                const nextIdx = Math.floor(Math.random() * weatherStates.length);
-                db.ref('system/weather').set(nextIdx);
-            }
-        }, 180000);
+        // Weather is locked to 'Clear' (0) by user request.
+        // Prevent random changes.
+        if (db) db.ref('system/weather').set(0);
 
         // Day/Night: update sun light based on real clock
-        const sunLight = scene.children.find(c => c.isDirectionalLight);
+        const sunLight = (scene && scene.children) ? scene.children.find(c => c.isDirectionalLight) : null;
+        // System Siren Sync
+        if (db) {
+            db.ref('system/siren').on('value', snap => {
+                const active = snap.val();
+                const overlay = document.getElementById('weather-overlay');
+                if (overlay) {
+                    if (active) {
+                        overlay.classList.add('siren-active');
+                        showToast("⚠️ 전 부대 비상 소집! 사이렌 발령!", "#ff0000");
+                    } else {
+                        overlay.classList.remove('siren-active');
+                    }
+                }
+            });
+        }
+
+        // Global Admin Message Sync
+        if (db) {
+            db.ref('system/message').on('value', snap => {
+                const msg = snap.val();
+                if (msg) {
+                    const toast = document.createElement('div');
+                    toast.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(139,0,0,0.9); color:white; padding:30px 60px; border-radius:15px; font-size:2rem; font-weight:900; z-index:9999; border:4px solid #fff; box-shadow:0 0 50px rgba(0,0,0,0.8); text-align:center; animation: blink 0.5s infinite;';
+                    toast.innerHTML = `📢 대장 공지:<br>${msg}`;
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 8000);
+                }
+            });
+        }
+
         setInterval(() => {
             const h = new Date().getHours();
             const isDaytime = h >= 6 && h < 20;
-            // System Siren Sync
-        db.ref('system/siren').on('value', snap => {
-            const active = snap.val();
-            const overlay = document.getElementById('weather-overlay');
-            if (active) {
-                overlay.classList.add('siren-active');
-                showToast("⚠️ 전 부대 비상 소집! 사이렌 발령!", "#ff0000");
-                // Play siren sound logic here if available
-            } else {
-                overlay.classList.remove('siren-active');
-            }
-        });
-
-        // Global Admin Message Sync
-        db.ref('system/message').on('value', snap => {
-            const msg = snap.val();
-            if (msg) {
-                const toast = document.createElement('div');
-                toast.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(139,0,0,0.9); color:white; padding:30px 60px; border-radius:15px; font-size:2rem; font-weight:900; z-index:9999; border:4px solid #fff; box-shadow:0 0 50px rgba(0,0,0,0.8); text-align:center; animation: blink 0.5s infinite;';
-                toast.innerHTML = `📢 대장 공지:<br>${msg}`;
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 8000);
-            }
-        });
             if (isDaytime) {
                 if (sunLight) { sunLight.intensity = 1.0; sunLight.color.setHex(0xffffff); }
                 if (ambientLight) ambientLight.intensity = 0.5;
             } else {
                 if (sunLight) { sunLight.intensity = 0.1; sunLight.color.setHex(0x2244aa); }
                 if (ambientLight) ambientLight.intensity = 0.1;
-                scene.background = new THREE.Color(0x050a1a);
+                if (scene) scene.background = new THREE.Color(0x050a1a);
             }
         }, 30000);
 
@@ -1937,25 +2324,29 @@ const initChat = () => {
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
 
-        if (joystickActive) {
-            // Reverse signs to match intuitive movement (Up is Forward, Down is Back)
-            velocity.z += joystickOffset.y * 400.0 * delta;
-            velocity.x += joystickOffset.x * 400.0 * delta;
-        }
-
-        // Keyboard Support & Flight Logic
-        if (window.inHelicopter) {
-            if (keys['w'] || keys['W'] || keys['ArrowUp']) velocity.z -= 800.0 * delta;
-            if (keys['s'] || keys['S'] || keys['ArrowDown']) velocity.z += 800.0 * delta;
-            if (keys['a'] || keys['A'] || keys['ArrowLeft']) camera.rotation.y += 1.5 * delta;
-            if (keys['d'] || keys['D'] || keys['ArrowRight']) camera.rotation.y -= 1.5 * delta;
-            if (keys['q'] || keys['Q']) camera.position.y += 20 * delta;
-            if (keys['e'] || keys['E']) camera.position.y -= 20 * delta;
+        if (window.lightningStunActive) {
+            // Player is stunned by lightning, do not allow inputs
         } else {
-            if (keys['w'] || keys['W'] || keys['ArrowUp']) velocity.z -= 400.0 * delta;
-            if (keys['s'] || keys['S'] || keys['ArrowDown']) velocity.z += 400.0 * delta;
-            if (keys['a'] || keys['A'] || keys['ArrowLeft']) velocity.x -= 400.0 * delta;
-            if (keys['d'] || keys['D'] || keys['ArrowRight']) velocity.x += 400.0 * delta;
+            if (joystickActive) {
+                // Reverse signs to match intuitive movement (Up is Forward, Down is Back)
+                velocity.z += joystickOffset.y * 400.0 * delta;
+                velocity.x += joystickOffset.x * 400.0 * delta;
+            }
+
+            // Keyboard Support & Flight Logic
+            if (window.inHelicopter) {
+                if (keys['w'] || keys['W'] || keys['ArrowUp']) velocity.z -= 800.0 * delta;
+                if (keys['s'] || keys['S'] || keys['ArrowDown']) velocity.z += 800.0 * delta;
+                if (keys['a'] || keys['A'] || keys['ArrowLeft']) camera.rotation.y += 1.5 * delta;
+                if (keys['d'] || keys['D'] || keys['ArrowRight']) camera.rotation.y -= 1.5 * delta;
+                if (keys['q'] || keys['Q']) camera.position.y += 20 * delta;
+                if (keys['e'] || keys['E']) camera.position.y -= 20 * delta;
+            } else {
+                if (keys['w'] || keys['W'] || keys['ArrowUp']) velocity.z -= 400.0 * delta;
+                if (keys['s'] || keys['S'] || keys['ArrowDown']) velocity.z += 400.0 * delta;
+                if (keys['a'] || keys['A'] || keys['ArrowLeft']) velocity.x -= 400.0 * delta;
+                if (keys['d'] || keys['D'] || keys['ArrowRight']) velocity.x += 400.0 * delta;
+            }
         }
 
         const forward = new THREE.Vector3();
@@ -2057,6 +2448,18 @@ const initChat = () => {
             }
         }
 
+        // CCTV Camera Spectator Override
+        if (window.cctvTargetUid && otherPlayers[window.cctvTargetUid]) {
+            const targetMesh = otherPlayers[window.cctvTargetUid].mesh;
+            const targetPos = targetMesh.position;
+            camera.position.set(
+                targetPos.x - Math.sin(targetMesh.rotation.y) * 6,
+                targetPos.y + 3.5,
+                targetPos.z - Math.cos(targetMesh.rotation.y) * 6
+            );
+            camera.lookAt(new THREE.Vector3(targetPos.x, targetPos.y + 1.0, targetPos.z));
+        }
+
         prevTime = time;
 
         // Multiplayer Sync
@@ -2111,6 +2514,7 @@ const initChat = () => {
             Object.keys(players).forEach(uid => {
                 if (uid === STATE.currentUser.uid) return;
                 const p = players[uid];
+                if (!p) return;
 
                 // Clean up old players (inactive for 10s)
                 if (Date.now() - p.lastSeen > 10000) {
@@ -2159,10 +2563,10 @@ const initChat = () => {
                     playerObj.lastName = p.name;
                 }
 
-                // Rank-based Uniform Color
                 const getRankColor = (rank, isJailed) => {
                     if (isJailed) return 0xffa500;
-                    const idx = window.RANKS ? window.RANKS.indexOf(rank) : -1;
+                    const ranksArr = (typeof RANKS !== 'undefined' ? RANKS : []);
+                    const idx = ranksArr.indexOf(rank);
                     if (idx >= 14) return 0x222222; // 장성급: 흑복
                     if (idx >= 11) return 0x1f305e; // 영관급: 네이비
                     if (idx >= 8) return 0xc2b280;  // 위관급: 베이지
@@ -2182,6 +2586,97 @@ const initChat = () => {
                 }
             });
         });
+    };
+
+    // ====================================================
+    // SYSTEM H: MILITARY ID CARD
+    // ====================================================
+    document.getElementById('btn-id-card').onclick = () => {
+        if (!STATE.currentUser) return;
+        const modal = document.getElementById('id-card-modal');
+        document.getElementById('id-name').textContent = STATE.currentUser.name || "신병";
+        document.getElementById('id-rank').textContent = STATE.currentUser.rank || "이병";
+        document.getElementById('id-serial').textContent = `24-${STATE.currentUser.uid.slice(0, 8).toUpperCase()}`;
+        
+        const badgeContainer = document.getElementById('id-badges');
+        badgeContainer.innerHTML = '';
+        const unlocked = STATE.currentUser.achievements || {};
+        ALL_ACHIEVEMENTS.forEach(a => {
+            if (unlocked[a.id]) {
+                const b = document.createElement('div');
+                b.style.cssText = 'width:30px; height:30px; background:rgba(255,255,255,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem; cursor:help;';
+                b.title = a.name; b.textContent = a.icon;
+                badgeContainer.appendChild(b);
+            }
+        });
+        modal.style.display = 'flex';
+    };
+
+    // ====================================================
+    // SYSTEM I: AI INSTRUCTOR (TUTORIAL)
+    // ====================================================
+    let instructor = null;
+    let tutorialStep = 0;
+    const tutorialLines = [
+        "필승! 훈련병 교육을 담당하는 AI 조교다! 내 뒤를 따라와라!",
+        "여기는 생활관이다. 휴식과 정비를 하는 곳이지. 기억해둬라!",
+        "여기는 사격장이다. 사격 실력이 곧 군인의 생명이다!",
+        "여기는 유격장이다! 강인한 체력을 길러야 살아남을 수 있다!",
+        "이상 교육 끝! 이제 실전이다. 부디 훌륭한 군인이 되길 바란다!"
+    ];
+    const tutorialTargets = [
+        LOCATIONS['생활관'],
+        LOCATIONS['사격장'],
+        LOCATIONS['유격장']
+    ];
+
+    document.getElementById('btn-tutorial').onclick = () => {
+        if (instructor) return alert("이미 교육이 진행 중이다!");
+        
+        // Create Instructor Model (Red Beret)
+        instructor = createPlayerModel(0x222222); // Black uniform
+        const beret = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 12), new THREE.MeshStandardMaterial({color: 0x8b0000}));
+        beret.position.y = 1.0; beret.rotation.x = 0.2;
+        instructor.children[0].add(beret); // Add to head
+        
+        instructor.position.set(camera.position.x + 5, 0, camera.position.z + 5);
+        scene.add(instructor);
+        
+        document.getElementById('tutorial-overlay').style.display = 'block';
+        updateTutorial();
+    };
+
+    const updateTutorial = () => {
+        const text = document.getElementById('tutorial-text');
+        text.textContent = tutorialLines[tutorialStep];
+        
+        if (tutorialStep > 0 && tutorialStep <= tutorialTargets.length) {
+            const target = tutorialTargets[tutorialStep - 1];
+            moveInstructorTo(target);
+        }
+
+        setTimeout(() => {
+            tutorialStep++;
+            if (tutorialStep < tutorialLines.length) updateTutorial();
+            else finishTutorial();
+        }, 8000);
+    };
+
+    const moveInstructorTo = (pos) => {
+        if (!instructor) return;
+        new TWEEN.Tween(instructor.position)
+            .to({ x: pos.x + 2, z: pos.z + 2 }, 6000)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .start();
+    };
+
+    const finishTutorial = () => {
+        document.getElementById('tutorial-overlay').style.display = 'none';
+        scene.remove(instructor);
+        instructor = null;
+        tutorialStep = 0;
+        showToast("🎓 교육 수료 완료! (+200 EXP)", "#22c55e");
+        gainEXP(200, "신병 교육 수료");
     };
 
 window.onload = () => {

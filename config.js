@@ -3,6 +3,9 @@ const STORAGE_KEY = 'MILITARY_SIM_DATA';
 
 // --- 파이어베이스 시스템 ---
 const FIREBASE_ENABLED = true;
+let db = null;
+let auth = null;
+
 const firebaseConfig = {
     apiKey: "AIzaSyCAaUYvodBomR0oue6wJ5siLRQbI9o1JHo",
     authDomain: "survival-8fa1c.firebaseapp.com",

@@ -4,6 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script>
+        window.errors = [];
+        window.onerror = function(msg, url, line, col, error) {
+            window.errors.push({msg: msg, url: url, line: line, col: col, stack: error ? error.stack : ''});
+            return false;
+        };
+        window.onunhandledrejection = function(event) {
+            window.errors.push({msg: event.reason ? (event.reason.message || event.reason) : 'Unhandled rejection', stack: event.reason ? event.reason.stack : ''});
+        };
+    </script>
     <title>3D Military Simulator</title>
     <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
@@ -274,7 +284,8 @@
         #weather-hud {
             position: absolute;
             top: 30px;
-            right: 220px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 10;
             background: var(--glass);
             backdrop-filter: blur(10px);
@@ -904,6 +915,60 @@
             color: #aaa;
             margin-right: 5px;
         }
+
+        /* Admin Dashboard Mobile Responsive */
+        @media (max-width: 768px) {
+            #admin-dashboard-screen {
+                flex-direction: column !important;
+                overflow-y: auto !important;
+                height: 100vh !important;
+            }
+            #admin-sidebar {
+                width: 100% !important;
+                height: auto !important;
+                padding: 15px !important;
+                border-right: none !important;
+                border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+                box-sizing: border-box;
+            }
+            #admin-sidebar nav#admin-nav {
+                flex-direction: row !important;
+                flex-wrap: wrap !important;
+                gap: 5px !important;
+                margin-bottom: 10px !important;
+            }
+            #admin-sidebar nav#admin-nav button {
+                width: calc(33.333% - 5px) !important;
+                padding: 10px 5px !important;
+                font-size: 0.75rem !important;
+                border-radius: 8px !important;
+            }
+            #admin-main-content {
+                width: 100% !important;
+                padding: 15px !important;
+                box-sizing: border-box;
+            }
+            .admin-tab h2 {
+                font-size: 1.3rem !important;
+                margin-bottom: 15px !important;
+            }
+            .admin-tab > div[style*="display: flex"] {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 10px !important;
+            }
+            .admin-tab > div[style*="grid-template-columns"] {
+                grid-template-columns: 1fr !important;
+            }
+            #admin-dashboard-screen table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            .hide-on-mobile {
+                display: none !important;
+            }
+        }
     </style>
 
 </head>
@@ -983,6 +1048,72 @@
         </div>
     </div>
 
+    <!-- 3.5 LOBBY / MAIN SCREEN -->
+    <div id="lobby-screen" class="screen" style="background: radial-gradient(circle at center, #1b2612 0%, #080a05 100%), url('https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1000') center/cover; background-blend-mode: multiply; z-index: 1000;">
+        <div class="panel" style="max-width: 600px; width: 90%; background: rgba(0,0,0,0.85); border: 2px solid #556b2f; box-shadow: 0 0 35px rgba(85,107,47,0.5); text-align: center; padding: 30px; border-radius: 20px; backdrop-filter: blur(10px);">
+            <div style="margin-bottom: 20px;">
+                <h1 style="font-size: 2.5rem; font-weight: 900; letter-spacing: 2px; color: #deb887; text-shadow: 0 0 10px rgba(222,184,135,0.5); margin: 0;">통합 지휘 대기실</h1>
+                <p class="subtitle" style="color: #888; margin-top: 5px;">지상군 대기소 및 전술 훈련 브리핑</p>
+            </div>
+            
+            <!-- User Status Card -->
+            <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-bottom: 25px; text-align: left; display: grid; grid-template-columns: 80px 1fr; gap: 20px; align-items: center;">
+                <div style="font-size: 3.5rem; background: rgba(0,0,0,0.4); width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid #556b2f;">🎖️</div>
+                <div>
+                    <div style="font-size: 1.25rem; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 8px;">
+                        <span id="lobby-rank" style="color: #ffd700;">[이병]</span>
+                        <span id="lobby-name">신병</span>
+                    </div>
+                    <div style="font-size: 0.9rem; color: #aaa; margin-top: 5px;">
+                        소속: <span id="lobby-branch" style="color: #4682b4; font-weight: bold;">육군</span>
+                    </div>
+                    <div style="font-size: 0.9rem; color: #aaa; margin-top: 3px;">
+                        군자금: <span id="lobby-money" style="color: #2e8b57; font-weight: bold;">0</span> G
+                    </div>
+                    <!-- EXP Bar -->
+                    <div style="margin-top: 10px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #888; margin-bottom: 3px;">
+                            <span>EXP 훈련도</span>
+                            <span><span id="lobby-exp">0</span> / <span id="lobby-exp-max">100</span></span>
+                        </div>
+                        <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                            <div id="lobby-exp-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, #22c55e, #10b981); transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Menu Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+                <button id="btn-lobby-inventory" style="background: rgba(70,130,180,0.15); border: 1px solid #4682b4; color: #fff; padding: 15px; border-radius: 12px; font-size: 1rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; font-family: 'Pretendard', sans-serif;">
+                    <span style="font-size: 1.5rem;">🎒</span>
+                    <span style="font-weight: bold;">개인 장비함 (가방)</span>
+                </button>
+                <button id="btn-lobby-shop" style="background: rgba(46,139,87,0.15); border: 1px solid #2e8b57; color: #fff; padding: 15px; border-radius: 12px; font-size: 1rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; font-family: 'Pretendard', sans-serif;">
+                    <span style="font-size: 1.5rem;">🛒</span>
+                    <span style="font-weight: bold;">PX 군인 상점</span>
+                </button>
+                <button id="btn-lobby-id-card" style="background: rgba(44,62,80,0.15); border: 1px solid #2c3e50; color: #fff; padding: 15px; border-radius: 12px; font-size: 1rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; font-family: 'Pretendard', sans-serif;">
+                    <span style="font-size: 1.5rem;">🪖</span>
+                    <span style="font-weight: bold;">인식표 (군번줄)</span>
+                </button>
+                <button id="btn-lobby-leaderboard" style="background: rgba(180,83,9,0.15); border: 1px solid #b45309; color: #fff; padding: 15px; border-radius: 12px; font-size: 1rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; font-family: 'Pretendard', sans-serif;">
+                    <span style="font-size: 1.5rem;">🏆</span>
+                    <span style="font-weight: bold;">명예의 전당 (랭킹)</span>
+                </button>
+            </div>
+            
+            <!-- Deploy Button -->
+            <button id="btn-deploy-field" style="background: linear-gradient(135deg, #cd7f32 0%, #8b4513 100%); color: #fff; border: 2px solid #deb887; padding: 18px 30px; border-radius: 15px; font-size: 1.35rem; font-weight: 900; cursor: pointer; box-shadow: 0 0 20px rgba(205,127,50,0.6); width: 100%; font-family: 'Pretendard', sans-serif;">
+                ⚔️ 연병장 대원 출동 (훈련 시작)
+            </button>
+            
+            <button class="secondary" onclick="location.reload()" style="margin-top: 15px; background: transparent; border: 1px solid #444; color: #888; font-size: 0.9rem; padding: 10px; width: 100%; border-radius: 8px;">
+                ◀ 로그아웃 (처음 화면으로)
+            </button>
+        </div>
+    </div>
+
     <!-- 4. 3D GAME SCREEN -->
     <div id="game-screen" class="screen">
         <canvas id="game-canvas"></canvas>
@@ -1017,8 +1148,56 @@
         <div id="crosshair">⊕</div>
 
         <!-- Weather Overlay -->
-        <div id="weather-overlay"></div>
         <div id="weather-hud">🌤️ 낙이 낙습니다</div>
+
+        <!-- Military ID Card Modal -->
+        <div id="id-card-modal" class="modal-overlay">
+            <div class="big-modal-box"
+                style="width: 420px; background: linear-gradient(135deg, #151515 0%, #252525 100%); border: 2px solid var(--accent); padding: 0; overflow: hidden; position: relative; box-shadow: 0 0 30px rgba(0,0,0,0.8);">
+                <div
+                    style="background: var(--accent); padding: 12px; text-align: center; font-weight: 900; color: #000; font-size: 1.1rem; letter-spacing: 2px;">
+                    군 경력 증명서 (MILITARY ID)</div>
+                <div style="padding: 25px; display: flex; gap: 20px;">
+                    <div id="id-photo"
+                        style="width: 110px; height: 145px; background: #222; border: 1px solid #444; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+                        🪖</div>
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px;">
+                            <span style="color: #666; font-size: 0.7rem; font-weight: 700;">성명 (NAME)</span>
+                            <div id="id-name" style="font-size: 1.4rem; font-weight: 900; color: #fff;">-</div>
+                        </div>
+                        <div style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px;">
+                            <span style="color: #666; font-size: 0.7rem; font-weight: 700;">계급 (RANK)</span>
+                            <div id="id-rank" style="font-size: 1.1rem; color: var(--accent); font-weight: 800;">-</div>
+                        </div>
+                        <div style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px;">
+                            <span style="color: #666; font-size: 0.7rem; font-weight: 700;">군번 (SERIAL NO.)</span>
+                            <div id="id-serial" style="font-size: 0.85rem; color: #aaa; font-family: 'Courier New', Courier, monospace;">-</div>
+                        </div>
+                        <div>
+                            <span style="color: #666; font-size: 0.7rem; font-weight: 700;">소속 (BRANCH)</span>
+                            <div id="id-branch" style="font-size: 0.9rem; color: #eee; font-weight: 600;">육군 제1보병사단</div>
+                        </div>
+                    </div>
+                </div>
+                <div style="padding: 15px 25px; background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.05);">
+                    <div style="color: #555; font-size: 0.7rem; font-weight: 800; margin-bottom: 8px; text-transform: uppercase;">Achievements & Badges</div>
+                    <div id="id-badges" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+                </div>
+                <div style="padding: 10px; text-align: center; font-size: 0.65rem; color: #444; border-top: 1px solid rgba(255,255,255,0.03);">대한민국 국방부 장관 인증 (MINISTRY OF DEFENSE)</div>
+                <button class="btn"
+                    style="position: absolute; top: 10px; right: 10px; width: 25px; height: 25px; padding: 0; background: rgba(0,0,0,0.5); border: none; border-radius: 50%; color: #fff; line-height: 25px;"
+                    onclick="document.getElementById('id-card-modal').style.display='none'">×</button>
+            </div>
+        </div>
+
+        <!-- Tutorial UI -->
+        <div id="tutorial-overlay" style="display: none; position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 500px; z-index: 1000; pointer-events: none;">
+            <div style="background: rgba(0,0,0,0.85); color: white; padding: 20px; border-radius: 15px; border-left: 5px solid var(--accent); backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                <div style="font-weight: 900; color: var(--accent); margin-bottom: 8px; font-size: 0.9rem;">👮 AI 조교 (Instructor)</div>
+                <div id="tutorial-text" style="font-size: 1rem; line-height: 1.5; font-weight: 500;">훈련병! 내 뒤를 따라와서 교육을 받도록 한다!</div>
+            </div>
+        </div>
 
         <!-- Minimap -->
         <div id="minimap"><canvas id="minimap-canvas" width="160" height="160"></canvas></div>
@@ -1055,13 +1234,7 @@
             🎙️ 무전 송신 중...
         </div>
 
-        <!-- Admin Control (General ree1203 only) -->
-        <div id="admin-panel">
-            <h3 style="margin: 0 0 10px 0; color: #ffcccc;">대장 지휘 통제실</h3>
-            <input type="text" id="jail-target" placeholder="영창 보낼 아이디" style="width: 150px; padding: 8px;">
-            <input type="number" id="jail-time" placeholder="분" value="10" style="width: 50px; padding: 8px;">
-            <button id="btn-send-jail" style="background: #ff0000; padding: 10px; margin-top: 10px;">영창 보내기</button>
-        </div>
+
 
         <!-- Mobile Controls -->
         <div id="joystick-container">
@@ -1072,9 +1245,10 @@
         
         <div id="action-buttons">
             <button id="btn-training" class="action-btn">훈련<br>(미션)</button>
-            <button id="btn-promote" class="action-btn" style="background: #cd7f32;">진급<br>시험</button>
             <button id="btn-shop" class="action-btn" style="background: #2e8b57;">PX<br>상점</button>
             <button id="btn-inventory" class="action-btn" style="background: #4682b4;">내<br>가방</button>
+            <button id="btn-id-card" class="action-btn" style="background: #2c3e50;">군번줄<br>🪖</button>
+            <button id="btn-tutorial" class="action-btn" style="background: #8b0000;">조교<br>호출</button>
             <button id="btn-official-chat" class="action-btn" style="background: #5865F2;">공식<br>채팅방</button>
             <button id="btn-missions" class="action-btn" style="background: #059669;">일일<br>미션</button>
             <button id="btn-leaderboard" class="action-btn" style="background: #b45309;">명예<br>전당</button>
@@ -1469,15 +1643,45 @@
             </div>
         </div>
 
+        <!-- Admin Control (General ree1203 only) - Moved to top-level body for always-visible Lobby & Game Overlay -->
+        <div id="admin-panel" style="display: none; position: fixed; top: 100px; left: 20px; z-index: 10005; background: rgba(15, 25, 15, 0.9); border: 2px solid #556b2f; box-shadow: 0 0 25px rgba(85,107,47,0.6); padding: 20px; border-radius: 15px; width: 260px; backdrop-filter: blur(8px); color: #fff;">
+            <h3 style="margin: 0 0 15px 0; color: #deb887; text-align: center; font-weight: 900; letter-spacing: 1px; text-shadow: 0 0 5px rgba(222,184,135,0.5);">⚡ 대장 지휘 통제실</h3>
+            
+            <!-- Target User Selector -->
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.75rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 5px;">📍 대상 플레이어 지정</label>
+                <select id="admin-target-user" style="width: 100%; padding: 8px; background: #223022; color: #fff; border: 1px solid #556b2f; border-radius: 6px; font-weight: bold;"></select>
+            </div>
+
+            <!-- Grid of Actions -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
+                <button id="btn-admin-siren" class="btn" style="margin: 0; padding: 10px; background: #b91c1c; font-size: 0.8rem; font-weight: bold; border-radius: 8px;">🚨 비상소집</button>
+                <button id="btn-admin-lightning" class="btn" style="margin: 0; padding: 10px; background: #d97706; font-size: 0.8rem; font-weight: bold; border-radius: 8px;">⚡ 번개벌</button>
+                <button id="btn-admin-cctv" class="btn" style="margin: 0; padding: 10px; background: #4f46e5; font-size: 0.8rem; font-weight: bold; border-radius: 8px;">🛰️ CCTV감시</button>
+                <button id="btn-admin-crate" class="btn" style="margin: 0; padding: 10px; background: #059669; font-size: 0.8rem; font-weight: bold; border-radius: 8px;">📦 보급투하</button>
+                <button id="btn-admin-time" class="btn" style="margin: 0; padding: 10px; background: #2563eb; font-size: 0.8rem; font-weight: bold; border-radius: 8px;">⏰ 낮밤변경</button>
+                <button id="btn-admin-pardon" class="btn" style="margin: 0; padding: 10px; background: #10b981; font-size: 0.8rem; font-weight: bold; border-radius: 8px;">🔑 특사사면</button>
+            </div>
+
+            <!-- Standard Jail -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
+                <label style="font-size: 0.75rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 5px;">⛓️ 강제 영창 송치</label>
+                <div style="display: flex; gap: 6px;">
+                    <input type="number" id="jail-time" placeholder="분" value="10" style="width: 60px; padding: 8px; background: #223022; border: 1px solid #556b2f; color: #fff; border-radius: 6px; text-align: center;">
+                    <button id="btn-send-jail" class="btn" style="margin: 0; flex: 1; background: #ef4444; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; padding: 8px;">송치하기</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Scripts -->
         <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
         <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
         <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-        <script src="config.js"></script>
+        <script src="config.js?v=105"></script>
 
-        <script src="military_game.js"></script>
+        <script src="military_game.js?v=105"></script>
 </body>
 
 </html>
