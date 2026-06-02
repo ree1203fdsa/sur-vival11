@@ -81,13 +81,7 @@ const initAuth = () => {
             initAdminDashboard();
             return;
         }
-        if (uid === 'minhoo2570' && pw === 'hooooooo') {
-            STATE.currentUser = { username: uid, name: '김민후', rank: '준장', branch: '육군', role: 'admin', uid: 'admin_minhoo' };
-            db.ref('users/admin_minhoo').set(STATE.currentUser);
-            startGame();
-            return;
-        }
-        if (uid === '한sapce' && pw === '1130') {
+        if (uid === '한Space' && pw === '1130') {
             STATE.currentUser = { username: uid, name: '한우주', rank: '준장', branch: '해병대', role: 'admin', uid: 'admin_han' };
             db.ref('users/admin_han').set(STATE.currentUser);
             startGame();
@@ -253,9 +247,12 @@ const showLobby = () => {
                 showToast("⚔️ 작전 구역에 배치되었습니다. 대기선으로 이동하세요!", "#deb887");
                 
                 // Request pointer lock for PC mouse looking
+                const isTouch = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
                 const canvas = document.getElementById('game-canvas');
-                if (canvas && typeof canvas.requestPointerLock === 'function' && !window.joystickActive) {
-                    canvas.requestPointerLock();
+                if (!isTouch && canvas && typeof canvas.requestPointerLock === 'function' && !window.joystickActive) {
+                    try {
+                        canvas.requestPointerLock();
+                    } catch (e) {}
                 }
 
                 // Ensure Admin Panel is active on deployment
@@ -619,8 +616,8 @@ const initChat = () => {
             if (!m) return;
             const key = child.key;
 
-            // Check if current user is Lee Ju-ram (ree1203) or Han Woo-ju (한sapce)
-            const canDelete = STATE.currentUser && ['ree1203', '한sapce'].includes(STATE.currentUser.username);
+            // Check if current user is Lee Ju-ram (ree1203) or Han Woo-ju (한Space)
+            const canDelete = STATE.currentUser && ['ree1203', '한Space'].includes(STATE.currentUser.username);
             const delBtn = canDelete ? `<span style="color: #ff4d4d; margin-left: 8px; cursor: pointer; font-weight: 900; user-select: none;" onclick="deleteChatMessage('${key}')" title="메시지 삭제">❌</span>` : '';
 
             const div = document.createElement('div');
@@ -640,7 +637,7 @@ const initChat = () => {
         if (!text) return;
 
         // Admin Commands
-        const isAdmin = ['ree1203', 'minhoo2570', '한sapce'].includes(STATE.currentUser.username);
+        const isAdmin = ['ree1203', '한Space'].includes(STATE.currentUser.username);
         if (isAdmin) {
             const cmd = text.trim();
             // 1. Jail Command (Allowed for all admins)
@@ -653,8 +650,8 @@ const initChat = () => {
                 input.value = ''; return;
             }
 
-            // 2. Rank Command (ree1203, 한sapce only)
-            if (['ree1203', '한sapce'].includes(STATE.currentUser.username)) {
+            // 2. Rank Command (ree1203, 한Space only)
+            if (['ree1203', '한Space'].includes(STATE.currentUser.username)) {
                 for (let r of RANKS) {
                     if (cmd.startsWith(r + '(') && cmd.endsWith(')')) {
                         executeAdminCommand('rank', cmd.substring(r.length + 1, cmd.length - 1), r);
@@ -663,8 +660,8 @@ const initChat = () => {
                 }
             }
 
-            // 3. Special: Money/Clear (한sapce, ree1203 only)
-            if (['ree1203', '한sapce'].includes(STATE.currentUser.username)) {
+            // 3. Special: Money/Clear (한Space, ree1203 only)
+            if (['ree1203', '한Space'].includes(STATE.currentUser.username)) {
                 if (cmd.startsWith('머니(') && cmd.endsWith(')')) {
                     const parts = cmd.substring(3, cmd.length - 1).split(',');
                     executeAdminCommand('money', parts[0].trim(), parseInt(parts[1]));
@@ -1119,16 +1116,856 @@ const initChat = () => {
         ground.receiveShadow = true;
         scene.add(ground);
 
+        // --- Digital Camo & Player Modeling ---
+        const generateCamoTexture = (baseColorHex) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            const r = (baseColorHex >> 16) & 255;
+            const g = (baseColorHex >> 8) & 255;
+            const b = baseColorHex & 255;
+            
+            ctx.fillStyle = `rgb(${r},${g},${b})`;
+            ctx.fillRect(0, 0, 128, 128);
+            
+            for(let i=0; i<300; i++) {
+                const x = Math.floor(Math.random() * 16) * 8;
+                const y = Math.floor(Math.random() * 16) * 8;
+                const w = (Math.floor(Math.random() * 3) + 1) * 8;
+                const h = (Math.floor(Math.random() * 3) + 1) * 8;
+                const type = Math.random();
+                if(type > 0.6) ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                else if(type > 0.3) ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                else ctx.fillStyle = `rgba(${r/2},${g/2},${b/2}, 0.8)`;
+                ctx.fillRect(x, y, w, h);
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.magFilter = THREE.NearestFilter;
+            return tex;
+        };
+
+        const camoMaterials = {};
+        const getCamoMaterial = (colorHex) => {
+            if(!camoMaterials[colorHex]) camoMaterials[colorHex] = new THREE.MeshStandardMaterial({ map: generateCamoTexture(colorHex), roughness: 0.9 });
+            return camoMaterials[colorHex];
+        };
+
+        // --- Custom Procedural Textures ---
+        const generateGridWindowTexture = (cols, rows, bgColor = '#1e293b', winColor = '#fffae0') => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, 256, 256);
+            
+            const cellW = 256 / cols;
+            const cellH = 256 / rows;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    ctx.fillStyle = winColor;
+                    ctx.fillRect(c * cellW + cellW * 0.2, r * cellH + cellH * 0.2, cellW * 0.6, cellH * 0.6);
+                    ctx.strokeStyle = '#111111';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(c * cellW + cellW * 0.2, r * cellH + cellH * 0.2, cellW * 0.6, cellH * 0.6);
+                }
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        };
+
+        const generateHazardTexture = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffcc00';
+            ctx.fillRect(0, 0, 64, 64);
+            ctx.fillStyle = '#111111';
+            ctx.beginPath();
+            ctx.moveTo(0, 0); ctx.lineTo(32, 0); ctx.lineTo(0, 32); ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(32, 64); ctx.lineTo(64, 64); ctx.lineTo(64, 32); ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(32, 0); ctx.lineTo(64, 0); ctx.lineTo(0, 64); ctx.lineTo(0, 32); ctx.fill();
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(4, 1);
+            return tex;
+        };
+
+        const generateBrickTexture = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#8b3a3a';
+            ctx.fillRect(0, 0, 128, 128);
+            ctx.strokeStyle = '#cccccc';
+            ctx.lineWidth = 1;
+            for (let y = 0; y < 128; y += 16) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(128, y);
+                ctx.stroke();
+                const shift = (y / 16) % 2 === 0 ? 0 : 16;
+                for (let x = shift; x < 128; x += 32) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x, y + 16);
+                    ctx.stroke();
+                }
+            }
+            return new THREE.CanvasTexture(canvas);
+        };
+
+        const generateWoodTexture = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#b58a55';
+            ctx.fillRect(0, 0, 128, 128);
+            ctx.strokeStyle = '#6b4c27';
+            ctx.lineWidth = 2;
+            for (let x = 0; x < 128; x += 32) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, 128);
+                ctx.stroke();
+            }
+            ctx.strokeStyle = 'rgba(107, 76, 39, 0.3)';
+            for (let i = 0; i < 4; i++) {
+                ctx.beginPath();
+                ctx.arc(i * 32 + 16, Math.random() * 128, 12, 0, Math.PI, true);
+                ctx.stroke();
+            }
+            return new THREE.CanvasTexture(canvas);
+        };
+
+        const generateLogoTexture = (text, bgColor = '#113355', textColor = '#ffffff', fontSize = 28) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, 256, 64);
+            ctx.fillStyle = textColor;
+            ctx.font = `bold ${fontSize}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 128, 32);
+            return new THREE.CanvasTexture(canvas);
+        };
+
+        const createStyledBuilding = (name, data) => {
+            const group = new THREE.Group();
+            const w = data.size[0];
+            const h = data.size[1];
+            const d = data.size[2];
+            
+            const wallMat = new THREE.MeshStandardMaterial({ color: data.color, roughness: 0.7 });
+            const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.3 });
+            const glassMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, roughness: 0.1, transparent: true, opacity: 0.6 });
+            const roofRedMat = new THREE.MeshStandardMaterial({ color: 0x8b3a3a, roughness: 0.8 });
+            
+            switch (name) {
+                case "위병소": {
+                    const booth = new THREE.Mesh(new THREE.BoxGeometry(4, h, 4), wallMat);
+                    booth.position.set(-2, h/2, 0);
+                    booth.castShadow = true; booth.receiveShadow = true;
+                    group.add(booth);
+                    
+                    const win = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.2, 4.1), glassMat);
+                    win.position.set(-2, h/2 + 0.5, 0);
+                    group.add(win);
+                    
+                    const pillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, h), darkMetalMat);
+                    pillarL.position.set(3, h/2, -2);
+                    pillarL.castShadow = true;
+                    group.add(pillarL);
+                    const pillarR = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, h), darkMetalMat);
+                    pillarR.position.set(3, h/2, 2);
+                    pillarR.castShadow = true;
+                    group.add(pillarR);
+                    
+                    const roof = new THREE.Mesh(new THREE.BoxGeometry(w, 0.4, d), roofRedMat);
+                    roof.position.set(0, h, 0);
+                    roof.castShadow = true;
+                    group.add(roof);
+                    
+                    const barrierJoint = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.6), darkMetalMat);
+                    barrierJoint.position.set(1.5, 1.2, 0);
+                    group.add(barrierJoint);
+                    
+                    const barrierBar = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 6.5), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 }));
+                    barrierBar.rotation.x = Math.PI / 2;
+                    barrierBar.position.set(1.5, 1.2, 3.25);
+                    barrierBar.castShadow = true;
+                    group.add(barrierBar);
+                    
+                    for (let zOffset = 1; zOffset < 6; zOffset += 1.5) {
+                        const redStripe = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.3), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
+                        redStripe.rotation.x = Math.PI / 2;
+                        redStripe.position.set(1.5, 1.2, zOffset);
+                        group.add(redStripe);
+                    }
+                    break;
+                }
+                
+                case "연병장": {
+                    const trackMat = new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.9 });
+                    const centerFieldMat = new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.95 });
+                    
+                    const baseTrack = new THREE.Mesh(new THREE.PlaneGeometry(w, d), trackMat);
+                    baseTrack.rotation.x = -Math.PI / 2;
+                    baseTrack.receiveShadow = true;
+                    group.add(baseTrack);
+                    
+                    const innerField = new THREE.Mesh(new THREE.PlaneGeometry(w - 12, d - 12), centerFieldMat);
+                    innerField.rotation.x = -Math.PI / 2;
+                    innerField.position.y = 0.02;
+                    innerField.receiveShadow = true;
+                    group.add(innerField);
+                    
+                    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                    const innerLine = new THREE.Mesh(new THREE.PlaneGeometry(w - 14, d - 14), lineMat);
+                    innerLine.rotation.x = -Math.PI / 2;
+                    innerLine.position.y = 0.03;
+                    group.add(innerLine);
+                    const innerLineMask = new THREE.Mesh(new THREE.PlaneGeometry(w - 14.4, d - 14.4), centerFieldMat);
+                    innerLineMask.rotation.x = -Math.PI / 2;
+                    innerLineMask.position.y = 0.04;
+                    group.add(innerLineMask);
+                    
+                    const goalWidth = 10, goalHeight = 4;
+                    const goalMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+                    
+                    const makeSoccerGoal = (zPos, ry) => {
+                        const g = new THREE.Group();
+                        const top = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, goalWidth), goalMat);
+                        top.rotation.z = Math.PI / 2;
+                        top.position.y = goalHeight;
+                        g.add(top);
+                        const left = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, goalHeight), goalMat);
+                        left.position.set(-goalWidth/2, goalHeight/2, 0);
+                        g.add(left);
+                        const right = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, goalHeight), goalMat);
+                        right.position.set(goalWidth/2, goalHeight/2, 0);
+                        g.add(right);
+                        
+                        g.position.set(0, 0, zPos);
+                        g.rotation.y = ry;
+                        return g;
+                    };
+                    group.add(makeSoccerGoal(-d/2 + 10, 0));
+                    group.add(makeSoccerGoal(d/2 - 10, Math.PI));
+                    break;
+                }
+                
+                case "본청": {
+                    const hqWallMat = new THREE.MeshStandardMaterial({ color: 0x3e4a42, roughness: 0.6 });
+                    const wingWallMat = new THREE.MeshStandardMaterial({ color: 0x2d3a33, roughness: 0.7 });
+                    
+                    const winTex = generateGridWindowTexture(12, 6, '#1a231e', '#e0ffd5');
+                    const windowMat = new THREE.MeshStandardMaterial({ map: winTex, roughness: 0.3 });
+                    
+                    const mainBlock = new THREE.Mesh(new THREE.BoxGeometry(w * 0.5, h, d * 0.9), hqWallMat);
+                    mainBlock.position.y = h / 2;
+                    mainBlock.castShadow = true; mainBlock.receiveShadow = true;
+                    group.add(mainBlock);
+                    
+                    const wingL = new THREE.Mesh(new THREE.BoxGeometry(w * 0.25, h * 0.8, d * 0.8), wingWallMat);
+                    wingL.position.set(-w * 0.375, (h * 0.8)/2, 0);
+                    wingL.castShadow = true; wingL.receiveShadow = true;
+                    group.add(wingL);
+                    
+                    const wingR = new THREE.Mesh(new THREE.BoxGeometry(w * 0.25, h * 0.8, d * 0.8), wingWallMat);
+                    wingR.position.set(w * 0.375, (h * 0.8)/2, 0);
+                    wingR.castShadow = true; wingR.receiveShadow = true;
+                    group.add(wingR);
+                    
+                    const windowPanelF = new THREE.Mesh(new THREE.BoxGeometry(w * 0.45, h * 0.7, 0.2), windowMat);
+                    windowPanelF.position.set(0, h * 0.5, d * 0.45 + 0.1);
+                    group.add(windowPanelF);
+                    
+                    const windowPanelL = new THREE.Mesh(new THREE.BoxGeometry(w * 0.22, h * 0.6, 0.2), windowMat);
+                    windowPanelL.position.set(-w * 0.375, h * 0.4, d * 0.4 + 0.1);
+                    group.add(windowPanelL);
+                    
+                    const windowPanelR = new THREE.Mesh(new THREE.BoxGeometry(w * 0.22, h * 0.6, 0.2), windowMat);
+                    windowPanelR.position.set(w * 0.375, h * 0.4, d * 0.4 + 0.1);
+                    group.add(windowPanelR);
+                    
+                    const columnMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.5 });
+                    for (let xOffset of [-8, -4, 4, 8]) {
+                        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, h), columnMat);
+                        col.position.set(xOffset, h/2, d * 0.45 + 1.2);
+                        col.castShadow = true;
+                        group.add(col);
+                    }
+                    
+                    const porticoRoof = new THREE.Mesh(new THREE.BoxGeometry(20, 0.6, 3), hqWallMat);
+                    porticoRoof.position.set(0, h, d * 0.45 + 0.5);
+                    porticoRoof.castShadow = true;
+                    group.add(porticoRoof);
+                    
+                    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 8), new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9 }));
+                    pole.position.set(0, h + 4, 0);
+                    group.add(pole);
+                    
+                    const flagTex = generateLogoTexture('태극기/군기', '#002f6c', '#ffffff', 20);
+                    const flag = new THREE.Mesh(new THREE.BoxGeometry(3, 2, 0.05), new THREE.MeshStandardMaterial({ map: flagTex }));
+                    flag.position.set(1.5, h + 7, 0);
+                    group.add(flag);
+                    break;
+                }
+                
+                case "생활관": {
+                    const camoMat = getCamoMaterial(data.color);
+                    
+                    const dorm = new THREE.Mesh(new THREE.BoxGeometry(w, h * 0.7, d), camoMat);
+                    dorm.position.y = (h * 0.7) / 2;
+                    dorm.castShadow = true; dorm.receiveShadow = true;
+                    dorm.userData.isCamo = true;
+                    group.add(dorm);
+                    
+                    const roofSide1 = new THREE.Mesh(new THREE.BoxGeometry(w * 0.6, 0.5, d + 2), roofRedMat);
+                    roofSide1.rotation.z = 0.4;
+                    roofSide1.position.set(-w*0.25, h * 0.85, 0);
+                    roofSide1.castShadow = true;
+                    group.add(roofSide1);
+                    
+                    const roofSide2 = new THREE.Mesh(new THREE.BoxGeometry(w * 0.6, 0.5, d + 2), roofRedMat);
+                    roofSide2.rotation.z = -0.4;
+                    roofSide2.position.set(w*0.25, h * 0.85, 0);
+                    roofSide2.castShadow = true;
+                    group.add(roofSide2);
+                    
+                    const roofCenter = new THREE.Mesh(new THREE.BoxGeometry(w - 2, 2.5, d), camoMat);
+                    roofCenter.position.set(0, h * 0.8, 0);
+                    roofCenter.userData.isCamo = true;
+                    group.add(roofCenter);
+                    
+                    const barrWinTex = generateGridWindowTexture(8, 2, '#202020', '#fffae0');
+                    const barrWinMat = new THREE.MeshStandardMaterial({ map: barrWinTex, roughness: 0.5 });
+                    
+                    const winL = new THREE.Mesh(new THREE.BoxGeometry(0.2, h * 0.35, d * 0.8), barrWinMat);
+                    winL.position.set(-w/2 - 0.1, h * 0.4, 0);
+                    winL.rotation.y = Math.PI / 2;
+                    group.add(winL);
+                    
+                    const winR = new THREE.Mesh(new THREE.BoxGeometry(0.2, h * 0.35, d * 0.8), barrWinMat);
+                    winR.position.set(w/2 + 0.1, h * 0.4, 0);
+                    winR.rotation.y = -Math.PI / 2;
+                    group.add(winR);
+                    
+                    const doorMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.6 });
+                    const doorF = new THREE.Mesh(new THREE.BoxGeometry(2.5, 4.5, 0.2), doorMat);
+                    doorF.position.set(0, 2.25, d/2 + 0.1);
+                    group.add(doorF);
+                    break;
+                }
+                
+                case "병영식당": {
+                    const brickTex = generateBrickTexture();
+                    const messWallMat = new THREE.MeshStandardMaterial({ map: brickTex, roughness: 0.7 });
+                    
+                    const mainHall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), messWallMat);
+                    mainHall.position.y = h / 2;
+                    mainHall.castShadow = true; mainHall.receiveShadow = true;
+                    group.add(mainHall);
+                    
+                    const trimMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.5, roughness: 0.2 });
+                    const roofTrim = new THREE.Mesh(new THREE.BoxGeometry(w + 1, 0.6, d + 1), trimMat);
+                    roofTrim.position.set(0, h, 0);
+                    group.add(roofTrim);
+                    
+                    const largeGlassTex = generateGridWindowTexture(4, 1, '#1a1a24', '#bbf2ff');
+                    const largeGlassMat = new THREE.MeshStandardMaterial({ map: largeGlassTex, roughness: 0.2 });
+                    
+                    const winL = new THREE.Mesh(new THREE.BoxGeometry(w * 0.8, h * 0.5, 0.2), largeGlassMat);
+                    winL.position.set(0, h * 0.45, d/2 + 0.1);
+                    group.add(winL);
+                    
+                    const winR = new THREE.Mesh(new THREE.BoxGeometry(w * 0.8, h * 0.5, 0.2), largeGlassMat);
+                    winR.position.set(0, h * 0.45, -d/2 - 0.1);
+                    group.add(winR);
+                    
+                    const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 3), darkMetalMat);
+                    chimney.position.set(-w/3, h + 1.5, -d/3);
+                    group.add(chimney);
+                    const chimneyCap = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.4), darkMetalMat);
+                    chimneyCap.position.set(-w/3, h + 3, -d/3);
+                    group.add(chimneyCap);
+                    
+                    const signTex = generateLogoTexture('🍴 식 당 (MESS HALL)', '#8b0000', '#ffffff', 24);
+                    const sign = new THREE.Mesh(new THREE.BoxGeometry(8, 2, 0.2), new THREE.MeshStandardMaterial({ map: signTex }));
+                    sign.position.set(-w * 0.2, h * 0.7, d/2 + 0.2);
+                    group.add(sign);
+                    break;
+                }
+                
+                case "행정실": {
+                    const panelMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.8 });
+                    const adminBlock = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), panelMat);
+                    adminBlock.position.y = h / 2;
+                    adminBlock.castShadow = true; adminBlock.receiveShadow = true;
+                    group.add(adminBlock);
+                    
+                    const officeWinTex = generateGridWindowTexture(6, 2, '#15202b', '#cceeff');
+                    const officeWinMat = new THREE.MeshStandardMaterial({ map: officeWinTex, roughness: 0.3 });
+                    
+                    const frontWin = new THREE.Mesh(new THREE.BoxGeometry(w * 0.8, h * 0.4, 0.2), officeWinMat);
+                    frontWin.position.set(0, h * 0.6, d/2 + 0.1);
+                    group.add(frontWin);
+                    
+                    const doors = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 0.2), glassMat);
+                    doors.position.set(0, 2.5, d/2 + 0.15);
+                    group.add(doors);
+                    const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(4.2, 5.2, 0.1), darkMetalMat);
+                    doorFrame.position.set(0, 2.6, d/2 + 0.1);
+                    group.add(doorFrame);
+                    
+                    const acUnit = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1, 1), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
+                    acUnit.position.set(-w/2 + 2, h * 0.7, 0);
+                    group.add(acUnit);
+                    break;
+                }
+                
+                case "사격장": {
+                    const rangeFloorMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9 });
+                    const woodMat = new THREE.MeshStandardMaterial({ map: generateWoodTexture(), roughness: 0.8 });
+                    
+                    const floor = new THREE.Mesh(new THREE.BoxGeometry(w, 0.2, d), rangeFloorMat);
+                    floor.position.y = 0.1;
+                    floor.receiveShadow = true;
+                    group.add(floor);
+                    
+                    const backWall = new THREE.Mesh(new THREE.BoxGeometry(w, 6, 1), rangeFloorMat);
+                    backWall.position.set(0, 3, -d/2 + 0.5);
+                    backWall.castShadow = true; backWall.receiveShadow = true;
+                    group.add(backWall);
+                    
+                    const canopyRoof = new THREE.Mesh(new THREE.BoxGeometry(w + 1, 0.4, 10), new THREE.MeshStandardMaterial({ color: 0x5a5a5a, roughness: 0.7 }));
+                    canopyRoof.position.set(0, 5, d/2 - 5);
+                    group.add(canopyRoof);
+                    
+                    for (let xOffset of [-w/2 + 1, -w/4, 0, w/4, w/2 - 1]) {
+                        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 5), darkMetalMat);
+                        col.position.set(xOffset, 2.5, d/2 - 9.8);
+                        col.castShadow = true;
+                        group.add(col);
+                        
+                        const backCol = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 5), darkMetalMat);
+                        backCol.position.set(xOffset, 2.5, d/2 - 0.2);
+                        backCol.castShadow = true;
+                        group.add(backCol);
+                    }
+                    
+                    for (let i = -2; i <= 2; i++) {
+                        const laneX = i * 7.5;
+                        const divider = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.8, 4), woodMat);
+                        divider.position.set(laneX + 3.75, 0.9, d/2 - 5);
+                        divider.castShadow = true;
+                        group.add(divider);
+                        
+                        const table = new THREE.Mesh(new THREE.BoxGeometry(3, 0.8, 1), woodMat);
+                        table.position.set(laneX, 0.8, d/2 - 7);
+                        table.castShadow = true;
+                        group.add(table);
+                        
+                        const targetFrame = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3), darkMetalMat);
+                        targetFrame.position.set(laneX, 1.5, -d/2 + 5);
+                        group.add(targetFrame);
+                        
+                        const targetPlateMat = new THREE.MeshStandardMaterial({
+                            map: generateLogoTexture('🎯', '#ffffff', '#ff0000', 36),
+                            roughness: 0.8
+                        });
+                        const targetPlate = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 0.05), targetPlateMat);
+                        targetPlate.position.set(laneX, 2.4, -d/2 + 5);
+                        targetPlate.castShadow = true;
+                        group.add(targetPlate);
+                    }
+                    break;
+                }
+                
+                case "강당": {
+                    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x8b8b8b, roughness: 0.8 });
+                    const archMat = new THREE.MeshStandardMaterial({ color: 0xa9a9a9, roughness: 0.5 });
+                    
+                    const baseBlock = new THREE.Mesh(new THREE.BoxGeometry(w, h * 0.6, d), stoneMat);
+                    baseBlock.position.y = (h * 0.6) / 2;
+                    baseBlock.castShadow = true; baseBlock.receiveShadow = true;
+                    group.add(baseBlock);
+                    
+                    const dome = new THREE.Mesh(new THREE.CylinderGeometry(w/2, w/2, d, 24), roofRedMat);
+                    dome.rotation.x = Math.PI / 2;
+                    dome.scale.y = 1.0;
+                    dome.scale.z = 0.7;
+                    dome.position.set(0, h * 0.6, 0);
+                    dome.castShadow = true;
+                    group.add(dome);
+                    
+                    const arch = new THREE.Mesh(new THREE.BoxGeometry(w * 0.6, h * 0.7, 2), archMat);
+                    arch.position.set(0, (h * 0.7)/2, d/2 + 0.8);
+                    arch.castShadow = true;
+                    group.add(arch);
+                    
+                    const archCutout = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.22, w * 0.22, 3, 16), darkMetalMat);
+                    archCutout.rotation.x = Math.PI / 2;
+                    archCutout.position.set(0, 3, d/2 + 0.8);
+                    group.add(archCutout);
+                    
+                    const slotWinTex = generateGridWindowTexture(1, 4, '#101015', '#ffd700');
+                    const slotWinMat = new THREE.MeshStandardMaterial({ map: slotWinTex, roughness: 0.4 });
+                    for (let xOffset of [-w*0.35, -w*0.2, w*0.2, w*0.35]) {
+                        const slit = new THREE.Mesh(new THREE.BoxGeometry(1.2, h * 0.4, 0.2), slotWinMat);
+                        slit.position.set(xOffset, h * 0.3, d/2 + 0.1);
+                        group.add(slit);
+                    }
+                    break;
+                }
+                
+                case "유격장": {
+                    const sandMat = new THREE.MeshStandardMaterial({ color: 0xc2b280, roughness: 0.95 });
+                    const woodMat = new THREE.MeshStandardMaterial({ map: generateWoodTexture(), roughness: 0.9 });
+                    
+                    const sand = new THREE.Mesh(new THREE.BoxGeometry(w, 0.2, d), sandMat);
+                    sand.position.y = 0.1;
+                    sand.receiveShadow = true;
+                    group.add(sand);
+                    
+                    const wallPostL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5, 0.4), woodMat);
+                    wallPostL.position.set(-10, 2.5, -10);
+                    group.add(wallPostL);
+                    const wallPostR = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5, 0.4), woodMat);
+                    wallPostR.position.set(10, 2.5, -10);
+                    group.add(wallPostR);
+                    
+                    const climbPlanks = new THREE.Mesh(new THREE.BoxGeometry(20, 3.8, 0.25), woodMat);
+                    climbPlanks.position.set(0, 3.1, -10);
+                    climbPlanks.castShadow = true;
+                    group.add(climbPlanks);
+                    
+                    for (let i = 0; i < 3; i++) {
+                        const beamZ = 5 + i * 5;
+                        const beamPost1 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1), woodMat);
+                        beamPost1.position.set(-8, 0.5, beamZ);
+                        group.add(beamPost1);
+                        const beamPost2 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1), woodMat);
+                        beamPost2.position.set(8, 0.5, beamZ);
+                        group.add(beamPost2);
+                        
+                        const logBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 16), woodMat);
+                        logBeam.rotation.z = Math.PI / 2;
+                        logBeam.position.set(0, 1.0, beamZ);
+                        logBeam.castShadow = true;
+                        group.add(logBeam);
+                    }
+                    
+                    const netFrameMat = new THREE.MeshStandardMaterial({ color: 0x223322 });
+                    for (let zOffset of [-20, -16, -12]) {
+                        const arch = new THREE.Mesh(new THREE.BoxGeometry(15, 1.2, 0.15), netFrameMat);
+                        arch.position.set(0, 0.6, zOffset);
+                        group.add(arch);
+                        const legL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 0.15), netFrameMat);
+                        legL.position.set(-7.5, 0.6, zOffset);
+                        group.add(legL);
+                        const legR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 0.15), netFrameMat);
+                        legR.position.set(7.5, 0.6, zOffset);
+                        group.add(legR);
+                    }
+                    break;
+                }
+                
+                case "탄약고": {
+                    const hazardTex = generateHazardTexture();
+                    const bunkerWallMat = new THREE.MeshStandardMaterial({ color: 0x4f5255, roughness: 0.9 });
+                    
+                    const vault = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bunkerWallMat);
+                    vault.position.y = h/2;
+                    vault.castShadow = true; vault.receiveShadow = true;
+                    group.add(vault);
+                    
+                    const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(w*0.45, h*0.7, 0.3), bunkerWallMat);
+                    doorFrame.position.set(0, (h*0.7)/2, d/2 + 0.15);
+                    group.add(doorFrame);
+                    
+                    const leftDoor = new THREE.Mesh(new THREE.BoxGeometry(w*0.2, h*0.62, 0.1), new THREE.MeshStandardMaterial({ map: hazardTex }));
+                    leftDoor.position.set(-w*0.1, (h*0.62)/2, d/2 + 0.25);
+                    group.add(leftDoor);
+                    
+                    const rightDoor = new THREE.Mesh(new THREE.BoxGeometry(w*0.2, h*0.62, 0.1), new THREE.MeshStandardMaterial({ map: hazardTex }));
+                    rightDoor.position.set(w*0.1, (h*0.62)/2, d/2 + 0.25);
+                    group.add(rightDoor);
+                    
+                    const signTex = generateLogoTexture('⚠️ 화약류·폭발물 경고', '#ff3300', '#ffffff', 20);
+                    const dangerSign = new THREE.Mesh(new THREE.BoxGeometry(7, 1.5, 0.1), new THREE.MeshStandardMaterial({ map: signTex }));
+                    dangerSign.position.set(0, h * 0.8, d/2 + 0.2);
+                    group.add(dangerSign);
+                    
+                    const beaconBase = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.5), darkMetalMat);
+                    beaconBase.position.set(0, h + 0.25, 0);
+                    group.add(beaconBase);
+                    
+                    const beaconLight = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+                    beaconLight.position.set(0, h + 0.6, 0);
+                    group.add(beaconLight);
+                    break;
+                }
+                
+                case "병기본부": {
+                    const armoryWallMat = new THREE.MeshStandardMaterial({ color: 0x3d3f42, metalness: 0.4, roughness: 0.5 });
+                    
+                    const armoryBlock = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), armoryWallMat);
+                    armoryBlock.position.y = h/2;
+                    armoryBlock.castShadow = true; armoryBlock.receiveShadow = true;
+                    group.add(armoryBlock);
+                    
+                    const shutterMat = new THREE.MeshStandardMaterial({
+                        color: 0x888888,
+                        metalness: 0.9,
+                        roughness: 0.2,
+                        map: generateLogoTexture('====== ROLL-UP ======', '#888888', '#555555', 20)
+                    });
+                    const shutterDoor = new THREE.Mesh(new THREE.BoxGeometry(w*0.5, h*0.7, 0.1), shutterMat);
+                    shutterDoor.position.set(0, (h*0.7)/2, d/2 + 0.1);
+                    group.add(shutterDoor);
+                    
+                    const towerG = new THREE.Group();
+                    const towerCabin = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 4), armoryWallMat);
+                    towerCabin.position.y = h + 2;
+                    towerG.add(towerCabin);
+                    
+                    const towerRoof = new THREE.Mesh(new THREE.ConeGeometry(3, 2, 4), roofRedMat);
+                    towerRoof.rotation.y = Math.PI / 4;
+                    towerRoof.position.y = h + 5;
+                    towerG.add(towerRoof);
+                    
+                    const cabinWin = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.2, 4.2), glassMat);
+                    cabinWin.position.y = h + 2;
+                    towerG.add(cabinWin);
+                    
+                    towerG.position.set(-w/2 + 2, 0, -d/2 + 2);
+                    group.add(towerG);
+                    
+                    const radarStand = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2), darkMetalMat);
+                    radarStand.position.set(w/3, h + 1, 0);
+                    group.add(radarStand);
+                    
+                    const radarDish = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.8, 12, 1, true), new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.8 }));
+                    radarDish.rotation.z = Math.PI / 3;
+                    radarDish.position.set(w/3, h + 2, 0);
+                    group.add(radarDish);
+                    break;
+                }
+                
+                case "유류고": {
+                    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.9 });
+                    const tankMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.7, roughness: 0.2 });
+                    
+                    const floor = new THREE.Mesh(new THREE.BoxGeometry(w, 0.2, d), concreteMat);
+                    floor.position.y = 0.1;
+                    floor.receiveShadow = true;
+                    group.add(floor);
+                    
+                    const wallL = new THREE.Mesh(new THREE.BoxGeometry(w, 1.2, 0.4), concreteMat);
+                    wallL.position.set(0, 0.6, -d/2 + 0.2);
+                    group.add(wallL);
+                    
+                    const wallR = new THREE.Mesh(new THREE.BoxGeometry(w, 1.2, 0.4), concreteMat);
+                    wallR.position.set(0, 0.6, d/2 - 0.2);
+                    group.add(wallR);
+                    
+                    const makeFuelTank = (xOffset) => {
+                        const tankG = new THREE.Group();
+                        const body = new THREE.Mesh(new THREE.CylinderGeometry(w*0.2, w*0.2, h*0.8), tankMat);
+                        body.position.y = (h*0.8)/2 + 0.2;
+                        body.castShadow = true; body.receiveShadow = true;
+                        tankG.add(body);
+                        
+                        const stripe = new THREE.Mesh(new THREE.CylinderGeometry(w*0.2 + 0.05, w*0.2 + 0.05, 0.8), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
+                        stripe.position.y = h*0.6;
+                        tankG.add(stripe);
+                        
+                        const dangerText = generateLogoTexture('DANGER', '#ff0000', '#ffffff', 20);
+                        const label = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1, 0.1), new THREE.MeshStandardMaterial({ map: dangerText }));
+                        label.position.set(0, h*0.4, w*0.2 + 0.08);
+                        tankG.add(label);
+                        
+                        tankG.position.x = xOffset;
+                        return tankG;
+                    };
+                    group.add(makeFuelTank(-w*0.22));
+                    group.add(makeFuelTank(w*0.22));
+                    
+                    const pipeMat = new THREE.MeshStandardMaterial({ color: 0xffbb00, metalness: 0.6 });
+                    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, w * 0.7), pipeMat);
+                    pipe.rotation.z = Math.PI / 2;
+                    pipe.position.set(0, h*0.7, -w*0.1);
+                    group.add(pipe);
+                    
+                    const verticalPipe1 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, h*0.6), pipeMat);
+                    verticalPipe1.position.set(-w*0.22, h*0.35, -w*0.1);
+                    group.add(verticalPipe1);
+                    const verticalPipe2 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, h*0.6), pipeMat);
+                    verticalPipe2.position.set(w*0.22, h*0.35, -w*0.1);
+                    group.add(verticalPipe2);
+                    break;
+                }
+                
+                case "보급창고": {
+                    const hangarMat = new THREE.MeshStandardMaterial({ color: 0x4f6258, roughness: 0.5, metalness: 0.4 });
+                    
+                    const hangar = new THREE.Mesh(new THREE.CylinderGeometry(w/2, w/2, d, 20), hangarMat);
+                    hangar.rotation.x = Math.PI / 2;
+                    hangar.position.set(0, 0.01, 0);
+                    hangar.scale.z = 0.6;
+                    hangar.castShadow = true; hangar.receiveShadow = true;
+                    group.add(hangar);
+                    
+                    const endWallF = new THREE.Mesh(new THREE.BoxGeometry(w, w*0.3, 0.2), hangarMat);
+                    endWallF.position.set(0, (w*0.3)/2, d/2);
+                    group.add(endWallF);
+                    const endWallB = new THREE.Mesh(new THREE.BoxGeometry(w, w*0.3, 0.2), hangarMat);
+                    endWallB.position.set(0, (w*0.3)/2, -d/2);
+                    group.add(endWallB);
+                    
+                    const shutterMat = new THREE.MeshStandardMaterial({ color: 0x7a838a, metalness: 0.8, roughness: 0.3 });
+                    const shutter = new THREE.Mesh(new THREE.BoxGeometry(w*0.4, h*0.7, 0.3), shutterMat);
+                    shutter.position.set(0, (h*0.7)/2, d/2 + 0.1);
+                    group.add(shutter);
+                    
+                    const woodTex = generateWoodTexture();
+                    const crateMat = new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.9 });
+                    
+                    const makeCrate = (cx, cy, cz, size = 1.6) => {
+                        const crate = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), crateMat);
+                        crate.position.set(cx, cy + size/2, cz);
+                        crate.castShadow = true;
+                        return crate;
+                    };
+                    group.add(makeCrate(w*0.35, 0, d/2 + 1.5, 2.0));
+                    group.add(makeCrate(w*0.35 - 0.5, 2.0, d/2 + 1.2, 1.6));
+                    group.add(makeCrate(-w*0.35, 0, d/2 + 1.2, 1.8));
+                    break;
+                }
+                
+                case "PX": {
+                    const storeMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.7 });
+                    
+                    const shop = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), storeMat);
+                    shop.position.y = h/2;
+                    shop.castShadow = true; shop.receiveShadow = true;
+                    group.add(shop);
+                    
+                    const displayWin = new THREE.Mesh(new THREE.BoxGeometry(w*0.8, h*0.5, 0.2), glassMat);
+                    displayWin.position.set(0, h*0.4, d/2 + 0.1);
+                    group.add(displayWin);
+                    
+                    const awningMat = new THREE.MeshStandardMaterial({ color: 0xb22222, roughness: 0.8 });
+                    const awning = new THREE.Mesh(new THREE.BoxGeometry(w + 1, 0.2, 3), awningMat);
+                    awning.rotation.x = 0.3;
+                    awning.position.set(0, h * 0.75, d/2 + 1.2);
+                    awning.castShadow = true;
+                    group.add(awning);
+                    
+                    const pxSignTex = generateLogoTexture('🎖️ WA-MART (PX)', '#0000ff', '#ffffff', 26);
+                    const pxSign = new THREE.Mesh(new THREE.BoxGeometry(10, 1.8, 0.2), new THREE.MeshStandardMaterial({ map: pxSignTex }));
+                    pxSign.position.set(0, h * 0.9, d/2 + 0.15);
+                    group.add(pxSign);
+                    break;
+                }
+                
+                case "체력단련실": {
+                    const gymWallMat = new THREE.MeshStandardMaterial({ color: 0x1f2124, roughness: 0.7 });
+                    const accentMat = new THREE.MeshStandardMaterial({ color: 0xff6600, roughness: 0.5 });
+                    
+                    const block = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), gymWallMat);
+                    block.position.y = h/2;
+                    block.castShadow = true; block.receiveShadow = true;
+                    group.add(block);
+                    
+                    const frameL = new THREE.Mesh(new THREE.BoxGeometry(2, h + 0.2, d + 0.2), accentMat);
+                    frameL.position.set(-w/2 + 1, h/2, 0);
+                    group.add(frameL);
+                    const frameR = new THREE.Mesh(new THREE.BoxGeometry(2, h + 0.2, d + 0.2), accentMat);
+                    frameR.position.set(w/2 - 1, h/2, 0);
+                    group.add(frameR);
+                    
+                    const gymLogoTex = generateLogoTexture('💪 ARMY FITNESS', '#ff6600', '#ffffff', 22);
+                    const logoPanel = new THREE.Mesh(new THREE.BoxGeometry(12, 1.8, 0.2), new THREE.MeshStandardMaterial({ map: gymLogoTex }));
+                    logoPanel.position.set(0, h * 0.8, d/2 + 0.1);
+                    group.add(logoPanel);
+                    
+                    const glassPanel = new THREE.Mesh(new THREE.BoxGeometry(w*0.7, h*0.5, 0.1), glassMat);
+                    glassPanel.position.set(0, h*0.4, d/2 + 0.05);
+                    group.add(glassPanel);
+                    break;
+                }
+                
+                case "면회실": {
+                    const cottageWallMat = new THREE.MeshStandardMaterial({ color: 0xfffcf5, roughness: 0.8 });
+                    const woodFenceMat = new THREE.MeshStandardMaterial({ map: generateWoodTexture(), roughness: 0.9 });
+                    
+                    const cottage = new THREE.Mesh(new THREE.BoxGeometry(w, h * 0.7, d), cottageWallMat);
+                    cottage.position.y = (h*0.7)/2;
+                    cottage.castShadow = true; cottage.receiveShadow = true;
+                    group.add(cottage);
+                    
+                    const roof = new THREE.Mesh(new THREE.ConeGeometry(w*0.75, h*0.6, 4), roofRedMat);
+                    roof.rotation.y = Math.PI / 4;
+                    roof.position.set(0, h * 0.8, 0);
+                    roof.castShadow = true;
+                    group.add(roof);
+                    
+                    const porch = new THREE.Mesh(new THREE.BoxGeometry(w*0.8, 0.15, 3), woodFenceMat);
+                    porch.position.set(0, 0.07, d/2 + 1.5);
+                    porch.receiveShadow = true;
+                    group.add(porch);
+                    
+                    const porchColMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+                    const colL = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, h*0.7), porchColMat);
+                    colL.position.set(-w*0.35, (h*0.7)/2, d/2 + 2.8);
+                    group.add(colL);
+                    const colR = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, h*0.7), porchColMat);
+                    colR.position.set(w*0.35, (h*0.7)/2, d/2 + 2.8);
+                    group.add(colR);
+                    
+                    const porchRoof = new THREE.Mesh(new THREE.BoxGeometry(w*0.8 + 0.4, 0.3, 3.2), roofRedMat);
+                    porchRoof.position.set(0, h*0.7, d/2 + 1.5);
+                    group.add(porchRoof);
+                    
+                    const warmWinMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.1 });
+                    const win1 = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 0.2), warmWinMat);
+                    win1.position.set(-w*0.25, h*0.4, d/2 + 0.1);
+                    group.add(win1);
+                    const win2 = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 0.2), warmWinMat);
+                    win2.position.set(w*0.25, h*0.4, d/2 + 0.1);
+                    group.add(win2);
+                    break;
+                }
+                
+                default: {
+                    const block = new THREE.Mesh(
+                        new THREE.BoxGeometry(w, h, d),
+                        wallMat
+                    );
+                    block.position.y = h/2;
+                    block.castShadow = true; block.receiveShadow = true;
+                    group.add(block);
+                    break;
+                }
+            }
+            
+            group.position.set(data.x, 0, data.z);
+            return group;
+        };
+
         // Locations with shadows
         Object.entries(LOCATIONS).forEach(([name, data]) => {
-            const mesh = new THREE.Mesh(
-                new THREE.BoxGeometry(...data.size),
-                new THREE.MeshStandardMaterial({ color: data.color, roughness: 0.7 })
-            );
-            mesh.position.set(data.x, data.size[1] / 2, data.z);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            scene.add(mesh);
+            const styledBuilding = createStyledBuilding(name, data);
+            scene.add(styledBuilding);
 
             // Label
             const c = document.createElement('canvas');
@@ -1193,39 +2030,7 @@ const initChat = () => {
         window.thirdPersonCamera.rotation.x = -0.1; // Slight downward tilt
         camera.add(window.thirdPersonCamera);
 
-        // --- Digital Camo & Player Modeling ---
-        const generateCamoTexture = (baseColorHex) => {
-            const canvas = document.createElement('canvas');
-            canvas.width = 128; canvas.height = 128;
-            const ctx = canvas.getContext('2d');
-            const r = (baseColorHex >> 16) & 255;
-            const g = (baseColorHex >> 8) & 255;
-            const b = baseColorHex & 255;
-            
-            ctx.fillStyle = `rgb(${r},${g},${b})`;
-            ctx.fillRect(0, 0, 128, 128);
-            
-            for(let i=0; i<300; i++) {
-                const x = Math.floor(Math.random() * 16) * 8;
-                const y = Math.floor(Math.random() * 16) * 8;
-                const w = (Math.floor(Math.random() * 3) + 1) * 8;
-                const h = (Math.floor(Math.random() * 3) + 1) * 8;
-                const type = Math.random();
-                if(type > 0.6) ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                else if(type > 0.3) ctx.fillStyle = 'rgba(255,255,255,0.2)';
-                else ctx.fillStyle = `rgba(${r/2},${g/2},${b/2}, 0.8)`;
-                ctx.fillRect(x, y, w, h);
-            }
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.magFilter = THREE.NearestFilter;
-            return tex;
-        };
-
-        const camoMaterials = {};
-        const getCamoMaterial = (colorHex) => {
-            if(!camoMaterials[colorHex]) camoMaterials[colorHex] = new THREE.MeshStandardMaterial({ map: generateCamoTexture(colorHex), roughness: 0.9 });
-            return camoMaterials[colorHex];
-        };
+        // --- Camouflage Materials defined at top of init3D ---
 
         const createPlayerModel = (colorHex) => {
             const group = new THREE.Group();
@@ -1410,7 +2215,15 @@ const initChat = () => {
         const setupPCControls = () => {
             const canvas = document.getElementById('game-canvas');
             canvas.addEventListener('click', () => {
-                canvas.requestPointerLock();
+                const isTouch = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+                if (isTouch) return; // Skip pointer lock on mobile/touch screens
+                try {
+                    if (canvas && typeof canvas.requestPointerLock === 'function') {
+                        canvas.requestPointerLock();
+                    }
+                } catch (e) {
+                    console.warn("PointerLock request failed:", e);
+                }
             });
 
             document.addEventListener('mousemove', (e) => {
@@ -2272,6 +3085,21 @@ const initChat = () => {
     };
 
     const setupMobileControls = () => {
+        const jumpBtn = document.getElementById('btn-jump');
+        if (jumpBtn) {
+            const handleJumpStart = (e) => {
+                if (e) e.preventDefault();
+                keys[' '] = true;
+            };
+            const handleJumpEnd = () => {
+                keys[' '] = false;
+            };
+            jumpBtn.addEventListener('touchstart', handleJumpStart, { passive: false });
+            jumpBtn.addEventListener('touchend', handleJumpEnd);
+            jumpBtn.addEventListener('mousedown', handleJumpStart);
+            jumpBtn.addEventListener('mouseup', handleJumpEnd);
+        }
+
         document.addEventListener('touchstart', (e) => {
             if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
             const touch = e.touches[0];
@@ -2317,9 +3145,128 @@ const initChat = () => {
         });
     };
 
+    const handleWorldCollisions = (pos, oldPos) => {
+        const r = 0.8; // Player radius
+        
+        Object.entries(LOCATIONS).forEach(([name, data]) => {
+            if (name === "연병장" || name === "유격장" || name === "사격장") return;
+            
+            const cx = data.x;
+            const cz = data.z;
+            const W = data.size[0];
+            const H = data.size[1];
+            const D = data.size[2];
+            
+            if (name === "위병소") {
+                // Small solid booth on left side: x in [-4, 0], z in [-2, 2]
+                const minX = cx - 4 - r;
+                const maxX = cx - r;
+                const minZ = cz - 2 - r;
+                const maxZ = cz + 2 + r;
+                
+                if (pos.x > minX && pos.x < maxX && pos.z > minZ && pos.z < maxZ) {
+                    const distToLeft = Math.abs(pos.x - minX);
+                    const distToRight = Math.abs(pos.x - maxX);
+                    const distToBack = Math.abs(pos.z - minZ);
+                    const distToFront = Math.abs(pos.z - maxZ);
+                    const minDist = Math.min(distToLeft, distToRight, distToBack, distToFront);
+                    
+                    if (minDist === distToLeft) pos.x = minX;
+                    else if (minDist === distToRight) pos.x = maxX;
+                    else if (minDist === distToBack) pos.z = minZ;
+                    else pos.z = maxZ;
+                }
+            } else if (name === "유류고") {
+                // Two fuel tanks cylinder collisions
+                const tankRadius = 3.0;
+                const minDist = tankRadius + r;
+                
+                const checkTank = (tx, tz) => {
+                    const dx = pos.x - tx;
+                    const dz = pos.z - tz;
+                    const dist = Math.sqrt(dx * dx + dz * dz);
+                    if (dist < minDist) {
+                        const angle = Math.atan2(dz, dx);
+                        pos.x = tx + Math.cos(angle) * minDist;
+                        pos.z = tz + Math.sin(angle) * minDist;
+                    }
+                };
+                checkTank(cx - W * 0.22, cz);
+                checkTank(cx + W * 0.22, cz);
+                
+                // Low concrete wall collision
+                const minZ = cz - D/2 - r;
+                const maxZ = cz + D/2 + r;
+                const minX = cx - W/2 - r;
+                const maxX = cx + W/2 + r;
+                if (pos.x > minX && pos.x < maxX && pos.z > minZ && pos.z < maxZ) {
+                    if (oldPos.z < cz - D/2) pos.z = minZ;
+                    else if (oldPos.z > cz + D/2) pos.z = maxZ;
+                }
+            } else {
+                // Standard buildings with front doorways (door at z = cz + D/2)
+                const doorW = 4.0;
+                let doorMinX = cx - doorW / 2;
+                let doorMaxX = cx + doorW / 2;
+                
+                if (name === "병영식당") {
+                    const doorCx = cx - W * 0.2;
+                    doorMinX = doorCx - doorW / 2;
+                    doorMaxX = doorCx + doorW / 2;
+                }
+                
+                const minX = cx - W / 2;
+                const maxX = cx + W / 2;
+                const minZ = cz - D / 2;
+                const maxZ = cz + D / 2;
+                
+                const wasInside = (oldPos.x > minX && oldPos.x < maxX && oldPos.z > minZ && oldPos.z < maxZ);
+                
+                const innerMinX = minX + r;
+                const innerMaxX = maxX - r;
+                const innerMinZ = minZ + r;
+                const innerMaxZ = maxZ - r;
+                
+                if (wasInside) {
+                    // Keep player inside unless exiting through door
+                    pos.x = Math.max(innerMinX, Math.min(innerMaxX, pos.x));
+                    pos.z = Math.max(innerMinZ, pos.z);
+                    
+                    if (pos.x >= doorMinX && pos.x <= doorMaxX) {
+                        // Allowed to exit
+                    } else {
+                        pos.z = Math.min(innerMaxZ, pos.z);
+                    }
+                } else {
+                    // Prevent entering building except through front door
+                    const isInside = (pos.x > minX - r && pos.x < maxX + r && pos.z > minZ - r && pos.z < maxZ + r);
+                    if (isInside) {
+                        const enteredThroughDoor = (oldPos.z > maxZ && pos.z <= maxZ && pos.x >= doorMinX && pos.x <= doorMaxX);
+                        if (enteredThroughDoor) {
+                            // Pass through door
+                        } else {
+                            // Block & push outside to closest wall
+                            const distToLeft = Math.abs(pos.x - (minX - r));
+                            const distToRight = Math.abs(pos.x - (maxX + r));
+                            const distToBack = Math.abs(pos.z - (minZ - r));
+                            const distToFront = Math.abs(pos.z - (maxZ + r));
+                            const minDist = Math.min(distToLeft, distToRight, distToBack, distToFront);
+                            
+                            if (minDist === distToLeft) pos.x = minX - r;
+                            else if (minDist === distToRight) pos.x = maxX + r;
+                            else if (minDist === distToBack) pos.z = minZ - r;
+                            else pos.z = maxZ + r;
+                        }
+                    }
+                }
+            }
+        });
+    };
+
     const animate = () => {
         requestAnimationFrame(animate);
         const time = performance.now(), delta = Math.min((time - prevTime) / 1000, 0.1);
+        const oldPos = camera.position.clone();
 
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
@@ -2396,6 +3343,11 @@ const initChat = () => {
                 }
             }
 
+            // Apply building collisions (unless flying in a helicopter)
+            if (!(window.inHelicopter || (window.inVehicle && window.currentVehicle === window.helicopterMesh))) {
+                handleWorldCollisions(camera.position, oldPos);
+            }
+
             // Gravity/Floor Check
             let floorY = 1.6;
 
@@ -2406,15 +3358,28 @@ const initChat = () => {
                 floorY = JAIL_CONFIG.pos.y + 1.6;
             }
 
+            // Spacebar jump trigger (only if on ground and not in a vehicle)
+            if (keys[' '] && !window.inVehicle) {
+                if (camera.position.y <= floorY + 0.05) {
+                    velocity.y = 8.0; // Jump impulse velocity
+                }
+            }
+
+            // Apply vertical velocity
+            camera.position.y += velocity.y * delta;
+
             if (window.inHelicopter) {
                 floorY = 2.0; // Minimum altitude for heli
-                if (camera.position.y < floorY) camera.position.y = floorY;
+                if (camera.position.y < floorY) {
+                    camera.position.y = floorY;
+                    velocity.y = 0;
+                }
             } else {
                 if (camera.position.y > floorY) {
-                    camera.position.y -= 10 * delta;
-                    if (camera.position.y < floorY) camera.position.y = floorY;
+                    velocity.y -= 25.0 * delta; // Smooth gravity deceleration
                 } else {
                     camera.position.y = floorY;
+                    velocity.y = 0; // Landed
                 }
             }
         }
@@ -2462,40 +3427,45 @@ const initChat = () => {
 
         prevTime = time;
 
-        // Multiplayer Sync
-        if (STATE.currentUser && STATE.currentUser.uid && !STATE.currentUser.dashboardOnly) {
-            const localIsJailed = Boolean(STATE.currentUser.jailTime && STATE.currentUser.jailTime > Date.now());
-            db.ref('presence/' + STATE.currentUser.uid).set({
-                x: camera.position.x,
-                y: camera.position.y,
-                z: camera.position.z,
-                ry: camera.rotation.y,
-                name: STATE.currentUser.name || "신병",
-                rank: STATE.currentUser.rank || "이병",
-                isJailed: localIsJailed,
-                lastSeen: Date.now()
-            });
+        // Multiplayer Sync - Throttled to 50ms intervals for high performance
+        const now = Date.now();
+        if (!window.lastPresenceWriteTime) window.lastPresenceWriteTime = 0;
+        if (now - window.lastPresenceWriteTime > 50) {
+            window.lastPresenceWriteTime = now;
+            if (STATE.currentUser && STATE.currentUser.uid && !STATE.currentUser.dashboardOnly) {
+                const localIsJailed = Boolean(STATE.currentUser.jailTime && STATE.currentUser.jailTime > Date.now());
+                db.ref('presence/' + STATE.currentUser.uid).set({
+                    x: camera.position.x,
+                    y: camera.position.y,
+                    z: camera.position.z,
+                    ry: camera.rotation.y,
+                    name: STATE.currentUser.name || "신병",
+                    rank: STATE.currentUser.rank || "이병",
+                    isJailed: localIsJailed,
+                    lastSeen: Date.now()
+                });
 
-            // Update Local Player Body Color for 3rd Person View
-            if (window.localPlayerBody) {
-                const getRankColor = (rank, isJailed) => {
-                    if (isJailed) return 0xffa500; // 영창: 주황색
-                    const idx = window.RANKS ? window.RANKS.indexOf(rank) : -1;
-                    if (idx >= 14) return 0x222222; // 장성급: 흑복(검정)
-                    if (idx >= 11) return 0x1f305e; // 영관급: 네이비(청색)
-                    if (idx >= 8) return 0xc2b280;  // 위관급: 사막색(베이지)
-                    if (idx >= 4) return 0x3a4b2a;  // 부사관: 진녹색
-                    return 0x4b5320;                // 병사: 일반 국방색
-                };
-                const targetColor = getRankColor(STATE.currentUser.rank, localIsJailed);
-                if (window.localPlayerLastColor !== targetColor) {
-                    window.localPlayerLastColor = targetColor;
-                    const newMat = getCamoMaterial(targetColor);
-                    window.localPlayerBody.traverse(child => {
-                        if (child.isMesh && child.userData.isCamo) {
-                            child.material = newMat;
-                        }
-                    });
+                // Update Local Player Body Color for 3rd Person View
+                if (window.localPlayerBody) {
+                    const getRankColor = (rank, isJailed) => {
+                        if (isJailed) return 0xffa500; // 영창: 주황색
+                        const idx = window.RANKS ? window.RANKS.indexOf(rank) : -1;
+                        if (idx >= 14) return 0x222222; // 장성급: 흑복(검정)
+                        if (idx >= 11) return 0x1f305e; // 영관급: 네이비(청색)
+                        if (idx >= 8) return 0xc2b280;  // 위관급: 사막색(베이지)
+                        if (idx >= 4) return 0x3a4b2a;  // 부사관: 진녹색
+                        return 0x4b5320;                // 병사: 일반 국방색
+                    };
+                    const targetColor = getRankColor(STATE.currentUser.rank, localIsJailed);
+                    if (window.localPlayerLastColor !== targetColor) {
+                        window.localPlayerLastColor = targetColor;
+                        const newMat = getCamoMaterial(targetColor);
+                        window.localPlayerBody.traverse(child => {
+                            if (child.isMesh && child.userData.isCamo) {
+                                child.material = newMat;
+                            }
+                        });
+                    }
                 }
             }
         }
@@ -2506,85 +3476,113 @@ const initChat = () => {
         renderer.render(scene, window.isThirdPerson ? window.thirdPersonCamera : camera);
     };
 
+    // Listen to Firebase presence once to cache player data locally for real-time sync
+    let allPlayersData = {};
+    if (FIREBASE_ENABLED && db) {
+        db.ref('presence').on('value', snap => {
+            allPlayersData = snap.val() || {};
+        });
+    }
+
     const updateOtherPlayers = () => {
-        db.ref('presence').once('value', snap => {
-            const players = snap.val();
-            if (!players) return;
+        if (!allPlayersData) return;
 
-            Object.keys(players).forEach(uid => {
-                if (uid === STATE.currentUser.uid) return;
-                const p = players[uid];
-                if (!p) return;
+        const currentUid = STATE.currentUser ? STATE.currentUser.uid : null;
 
-                // Clean up old players (inactive for 10s)
-                if (Date.now() - p.lastSeen > 10000) {
-                    if (otherPlayers[uid]) {
-                        scene.remove(otherPlayers[uid].mesh);
-                        delete otherPlayers[uid];
+        // 1. Clean up old players (not in allPlayersData, or inactive for 10s)
+        Object.keys(otherPlayers).forEach(uid => {
+            const p = allPlayersData[uid];
+            if (!p || uid === currentUid || (Date.now() - p.lastSeen > 10000)) {
+                if (otherPlayers[uid]) {
+                    scene.remove(otherPlayers[uid].mesh);
+                    if (otherPlayers[uid].label) {
+                        otherPlayers[uid].mesh.remove(otherPlayers[uid].label);
                     }
-                    return;
+                    delete otherPlayers[uid];
                 }
+            }
+        });
 
-                if (!otherPlayers[uid]) {
-                    // Create new complex player mesh
-                    const group = createPlayerModel(0x4b5320);
-                    group.position.y = 1.6; // Initial offset
-                    scene.add(group);
-                    otherPlayers[uid] = { mesh: group, lastColor: 0x4b5320 };
-                }
+        // 2. Add or update meshes of active players
+        Object.keys(allPlayersData).forEach(uid => {
+            if (uid === currentUid) return;
+            const p = allPlayersData[uid];
+            if (!p) return;
 
-                // Update Position & Appearance
-                const playerObj = otherPlayers[uid];
-                playerObj.mesh.position.set(p.x, p.y - 1.6, p.z);
-                playerObj.mesh.rotation.y = p.ry;
+            // Inactive check
+            if (Date.now() - p.lastSeen > 10000) return;
 
-                // Update Label (ID & Rank)
-                if (!playerObj.label || playerObj.lastRank !== p.rank || playerObj.lastName !== p.name) {
-                    if (playerObj.label) playerObj.mesh.remove(playerObj.label);
+            if (!otherPlayers[uid]) {
+                // Create new complex player mesh
+                const group = createPlayerModel(0x4b5320);
+                group.position.y = 1.6; // Initial offset
+                scene.add(group);
+                otherPlayers[uid] = { mesh: group, lastColor: 0x4b5320 };
+            }
 
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 512; canvas.height = 128;
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                    ctx.roundRect ? ctx.roundRect(0, 0, 512, 128, 20) : ctx.fillRect(0, 0, 512, 128);
-                    ctx.fill();
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 40px Pretendard';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(`[${p.rank}] ${p.name || uid}`, 256, 75);
+            // Update Position & Appearance with Smooth Interpolation (Lerp)
+            const playerObj = otherPlayers[uid];
+            const targetX = p.x;
+            const targetY = p.y - 1.6;
+            const targetZ = p.z;
+            
+            // 0.2 lerp factor for smooth movements
+            const lerpFactor = 0.2;
+            playerObj.mesh.position.x += (targetX - playerObj.mesh.position.x) * lerpFactor;
+            playerObj.mesh.position.y += (targetY - playerObj.mesh.position.y) * lerpFactor;
+            playerObj.mesh.position.z += (targetZ - playerObj.mesh.position.z) * lerpFactor;
+            
+            // Rotation Interpolation
+            let diffRot = p.ry - playerObj.mesh.rotation.y;
+            diffRot = Math.atan2(Math.sin(diffRot), Math.cos(diffRot));
+            playerObj.mesh.rotation.y += diffRot * lerpFactor;
 
-                    const tex = new THREE.CanvasTexture(canvas);
-                    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex }));
-                    sprite.position.y = 3.2; // Above head
-                    sprite.scale.set(4, 1, 1);
-                    playerObj.mesh.add(sprite);
-                    playerObj.label = sprite;
-                    playerObj.lastRank = p.rank;
-                    playerObj.lastName = p.name;
-                }
+            // Update Label (ID & Rank)
+            if (!playerObj.label || playerObj.lastRank !== p.rank || playerObj.lastName !== p.name) {
+                if (playerObj.label) playerObj.mesh.remove(playerObj.label);
 
-                const getRankColor = (rank, isJailed) => {
-                    if (isJailed) return 0xffa500;
-                    const ranksArr = (typeof RANKS !== 'undefined' ? RANKS : []);
-                    const idx = ranksArr.indexOf(rank);
-                    if (idx >= 14) return 0x222222; // 장성급: 흑복
-                    if (idx >= 11) return 0x1f305e; // 영관급: 네이비
-                    if (idx >= 8) return 0xc2b280;  // 위관급: 베이지
-                    if (idx >= 4) return 0x3a4b2a;  // 부사관: 진녹색
-                    return 0x4b5320;                // 병사: 일반 국방색
-                };
-                
-                const targetColor = getRankColor(p.rank, p.isJailed);
-                if (playerObj.lastColor !== targetColor) {
-                    playerObj.lastColor = targetColor;
-                    const newMat = getCamoMaterial(targetColor);
-                    playerObj.mesh.traverse(child => {
-                        if (child.isMesh && child.userData.isCamo) {
-                            child.material = newMat;
-                        }
-                    });
-                }
-            });
+                const canvas = document.createElement('canvas');
+                canvas.width = 512; canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.roundRect ? ctx.roundRect(0, 0, 512, 128, 20) : ctx.fillRect(0, 0, 512, 128);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 40px Pretendard';
+                ctx.textAlign = 'center';
+                ctx.fillText(`[${p.rank}] ${p.name || uid}`, 256, 75);
+
+                const tex = new THREE.CanvasTexture(canvas);
+                const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex }));
+                sprite.position.y = 3.2; // Above head
+                sprite.scale.set(4, 1, 1);
+                playerObj.mesh.add(sprite);
+                playerObj.label = sprite;
+                playerObj.lastRank = p.rank;
+                playerObj.lastName = p.name;
+            }
+
+            const getRankColor = (rank, isJailed) => {
+                if (isJailed) return 0xffa500;
+                const ranksArr = (typeof RANKS !== 'undefined' ? RANKS : []);
+                const idx = ranksArr.indexOf(rank);
+                if (idx >= 14) return 0x222222; // 장성급: 흑복
+                if (idx >= 11) return 0x1f305e; // 영관급: 네이비
+                if (idx >= 8) return 0xc2b280;  // 위관급: 베이지
+                if (idx >= 4) return 0x3a4b2a;  // 부사관: 진녹색
+                return 0x4b5320;                // 병사: 일반 국방색
+            };
+            
+            const targetColor = getRankColor(p.rank, p.isJailed);
+            if (playerObj.lastColor !== targetColor) {
+                playerObj.lastColor = targetColor;
+                const newMat = getCamoMaterial(targetColor);
+                playerObj.mesh.traverse(child => {
+                    if (child.isMesh && child.userData.isCamo) {
+                        child.material = newMat;
+                    }
+                });
+            }
         });
     };
 
@@ -2684,6 +3682,11 @@ window.onload = () => {
     window.addEventListener('keydown', (e) => {
         if (e.target.tagName === 'INPUT') return;
         keys[e.key] = true;
+        
+        // Prevent default browser action (scrolling) for Spacebar
+        if (e.key === ' ' || e.code === 'Space') {
+            e.preventDefault();
+        }
         
         // Perspective Toggle (1st/3rd Person)
         if (e.key === 'r' || e.key === 'R') {

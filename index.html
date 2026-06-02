@@ -15,7 +15,7 @@
         };
     </script>
     <title>3D Military Simulator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <style>
         :root {
@@ -437,6 +437,14 @@
                 height: 50px;
                 font-size: 0.7rem;
             }
+            #btn-jump {
+                display: flex !important;
+                bottom: 25px;
+                right: 80px;
+                width: 50px;
+                height: 50px;
+                font-size: 0.7rem;
+            }
             #action-buttons {
                 bottom: 80px;
                 right: 20px;
@@ -550,6 +558,36 @@
         }
 
         #menu-toggle-btn:hover {
+            transform: scale(1.05);
+            background: var(--accent);
+            color: var(--primary);
+        }
+
+        #btn-jump {
+            position: absolute;
+            bottom: 40px;
+            right: 140px;
+            z-index: 20;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            font-size: 1rem;
+            font-weight: 900;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            transition: 0.3s;
+            user-select: none;
+            outline: none;
+        }
+
+        #btn-jump:hover {
             transform: scale(1.05);
             background: var(--accent);
             color: var(--primary);
@@ -969,14 +1007,546 @@
                 display: none !important;
             }
         }
+
+        /* ==========================================================================
+           TACTICAL CYBER MILITARY THEME CSS
+           ========================================================================== */
+        :root {
+            --military-green: #1d3316;
+            --military-green-light: #2d5422;
+            --tactical-neon: #a3e635;
+            --tactical-amber: #f59e0b;
+            --tactical-blue: #38bdf8;
+            --tactical-red: #ef4444;
+            --font-mono: 'Share Tech Mono', monospace;
+            --font-orbitron: 'Orbitron', sans-serif;
+        }
+
+        /* Screens Base Overrides */
+        #login-screen, #register-screen, #branch-screen, #lobby-screen {
+            background: #030602 !important;
+            font-family: 'Pretendard', sans-serif;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Cybernetic grid overlay */
+        .tactical-grid {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+            background-image: 
+                linear-gradient(rgba(163, 230, 53, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(163, 230, 53, 0.02) 1px, transparent 1px);
+            background-size: 35px 35px;
+            background-position: center;
+            animation: gridScroll 18s linear infinite;
+        }
+
+        @keyframes gridScroll {
+            from { background-position: 0 0; }
+            to { background-position: 35px 35px; }
+        }
+
+        /* Monitor Scanline CRT Effect */
+        .scanlines {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 2;
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.15) 50%
+            );
+            background-size: 100% 4px;
+        }
+        .scanlines::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 0%, rgba(163, 230, 53, 0.04) 10%, rgba(18, 16, 16, 0) 11%);
+            animation: scanlineSweep 10s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes scanlineSweep {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        /* High-Tech Glow Vignette */
+        #login-screen::before, #register-screen::before, #branch-screen::before, #lobby-screen::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, transparent 30%, rgba(3, 6, 2, 0.85) 100%);
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        /* Tactical HUD Panel */
+        .screen .panel {
+            position: relative;
+            z-index: 10;
+            background: rgba(4, 8, 4, 0.88) !important;
+            border: 1px solid rgba(163, 230, 53, 0.25) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.9), 0 0 15px rgba(163, 230, 53, 0.08) !important;
+            backdrop-filter: blur(15px) !important;
+            padding: 40px 45px !important;
+            box-sizing: border-box;
+        }
+
+        /* Corner Brackets on Panel */
+        .screen .panel::before, .screen .panel::after {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-color: var(--tactical-neon);
+            border-style: solid;
+            pointer-events: none;
+        }
+        /* Top-Left */
+        .screen .panel::before {
+            top: 8px; left: 8px;
+            border-width: 2px 0 0 2px;
+        }
+        /* Bottom-Right */
+        .screen .panel::after {
+            bottom: 8px; right: 8px;
+            border-width: 0 2px 2px 0;
+        }
+
+        /* Decorative bracket helpers */
+        .panel-decor-tr, .panel-decor-bl {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-color: var(--tactical-neon);
+            border-style: solid;
+            pointer-events: none;
+            z-index: 12;
+        }
+        .panel-decor-tr {
+            top: 8px; right: 8px;
+            border-width: 2px 2px 0 0;
+        }
+        .panel-decor-bl {
+            bottom: 8px; left: 8px;
+            border-width: 0 0 2px 2px;
+        }
+
+        /* Headers and Labels styling */
+        .screen h1 {
+            font-family: var(--font-orbitron) !important;
+            color: var(--tactical-neon) !important;
+            font-weight: 900;
+            letter-spacing: 5px;
+            text-shadow: 0 0 12px rgba(163, 230, 53, 0.4) !important;
+            font-size: 2.2rem;
+            margin-top: 5px;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        
+        .screen .subtitle {
+            font-family: var(--font-mono) !important;
+            font-size: 0.85rem !important;
+            color: #6a8c5b !important;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 25px;
+            border-bottom: 1px solid rgba(163, 230, 53, 0.2);
+            padding-bottom: 12px;
+            text-align: center;
+        }
+
+        /* Inputs */
+        .screen .input-group label {
+            font-family: var(--font-orbitron) !important;
+            font-size: 0.75rem !important;
+            color: var(--tactical-neon) !important;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+            opacity: 0.85;
+            font-weight: bold;
+        }
+        .screen input {
+            background: rgba(0, 0, 0, 0.8) !important;
+            border: 1px solid rgba(163, 230, 53, 0.2) !important;
+            color: #d8ffd0 !important;
+            font-family: var(--font-mono) !important;
+            font-size: 0.95rem !important;
+            border-radius: 6px !important;
+            padding: 12px 14px !important;
+            transition: all 0.2s ease;
+        }
+        .screen input:focus {
+            border-color: var(--tactical-neon) !important;
+            box-shadow: 0 0 10px rgba(163, 230, 53, 0.15) !important;
+            background: rgba(0, 0, 0, 0.95) !important;
+        }
+
+        /* Standard Buttons */
+        .screen button {
+            font-family: var(--font-orbitron) !important;
+            font-size: 0.95rem !important;
+            font-weight: 700 !important;
+            letter-spacing: 2px;
+            border-radius: 6px !important;
+            border: 1px solid var(--tactical-neon) !important;
+            background: linear-gradient(135deg, rgba(29, 51, 22, 0.9), rgba(45, 84, 34, 0.9)) !important;
+            color: #fff !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5) !important;
+            text-transform: uppercase;
+            transition: all 0.2s ease !important;
+            position: relative;
+            margin: 15px 0 10px !important;
+        }
+        .screen button:hover {
+            background: var(--tactical-neon) !important;
+            color: #030602 !important;
+            box-shadow: 0 0 15px rgba(163, 230, 53, 0.5) !important;
+            transform: translateY(-1px);
+        }
+        .screen button:active {
+            transform: translateY(1px);
+        }
+        
+        .screen button.secondary {
+            background: rgba(0, 0, 0, 0.6) !important;
+            border: 1px solid rgba(163, 230, 53, 0.3) !important;
+            color: var(--tactical-neon) !important;
+            margin-top: 5px !important;
+        }
+        .screen button.secondary:hover {
+            background: rgba(163, 230, 53, 0.1) !important;
+            color: #fff !important;
+        }
+
+        /* Branch Select Visuals */
+        .branch-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 15px !important;
+            margin-top: 25px !important;
+        }
+        .branch-card {
+            background: rgba(8, 14, 8, 0.9) !important;
+            border: 1px solid rgba(163, 230, 53, 0.18) !important;
+            border-radius: 8px !important;
+            padding: 20px 15px !important;
+            text-align: center;
+            transition: all 0.25s ease !important;
+            position: relative;
+        }
+        .branch-card span {
+            font-size: 2.2rem !important;
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+        .branch-card h3 {
+            font-family: var(--font-orbitron) !important;
+            font-size: 0.95rem !important;
+            margin: 10px 0 0 0 !important;
+            letter-spacing: 1px;
+            color: #c7d2c4 !important;
+            font-weight: 700;
+        }
+        .branch-card:hover span {
+            transform: scale(1.15);
+        }
+        
+        #btn-branch-army:hover {
+            border-color: var(--tactical-neon) !important;
+            box-shadow: 0 0 15px rgba(163, 230, 53, 0.25) !important;
+            background: rgba(163, 230, 53, 0.05) !important;
+        }
+        #btn-branch-navy:hover {
+            border-color: var(--tactical-blue) !important;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.25) !important;
+            background: rgba(56, 189, 248, 0.05) !important;
+        }
+        #btn-branch-air:hover {
+            border-color: var(--tactical-blue) !important;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.25) !important;
+            background: rgba(56, 189, 248, 0.05) !important;
+        }
+        #btn-branch-marine:hover {
+            border-color: var(--tactical-amber) !important;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.25) !important;
+            background: rgba(245, 158, 11, 0.05) !important;
+        }
+
+        /* Lobby screen dashboard layout */
+        #lobby-screen .panel {
+            background: rgba(4, 8, 4, 0.95) !important;
+            border: 1px solid rgba(163, 230, 53, 0.35) !important;
+            box-shadow: 0 0 45px rgba(0,0,0,0.95), 0 0 25px rgba(163, 230, 53, 0.12) !important;
+        }
+
+        /* Military Badge Access Card */
+        .military-id-card {
+            background: linear-gradient(135deg, rgba(12, 22, 10, 0.8) 0%, rgba(4, 8, 4, 0.95) 100%) !important;
+            border: 1px solid rgba(163, 230, 53, 0.25) !important;
+            border-radius: 8px !important;
+            padding: 16px 20px !important;
+            margin-bottom: 25px !important;
+            text-align: left;
+            display: grid;
+            grid-template-columns: 75px 1fr !important;
+            gap: 15px !important;
+            align-items: center !important;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 15px rgba(163, 230, 53, 0.05);
+        }
+        
+        .military-id-card::before {
+            content: "SECURE PROFILE ACCESS // CODE-82";
+            position: absolute;
+            top: 4px; right: 8px;
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            color: rgba(163, 230, 53, 0.35);
+            letter-spacing: 1px;
+        }
+        
+        .military-id-card .avatar-box {
+            font-size: 2.6rem !important;
+            background: rgba(0,0,0,0.7) !important;
+            width: 75px !important;
+            height: 75px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 6px !important;
+            border: 1px solid rgba(163, 230, 53, 0.3) !important;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .military-id-card .avatar-box::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: rgba(163, 230, 53, 0.6);
+            top: 0; left: 0;
+            animation: avatarScan 3s ease-in-out infinite;
+            box-shadow: 0 0 8px var(--tactical-neon);
+        }
+        
+        @keyframes avatarScan {
+            0%, 100% { top: 0%; opacity: 0; }
+            10%, 90% { opacity: 1; }
+            50% { top: 100%; }
+        }
+        
+        .military-id-card .details-box {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        
+        .military-id-card .player-name-row {
+            font-family: var(--font-orbitron) !important;
+            font-size: 1.2rem !important;
+            font-weight: 800 !important;
+            color: #fff !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+        
+        .military-id-card .player-info-row {
+            font-family: var(--font-mono) !important;
+            font-size: 0.82rem !important;
+            color: #a4bfa0 !important;
+        }
+        
+        .military-id-card .player-info-row span {
+            font-weight: bold;
+        }
+        
+        .lobby-exp-wrap {
+            margin-top: 8px;
+        }
+        .lobby-exp-labels {
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: rgba(163, 230, 53, 0.8);
+            margin-bottom: 3px;
+        }
+        .lobby-exp-bar-bg {
+            height: 5px !important;
+            background: rgba(0, 0, 0, 0.6) !important;
+            border-radius: 3px !important;
+            overflow: hidden !important;
+            border: 1px solid rgba(163, 230, 53, 0.15) !important;
+        }
+
+        /* Console Interface Grid */
+        .lobby-menu-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 12px !important;
+            margin-bottom: 22px !important;
+        }
+        .lobby-menu-btn {
+            padding: 14px 10px !important;
+            border-radius: 6px !important;
+            font-size: 0.9rem !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 6px !important;
+            transition: all 0.2s ease !important;
+            text-shadow: none !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+        }
+        .lobby-menu-btn span:first-child {
+            font-size: 1.4rem !important;
+            transition: transform 0.2s ease;
+        }
+        .lobby-menu-btn span:last-child {
+            font-family: var(--font-orbitron) !important;
+            font-size: 0.76rem !important;
+            font-weight: 700 !important;
+            letter-spacing: 1px;
+        }
+        .lobby-menu-btn:hover span:first-child {
+            transform: translateY(-2px);
+        }
+
+        #btn-lobby-inventory {
+            background: rgba(56, 189, 248, 0.05) !important;
+            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            color: var(--tactical-blue) !important;
+        }
+        #btn-lobby-inventory:hover {
+            background: var(--tactical-blue) !important;
+            color: #030602 !important;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.35) !important;
+        }
+
+        #btn-lobby-shop {
+            background: rgba(163, 230, 53, 0.05) !important;
+            border: 1px solid rgba(163, 230, 53, 0.3) !important;
+            color: var(--tactical-neon) !important;
+        }
+        #btn-lobby-shop:hover {
+            background: var(--tactical-neon) !important;
+            color: #030602 !important;
+            box-shadow: 0 0 15px rgba(163, 230, 53, 0.35) !important;
+        }
+
+        #btn-lobby-id-card {
+            background: rgba(156, 163, 175, 0.05) !important;
+            border: 1px solid rgba(156, 163, 175, 0.3) !important;
+            color: #9ca3af !important;
+        }
+        #btn-lobby-id-card:hover {
+            background: #e5e7eb !important;
+            color: #030602 !important;
+            box-shadow: 0 0 15px rgba(229, 231, 235, 0.35) !important;
+        }
+
+        #btn-lobby-leaderboard {
+            background: rgba(245, 158, 11, 0.05) !important;
+            border: 1px solid rgba(245, 158, 11, 0.3) !important;
+            color: var(--tactical-amber) !important;
+        }
+        #btn-lobby-leaderboard:hover {
+            background: var(--tactical-amber) !important;
+            color: #030602 !important;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.35) !important;
+        }
+
+        /* Hazard Warning Deploy Button */
+        #btn-deploy-field {
+            background: repeating-linear-gradient(
+                45deg,
+                rgba(245, 158, 11, 0.9),
+                rgba(245, 158, 11, 0.9) 12px,
+                #181204 12px,
+                #181204 24px
+            ) !important;
+            border: 2px solid var(--tactical-amber) !important;
+            color: #fff !important;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.9) !important;
+            padding: 16px 20px !important;
+            font-size: 1.25rem !important;
+            font-family: var(--font-orbitron) !important;
+            font-weight: 900 !important;
+            letter-spacing: 2px;
+            border-radius: 8px !important;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.2) !important;
+            transition: all 0.25s ease !important;
+            animation: tacticalPulse 2s infinite alternate;
+            margin: 10px 0 !important;
+        }
+        #btn-deploy-field:hover {
+            box-shadow: 0 0 35px rgba(245, 158, 11, 0.55) !important;
+            filter: brightness(1.2) !important;
+            transform: translateY(-2px);
+        }
+        #btn-deploy-field:active {
+            transform: translateY(0) scale(0.98);
+        }
+        
+        #lobby-screen button.secondary {
+            border: 1px solid rgba(239, 68, 68, 0.3) !important;
+            color: var(--tactical-red) !important;
+            font-family: var(--font-mono) !important;
+            font-size: 0.8rem !important;
+            margin-top: 15px !important;
+            padding: 8px !important;
+        }
+        #lobby-screen button.secondary:hover {
+            background: rgba(239, 68, 68, 0.1) !important;
+            color: #ff8888 !important;
+        }
+
+        /* Mobile specific adjustments */
+        @media (max-width: 480px) {
+            .branch-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .lobby-menu-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .military-id-card {
+                grid-template-columns: 1fr !important;
+                text-align: center !important;
+                justify-items: center;
+                padding: 15px !important;
+            }
+            .military-id-card .avatar-box {
+                margin-bottom: 5px;
+            }
+            .screen .panel {
+                padding: 25px 20px !important;
+            }
+        }
     </style>
 
 </head>
 
 <body>
-    <div id="login-screen" class="screen active"
-        style="background: radial-gradient(circle at center, #1a2310 0%, #050505 100%), linear-gradient(rgba(255,255,255,0.01) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.01) 1px, transparent 1px); background-size: cover, 50px 50px, 50px 50px;">
+    <div id="login-screen" class="screen active">
+        <div class="tactical-grid"></div>
+        <div class="scanlines"></div>
         <div class="panel">
+            <div class="panel-decor-tr"></div>
+            <div class="panel-decor-bl"></div>
             <h1>MILITARY<br>SIMULATOR</h1>
             <p class="subtitle">실제 군대 기반 3D 전술 훈련 시스템</p>
 
@@ -996,8 +1566,12 @@
     </div>
 
     <!-- 2. REGISTER SCREEN -->
-    <div id="register-screen" class="screen" style="background: #111;">
+    <div id="register-screen" class="screen">
+        <div class="tactical-grid"></div>
+        <div class="scanlines"></div>
         <div class="panel">
+            <div class="panel-decor-tr"></div>
+            <div class="panel-decor-bl"></div>
             <h1>NEW RECRUIT</h1>
             <p class="subtitle">전우가 될 준비가 되셨습니까?</p>
 
@@ -1022,8 +1596,12 @@
     </div>
 
     <!-- 3. BRANCH SELECTION SCREEN -->
-    <div id="branch-screen" class="screen" style="background: linear-gradient(135deg, #0f172a, #1e293b);">
+    <div id="branch-screen" class="screen">
+        <div class="tactical-grid"></div>
+        <div class="scanlines"></div>
         <div class="panel" style="max-width: 650px;">
+            <div class="panel-decor-tr"></div>
+            <div class="panel-decor-bl"></div>
             <h1>SELECT BRANCH</h1>
             <p class="subtitle">당신의 소속 부대를 결정하십시오.</p>
 
@@ -1049,66 +1627,70 @@
     </div>
 
     <!-- 3.5 LOBBY / MAIN SCREEN -->
-    <div id="lobby-screen" class="screen" style="background: radial-gradient(circle at center, #1b2612 0%, #080a05 100%), url('https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1000') center/cover; background-blend-mode: multiply; z-index: 1000;">
-        <div class="panel" style="max-width: 600px; width: 90%; background: rgba(0,0,0,0.85); border: 2px solid #556b2f; box-shadow: 0 0 35px rgba(85,107,47,0.5); text-align: center; padding: 30px; border-radius: 20px; backdrop-filter: blur(10px);">
+    <div id="lobby-screen" class="screen">
+        <div class="tactical-grid"></div>
+        <div class="scanlines"></div>
+        <div class="panel" style="max-width: 600px; width: 90%;">
+            <div class="panel-decor-tr"></div>
+            <div class="panel-decor-bl"></div>
             <div style="margin-bottom: 20px;">
-                <h1 style="font-size: 2.5rem; font-weight: 900; letter-spacing: 2px; color: #deb887; text-shadow: 0 0 10px rgba(222,184,135,0.5); margin: 0;">통합 지휘 대기실</h1>
-                <p class="subtitle" style="color: #888; margin-top: 5px;">지상군 대기소 및 전술 훈련 브리핑</p>
+                <h1>통합 지휘 대기실</h1>
+                <p class="subtitle">지상군 대기소 및 전술 훈련 브리핑</p>
             </div>
             
             <!-- User Status Card -->
-            <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-bottom: 25px; text-align: left; display: grid; grid-template-columns: 80px 1fr; gap: 20px; align-items: center;">
-                <div style="font-size: 3.5rem; background: rgba(0,0,0,0.4); width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid #556b2f;">🎖️</div>
-                <div>
-                    <div style="font-size: 1.25rem; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 8px;">
+            <div class="military-id-card">
+                <div class="avatar-box">🎖️</div>
+                <div class="details-box">
+                    <div class="player-name-row">
                         <span id="lobby-rank" style="color: #ffd700;">[이병]</span>
                         <span id="lobby-name">신병</span>
                     </div>
-                    <div style="font-size: 0.9rem; color: #aaa; margin-top: 5px;">
-                        소속: <span id="lobby-branch" style="color: #4682b4; font-weight: bold;">육군</span>
+                    <div class="player-info-row">
+                        소속: <span id="lobby-branch" style="color: var(--tactical-blue); font-weight: bold;">육군</span>
                     </div>
-                    <div style="font-size: 0.9rem; color: #aaa; margin-top: 3px;">
-                        군자금: <span id="lobby-money" style="color: #2e8b57; font-weight: bold;">0</span> G
+                    <div class="player-info-row">
+                        군자금: <span id="lobby-money" style="color: var(--tactical-neon); font-weight: bold;">0</span> G
                     </div>
                     <!-- EXP Bar -->
-                    <div style="margin-top: 10px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #888; margin-bottom: 3px;">
+                    <div class="lobby-exp-wrap">
+                        <div class="lobby-exp-labels">
                             <span>EXP 훈련도</span>
                             <span><span id="lobby-exp">0</span> / <span id="lobby-exp-max">100</span></span>
                         </div>
-                        <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
-                            <div id="lobby-exp-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, #22c55e, #10b981); transition: width 0.3s;"></div>
+                        <div class="lobby-exp-bar-bg">
+                            <div id="lobby-exp-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--tactical-neon), #22c55e); transition: width 0.3s;"></div>
                         </div>
                     </div>
                 </div>
             </div>
             
             <!-- Menu Grid -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
-                <button id="btn-lobby-inventory" style="background: rgba(70,130,180,0.15); border: 1px solid #4682b4; color: #fff; padding: 15px; border-radius: 12px; font-size: 1rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; font-family: 'Pretendard', sans-serif;">
-                    <span style="font-size: 1.5rem;">🎒</span>
-                    <span style="font-weight: bold;">개인 장비함 (가방)</span>
+            <div class="lobby-menu-grid">
+                <button id="btn-lobby-inventory" class="lobby-menu-btn">
+                    <span>🎒</span>
+                    <span>개인 장비함 (가방)</span>
                 </button>
-                <button id="btn-lobby-shop" style="background: rgba(46,139,87,0.15); border: 1px solid #2e8b57; color: #fff; padding: 15px; border-radius: 12px; font-size: 1rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; font-family: 'Pretendard', sans-serif;">
-                    <span style="font-size: 1.5rem;">🛒</span>
-                    <span style="font-weight: bold;">PX 군인 상점</span>
+                <button id="btn-lobby-shop" class="lobby-menu-btn">
+                    <span>🛒</span>
+                    <span>PX 군인 상점</span>
                 </button>
-                <button id="btn-lobby-id-card" style="background: rgba(44,62,80,0.15); border: 1px solid #2c3e50; color: #fff; padding: 15px; border-radius: 12px; font-size: 1rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; font-family: 'Pretendard', sans-serif;">
-                    <span style="font-size: 1.5rem;">🪖</span>
-                    <span style="font-weight: bold;">인식표 (군번줄)</span>
+                <button id="btn-lobby-id-card" class="lobby-menu-btn">
+                    <span>🪖</span>
+                    <span>인식표 (군번줄)</span>
                 </button>
-                <button id="btn-lobby-leaderboard" style="background: rgba(180,83,9,0.15); border: 1px solid #b45309; color: #fff; padding: 15px; border-radius: 12px; font-size: 1rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; font-family: 'Pretendard', sans-serif;">
-                    <span style="font-size: 1.5rem;">🏆</span>
-                    <span style="font-weight: bold;">명예의 전당 (랭킹)</span>
+                <button id="btn-lobby-leaderboard" class="lobby-menu-btn">
+                    <span>🏆</span>
+                    <span>명예의 전당 (랭킹)</span>
                 </button>
             </div>
             
             <!-- Deploy Button -->
-            <button id="btn-deploy-field" style="background: linear-gradient(135deg, #cd7f32 0%, #8b4513 100%); color: #fff; border: 2px solid #deb887; padding: 18px 30px; border-radius: 15px; font-size: 1.35rem; font-weight: 900; cursor: pointer; box-shadow: 0 0 20px rgba(205,127,50,0.6); width: 100%; font-family: 'Pretendard', sans-serif;">
+            <button id="btn-deploy-field">
                 ⚔️ 연병장 대원 출동 (훈련 시작)
             </button>
             
-            <button class="secondary" onclick="location.reload()" style="margin-top: 15px; background: transparent; border: 1px solid #444; color: #888; font-size: 0.9rem; padding: 10px; width: 100%; border-radius: 8px;">
+            <button class="secondary" onclick="location.reload()" style="width: 100%;">
                 ◀ 로그아웃 (처음 화면으로)
             </button>
         </div>
@@ -1241,6 +1823,7 @@
             <div id="joystick-knob"></div>
         </div>
         
+        <button id="btn-jump">점프<br>▲</button>
         <button id="menu-toggle-btn" onclick="document.getElementById('action-buttons').classList.toggle('active')">메뉴<br>☰</button>
         
         <div id="action-buttons">
