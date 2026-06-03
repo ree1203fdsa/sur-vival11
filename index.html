@@ -16,7 +16,7 @@
     </script>
     <title>3D Military Simulator</title>
     <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js" crossorigin="anonymous"></script>
     <style>
         :root {
             --primary: #4b5320;
@@ -1515,25 +1515,87 @@
             color: #ff8888 !important;
         }
 
+        /* Hide game UI when lobby screen is active */
+        #lobby-screen.active ~ #game-screen #hud,
+        #lobby-screen.active ~ #game-screen #minimap,
+        #lobby-screen.active ~ #game-screen #exp-bar-wrap,
+        #lobby-screen.active ~ #game-screen #discipline-hud,
+        #lobby-screen.active ~ #game-screen #joystick-container,
+        #lobby-screen.active ~ #game-screen #btn-jump,
+        #lobby-screen.active ~ #game-screen #menu-toggle-btn,
+        #lobby-screen.active ~ #game-screen #action-buttons,
+        #lobby-screen.active ~ #game-screen #chat-container,
+        #lobby-screen.active ~ #game-screen #weather-hud {
+            display: none !important;
+        }
+
         /* Mobile specific adjustments */
         @media (max-width: 480px) {
             .branch-grid {
                 grid-template-columns: 1fr !important;
             }
+            #lobby-screen {
+                justify-content: flex-start !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch;
+                padding: 15px 0 !important;
+            }
+            #lobby-screen .panel {
+                padding: 20px 15px !important;
+                width: 92% !important;
+                max-width: 420px !important;
+                margin: 0 auto !important;
+            }
+            #lobby-screen h1 {
+                font-size: 1.5rem !important;
+                margin-bottom: 5px !important;
+                letter-spacing: 2px !important;
+            }
+            #lobby-screen .subtitle {
+                font-size: 0.75rem !important;
+                margin-bottom: 12px !important;
+            }
             .lobby-menu-grid {
-                grid-template-columns: 1fr !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 8px !important;
+                margin-bottom: 12px !important;
+            }
+            .lobby-menu-btn {
+                padding: 8px 6px !important;
+                font-size: 0.75rem !important;
+                gap: 4px !important;
+            }
+            .lobby-menu-btn span:first-child {
+                font-size: 1.1rem !important;
+            }
+            .lobby-menu-btn span:last-child {
+                font-size: 0.7rem !important;
             }
             .military-id-card {
-                grid-template-columns: 1fr !important;
-                text-align: center !important;
-                justify-items: center;
-                padding: 15px !important;
+                grid-template-columns: 60px 1fr !important;
+                text-align: left !important;
+                padding: 10px !important;
+                gap: 10px !important;
+                margin-bottom: 12px !important;
             }
             .military-id-card .avatar-box {
-                margin-bottom: 5px;
+                width: 60px !important;
+                height: 60px !important;
+                font-size: 2.0rem !important;
+                margin-bottom: 0 !important;
+            }
+            #btn-deploy-field {
+                padding: 12px 15px !important;
+                font-size: 1rem !important;
+                margin: 6px 0 !important;
+            }
+            #lobby-screen button.secondary {
+                margin-top: 10px !important;
+                padding: 8px !important;
+                font-size: 0.75rem !important;
             }
             .screen .panel {
-                padding: 25px 20px !important;
+                padding: 20px 15px !important;
             }
         }
     </style>
@@ -1689,6 +1751,12 @@
             <button id="btn-deploy-field">
                 ⚔️ 연병장 대원 출동 (훈련 시작)
             </button>
+            
+            <!-- Coupon Input -->
+            <div style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; display: flex; gap: 8px;">
+                <input type="text" id="game-coupon-input" placeholder="쿠폰 코드 입력" style="flex: 1; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid var(--accent); color: white; border-radius: 8px; font-size: 0.9rem;">
+                <button onclick="redeemGameCoupon()" style="width: auto; margin: 0; padding: 10px 15px; font-size: 0.9rem; background: var(--accent); color: black; font-weight: bold; border-radius: 8px; border: none; cursor: pointer;">등록</button>
+            </div>
             
             <button class="secondary" onclick="location.reload()" style="width: 100%;">
                 ◀ 로그아웃 (처음 화면으로)
@@ -2227,40 +2295,117 @@
         </div>
 
         <!-- Admin Control (General ree1203 only) - Moved to top-level body for always-visible Lobby & Game Overlay -->
-        <div id="admin-panel" style="display: none; position: fixed; top: 100px; left: 20px; z-index: 10005; background: rgba(15, 25, 15, 0.9); border: 2px solid #556b2f; box-shadow: 0 0 25px rgba(85,107,47,0.6); padding: 20px; border-radius: 15px; width: 260px; backdrop-filter: blur(8px); color: #fff;">
-            <h3 style="margin: 0 0 15px 0; color: #deb887; text-align: center; font-weight: 900; letter-spacing: 1px; text-shadow: 0 0 5px rgba(222,184,135,0.5);">⚡ 대장 지휘 통제실</h3>
+        <div id="admin-panel" style="display: none; position: fixed; top: 100px; left: 20px; z-index: 10005; background: rgba(15, 25, 15, 0.9); border: 2px solid #556b2f; box-shadow: 0 0 25px rgba(85,107,47,0.6); padding: 18px 15px; border-radius: 15px; width: 265px; max-height: 80vh; overflow-y: auto; backdrop-filter: blur(8px); color: #fff;">
+            <h3 style="margin: 0 0 12px 0; color: #deb887; text-align: center; font-weight: 900; letter-spacing: 1px; text-shadow: 0 0 5px rgba(222,184,135,0.5); font-size: 1.1rem;">⚡ 대장 지휘 통제실</h3>
             
             <!-- Target User Selector -->
-            <div style="margin-bottom: 15px;">
-                <label style="font-size: 0.75rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 5px;">📍 대상 플레이어 지정</label>
-                <select id="admin-target-user" style="width: 100%; padding: 8px; background: #223022; color: #fff; border: 1px solid #556b2f; border-radius: 6px; font-weight: bold;"></select>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 0.75rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 4px;">📍 대상 플레이어 지정</label>
+                <select id="admin-target-user" style="width: 100%; padding: 6px; background: #223022; color: #fff; border: 1px solid #556b2f; border-radius: 6px; font-weight: bold; font-size: 0.8rem;"></select>
             </div>
 
-            <!-- Grid of Actions -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
-                <button id="btn-admin-siren" class="btn" style="margin: 0; padding: 10px; background: #b91c1c; font-size: 0.8rem; font-weight: bold; border-radius: 8px;">🚨 비상소집</button>
-                <button id="btn-admin-lightning" class="btn" style="margin: 0; padding: 10px; background: #d97706; font-size: 0.8rem; font-weight: bold; border-radius: 8px;">⚡ 번개벌</button>
-                <button id="btn-admin-cctv" class="btn" style="margin: 0; padding: 10px; background: #4f46e5; font-size: 0.8rem; font-weight: bold; border-radius: 8px;">🛰️ CCTV감시</button>
-                <button id="btn-admin-crate" class="btn" style="margin: 0; padding: 10px; background: #059669; font-size: 0.8rem; font-weight: bold; border-radius: 8px;">📦 보급투하</button>
-                <button id="btn-admin-time" class="btn" style="margin: 0; padding: 10px; background: #2563eb; font-size: 0.8rem; font-weight: bold; border-radius: 8px;">⏰ 낮밤변경</button>
-                <button id="btn-admin-pardon" class="btn" style="margin: 0; padding: 10px; background: #10b981; font-size: 0.8rem; font-weight: bold; border-radius: 8px;">🔑 특사사면</button>
+            <!-- Target User Control Actions (Mute, Kick, Ban) -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 12px;">
+                <button onclick="muteUserAdmin()" class="btn" style="margin: 0; padding: 8px 4px; background: #6b7280; font-size: 0.72rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">🔇 음소거</button>
+                <button onclick="kickUserAdmin()" class="btn" style="margin: 0; padding: 8px 4px; background: #d97706; font-size: 0.72rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">🚪 강퇴</button>
+                <button onclick="banUserAdmin()" class="btn" style="margin: 0; padding: 8px 4px; background: #b91c1c; font-size: 0.72rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">💀 밴</button>
+            </div>
+
+            <!-- Grid of Map Actions -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 12px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                <button id="btn-admin-siren" class="btn" style="margin: 0; padding: 8px 2px; background: #991b1b; font-size: 0.7rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">🚨소집</button>
+                <button id="btn-admin-lightning" class="btn" style="margin: 0; padding: 8px 2px; background: #b45309; font-size: 0.7rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">⚡번개</button>
+                <button id="btn-admin-cctv" class="btn" style="margin: 0; padding: 8px 2px; background: #3730a3; font-size: 0.7rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">🛰️CCTV</button>
+                <button id="btn-admin-crate" class="btn" style="margin: 0; padding: 8px 2px; background: #065f46; font-size: 0.7rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">📦보급</button>
+                <button id="btn-admin-time" class="btn" style="margin: 0; padding: 8px 2px; background: #1e40af; font-size: 0.7rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">⏰시간</button>
+                <button id="btn-admin-pardon" class="btn" style="margin: 0; padding: 8px 2px; background: #065f46; font-size: 0.7rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">🔑사면</button>
+            </div>
+
+            <!-- God & Flight Cheats -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; margin-bottom: 12px;">
+                <label style="font-size: 0.75rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 5px;">🦸 마스터 개인 특권</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button id="btn-admin-god" onclick="toggleGodModeAdmin()" class="btn" style="margin: 0; padding: 8px; background: #10b981; font-size: 0.75rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">🛡️ 무적: OFF</button>
+                    <button id="btn-admin-flight" onclick="toggleFlightModeAdmin()" class="btn" style="margin: 0; padding: 8px; background: #3b82f6; font-size: 0.75rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">✈️ 비행: OFF</button>
+                </div>
+            </div>
+
+            <!-- Teleporter -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; margin-bottom: 12px;">
+                <label style="font-size: 0.75rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 4px;">🌀 순간 이동 (텔레포트)</label>
+                <div style="display: flex; gap: 5px;">
+                    <select id="admin-teleport-dest" style="flex: 1; padding: 6px; background: #223022; color: #fff; border: 1px solid #556b2f; border-radius: 6px; font-size: 0.75rem; font-weight: bold;">
+                        <option value="selected">📍 선택된 유저</option>
+                        <option value="위병소">위병소</option>
+                        <option value="연병장">연병장</option>
+                        <option value="본청">본청</option>
+                        <option value="생활관">생활관</option>
+                        <option value="PX">PX</option>
+                        <option value="사격장">사격장</option>
+                        <option value="유격장">유격장</option>
+                    </select>
+                    <button onclick="teleportAdmin()" class="btn" style="margin: 0; padding: 6px 10px; background: #8b5cf6; font-size: 0.75rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">이동</button>
+                </div>
+            </div>
+
+            <!-- Spawns (Items/Vehicles) -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; margin-bottom: 12px;">
+                <label style="font-size: 0.75rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 4px;">🛠️ 보급 지급 / 장비 소환</label>
+                <div style="display: flex; gap: 5px;">
+                    <select id="admin-spawn-item" style="flex: 1; padding: 6px; background: #223022; color: #fff; border: 1px solid #556b2f; border-radius: 6px; font-size: 0.75rem; font-weight: bold;">
+                        <option value="k2">🔫 K2 소총</option>
+                        <option value="hardtack">🍪 건빵</option>
+                        <option value="sauce">🌶️ 맛다시</option>
+                        <option value="mre">😋 전투식량</option>
+                        <option value="burger">🍔 군대리아</option>
+                        <option value="liner">🧥 황금 깔깔이</option>
+                        <option value="apc"> 장갑차 소환</option>
+                        <option value="heli">🚁 공격 헬기 소환</option>
+                    </select>
+                    <button onclick="spawnItemAdmin()" class="btn" style="margin: 0; padding: 6px 10px; background: #059669; font-size: 0.75rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">소환</button>
+                </div>
+            </div>
+
+            <!-- Environment (Weather/Rates) -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <div>
+                        <label style="font-size: 0.7rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 3px;">🌤️ 날씨 제어</label>
+                        <select id="admin-weather" onchange="changeWeatherAdmin(this.value)" style="width: 100%; padding: 6px; background: #223022; color: #fff; border: 1px solid #556b2f; border-radius: 6px; font-size: 0.7rem; font-weight: bold;">
+                            <option value="CLEAR">맑음</option>
+                            <option value="RAIN">비</option>
+                            <option value="SNOW">눈</option>
+                            <option value="FOG">안개</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.7rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 3px;">📈 경험치 배율</label>
+                        <select id="admin-exp-rate" onchange="changeExpRateAdmin(this.value)" style="width: 100%; padding: 6px; background: #223022; color: #fff; border: 1px solid #556b2f; border-radius: 6px; font-size: 0.7rem; font-weight: bold;">
+                            <option value="1">1배</option>
+                            <option value="2">2배</option>
+                            <option value="5">5배</option>
+                            <option value="10">10배</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
             <!-- Standard Jail -->
-            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
-                <label style="font-size: 0.75rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 5px;">⛓️ 강제 영창 송치</label>
-                <div style="display: flex; gap: 6px;">
-                    <input type="number" id="jail-time" placeholder="분" value="10" style="width: 60px; padding: 8px; background: #223022; border: 1px solid #556b2f; color: #fff; border-radius: 6px; text-align: center;">
-                    <button id="btn-send-jail" class="btn" style="margin: 0; flex: 1; background: #ef4444; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; padding: 8px;">송치하기</button>
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                <label style="font-size: 0.75rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 4px;">⛓️ 강제 영창 송치</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="number" id="jail-time" placeholder="분" value="10" style="width: 50px; padding: 6px; background: #223022; border: 1px solid #556b2f; color: #fff; border-radius: 6px; text-align: center; font-size: 0.8rem; font-weight: bold;">
+                    <button id="btn-send-jail" class="btn" style="margin: 0; flex: 1; background: #b91c1c; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; padding: 6px; font-size: 0.75rem;">송치</button>
                 </div>
             </div>
         </div>
 
         <!-- Scripts -->
-        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js" crossorigin="anonymous"></script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js" crossorigin="anonymous"></script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js" crossorigin="anonymous"></script>
 
         <script src="config.js?v=105"></script>
 

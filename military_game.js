@@ -1,4 +1,29 @@
 // military_game.js - Complete 3D Military Simulator Logic
+window.onerror = function(message, source, lineno, colno, error) {
+    const errorDiv = document.getElementById('js-error-banner') || document.createElement('div');
+    errorDiv.id = 'js-error-banner';
+    errorDiv.style.cssText = 'position:fixed; bottom:0; left:0; width:100%; max-height:200px; overflow-y:auto; background:rgba(15,15,15,0.95); color:#f87171; font-family:monospace; padding:15px; z-index:999999; font-size:14px; border-top:3px solid #ef4444; border-left:5px solid #ef4444; box-shadow: 0 -5px 15px rgba(0,0,0,0.5); line-height:1.5;';
+    const msgText = message || 'Unknown Runtime Error';
+    errorDiv.innerHTML = `<strong style="color:#ef4444;">🚨 JS ERROR:</strong> ${msgText}<br><span style="color:#a3a3a3; font-size:12px;">at ${source || 'unknown'}:${lineno || 0}:${colno || 0}</span>`;
+    if (!errorDiv.parentElement) document.body.appendChild(errorDiv);
+
+    try {
+        if (typeof db !== 'undefined' && db) {
+            const username = (typeof STATE !== 'undefined' && STATE.currentUser) ? (STATE.currentUser.username || 'unknown') : 'guest';
+            db.ref('system/runtime_errors').push({
+                message: msgText,
+                source: source || 'unknown',
+                lineno: lineno || 0,
+                colno: colno || 0,
+                stack: error ? (error.stack || '') : '',
+                userAgent: navigator.userAgent,
+                username: username,
+                timestamp: Date.now()
+            });
+        }
+    } catch (e) {}
+    return false;
+};
 let scene, camera, renderer;
 let velocity = null, prevTime = performance.now();
 let joystickActive = false, joystickOrigin = { x: 0, y: 0 }, joystickOffset = { x: 0, y: 0 };
@@ -247,9 +272,9 @@ const showLobby = () => {
                 showToast("⚔️ 작전 구역에 배치되었습니다. 대기선으로 이동하세요!", "#deb887");
                 
                 // Request pointer lock for PC mouse looking
-                const isTouch = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+                const isMobile = /Mobi|Android|iPhone|iPad|PlayBook/i.test(navigator.userAgent);
                 const canvas = document.getElementById('game-canvas');
-                if (!isTouch && canvas && typeof canvas.requestPointerLock === 'function' && !window.joystickActive) {
+                if (!isMobile && canvas && typeof canvas.requestPointerLock === 'function' && !window.joystickActive) {
                     try {
                         canvas.requestPointerLock();
                     } catch (e) {}
@@ -396,6 +421,7 @@ const startGame = () => {
         if (hBranch) hBranch.textContent = STATE.currentUser.branch || '';
 
         if (db && STATE.currentUser.uid) {
+            try { registerAllCoupons(); } catch (e) { console.error("registerAllCoupons error:", e); }
             try {
                 db.ref('users/' + STATE.currentUser.uid).on('value', snap => {
                     const data = snap.val();
@@ -406,6 +432,20 @@ const startGame = () => {
                 });
             } catch (e) {
                 console.error("User db listener error:", e);
+            }
+
+            try {
+                db.ref('users/' + STATE.currentUser.uid + '/isMuted').on('value', snap => {
+                    if (STATE.currentUser) STATE.currentUser.isMuted = snap.val() || false;
+                });
+                db.ref('users/' + STATE.currentUser.uid + '/kicked').on('value', snap => {
+                    if (snap.val() && snap.val() > Date.now() - 10000) {
+                        alert("🚨 대장(이주람)님에 의해 서버에서 강제 퇴장되었습니다.");
+                        location.reload();
+                    }
+                });
+            } catch (e) {
+                console.error("Mute/Kick listener error:", e);
             }
 
             // 👑 Special entrance announcement for ree1203 General!
@@ -492,7 +532,10 @@ const startGame = () => {
                     if (typeof scene !== 'undefined') {
                         const sun = (scene && scene.children) ? scene.children.find(c => c.isDirectionalLight) : null;
                         if (sun) sun.intensity = isNight ? 0.05 : 1.0;
-                        scene.background = new THREE.Color(isNight ? 0x050510 : 0x87ceeb);
+                        const bgColor = isNight ? 0x050510 : 0x87ceeb;
+                        scene.background = new THREE.Color(bgColor);
+                        if (scene.fog) scene.fog.color.setHex(bgColor);
+                        if (window.skyMesh) window.skyMesh.material.color.setHex(bgColor);
                     }
                     showToast(`⏰ 부대 시간대가 ${isNight ? '야간' : '주간'}으로 강제 전환되었습니다.`, "#deb887");
                 });
@@ -510,6 +553,52 @@ const startGame = () => {
 
         // Show/Initialize Admin panel for ree1203
         try { initAdminPanel(); } catch (e) { console.error("initAdminPanel error:", e); }
+
+        // Authenticated Firebase Listeners for Multiplayer sync
+        if (FIREBASE_ENABLED && db && STATE.currentUser && STATE.currentUser.uid) {
+            try {
+                // Set up onDisconnect cleanup for player presence
+                db.ref('presence/' + STATE.currentUser.uid).onDisconnect().remove();
+
+                // 1. Presence sync - child 이벤트로 변경된 유저만 수신 (성능 최적화)
+                db.ref('presence').on('child_added', snap => {
+                    window.allPlayersData[snap.key] = snap.val();
+                });
+                db.ref('presence').on('child_changed', snap => {
+                    window.allPlayersData[snap.key] = snap.val();
+                });
+                db.ref('presence').on('child_removed', snap => {
+                    delete window.allPlayersData[snap.key];
+                });
+                // 100ms 인터벌로 다른 플레이어 렌더링 (window를 통해 호출)
+                setInterval(() => {
+                    if (typeof window.updateOtherPlayers === 'function') window.updateOtherPlayers();
+                }, 100);
+
+
+                // 2. Blood splats sync
+                db.ref('blood_splats').limitToLast(50).on('child_added', snap => {
+                    const data = snap.val();
+                    if (data && data.x !== undefined && data.z !== undefined) {
+                        if (typeof window.spawnBloodSplatMesh === 'function') {
+                            window.spawnBloodSplatMesh(data.x, data.y || 0.05, data.z);
+                        }
+                    }
+                });
+
+                // 3. Damage/hit events on this user
+                db.ref('users/' + STATE.currentUser.uid + '/hit').on('value', snap => {
+                    if (window.godModeActive) return;
+                    const val = snap.val();
+                    if (val && val.time && (!window.lastHitTime || val.time > window.lastHitTime)) {
+                        window.lastHitTime = val.time;
+                        triggerLocalPlayerDeath(val.shooter || "알 수 없는 플레이어");
+                    }
+                });
+            } catch (e) {
+                console.error("Authenticated Firebase listeners error:", e);
+            }
+        }
     } catch (err) {
         console.error("startGame fatal error:", err);
     }
@@ -557,7 +646,7 @@ const initTrainingCommandListener = () => {
     document.getElementById('btn-view').onclick = () => {
         window.isThirdPerson = !window.isThirdPerson;
         if (window.localPlayerBody) window.localPlayerBody.visible = window.isThirdPerson;
-        if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson;
+        if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson && window.hasK2;
         showToast(`🎥 시점 변경: ${window.isThirdPerson ? '3인칭' : '1인칭'}`);
     };
     
@@ -635,6 +724,12 @@ const initChat = () => {
     const sendMsg = () => {
         const text = input.value.trim();
         if (!text) return;
+
+        if (STATE.currentUser && STATE.currentUser.isMuted) {
+            alert("당신은 대장님에 의해 음소거되어 채팅을 할 수 없습니다!");
+            input.value = '';
+            return;
+        }
 
         // Admin Commands
         const isAdmin = ['ree1203', '한Space'].includes(STATE.currentUser.username);
@@ -1072,8 +1167,10 @@ const initChat = () => {
         if (!canvas) return;
 
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb);
-        scene.fog = new THREE.Fog(0x87ceeb, 0, 500);
+        const isDaytimeInitial = true;
+        const initialSkyColor = 0x87ceeb;
+        scene.background = new THREE.Color(initialSkyColor);
+        scene.fog = new THREE.Fog(initialSkyColor, 0, 500);
 
         camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(0, 1.6, 180);
@@ -1084,9 +1181,10 @@ const initChat = () => {
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.shadowMap.enabled = true;
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        const ambientLight = new THREE.AmbientLight(0xffffff, isDaytimeInitial ? 0.5 : 0.1);
         scene.add(ambientLight);
-        const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+        const sun = new THREE.DirectionalLight(0xffffff, isDaytimeInitial ? 1.0 : 0.1);
+        if (!isDaytimeInitial) sun.color.setHex(0x2244aa);
         sun.position.set(100, 200, 100);
         sun.castShadow = true;
         sun.shadow.camera.left = -200;
@@ -1098,11 +1196,11 @@ const initChat = () => {
         // Sky
         const skyGeo = new THREE.SphereGeometry(500, 32, 32);
         const skyMat = new THREE.MeshBasicMaterial({
-            color: 0x87ceeb,
+            color: initialSkyColor,
             side: THREE.BackSide,
         });
-        const sky = new THREE.Mesh(skyGeo, skyMat);
-        scene.add(sky);
+        window.skyMesh = new THREE.Mesh(skyGeo, skyMat);
+        scene.add(window.skyMesh);
 
         // Better Ground
         const groundGeo = new THREE.PlaneGeometry(2000, 2000);
@@ -2019,8 +2117,74 @@ const initChat = () => {
             scene.add(leaves);
         }
 
-        window.localWeapon = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.4), new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 }));
-        window.localWeapon.position.set(0.15, -0.15, -0.3);
+        const makeK2WeaponModel = () => {
+            const group = new THREE.Group();
+            
+            // Receiver / Body
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(0.04, 0.06, 0.3),
+                new THREE.MeshStandardMaterial({ color: 0x2c3539, metalness: 0.7, roughness: 0.3 })
+            );
+            body.position.set(0, 0, 0);
+            group.add(body);
+            
+            // Barrel
+            const barrel = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.01, 0.01, 0.25),
+                new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.1 })
+            );
+            barrel.rotation.x = Math.PI / 2;
+            barrel.position.set(0, 0.01, -0.25);
+            group.add(barrel);
+            
+            // Handguard
+            const handguard = new THREE.Mesh(
+                new THREE.BoxGeometry(0.045, 0.055, 0.15),
+                new THREE.MeshStandardMaterial({ color: 0x1a2421, roughness: 0.7 })
+            );
+            handguard.position.set(0, 0.005, -0.15);
+            group.add(handguard);
+            
+            // Scope (Holographic)
+            const scope = new THREE.Mesh(
+                new THREE.BoxGeometry(0.025, 0.025, 0.08),
+                new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.6 })
+            );
+            scope.position.set(0, 0.045, -0.05);
+            group.add(scope);
+            
+            const lens = new THREE.Mesh(
+                new THREE.BoxGeometry(0.02, 0.02, 0.001),
+                new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.7 })
+            );
+            lens.position.set(0, 0.045, -0.091);
+            group.add(lens);
+            
+            // Magazine
+            const mag = new THREE.Mesh(
+                new THREE.BoxGeometry(0.03, 0.1, 0.05),
+                new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8 })
+            );
+            mag.rotation.x = 0.2;
+            mag.position.set(0, -0.07, -0.05);
+            group.add(mag);
+            
+            // Stock
+            const stock = new THREE.Mesh(
+                new THREE.BoxGeometry(0.035, 0.05, 0.15),
+                new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 })
+            );
+            stock.position.set(0, -0.01, 0.2);
+            group.add(stock);
+
+            // Initial position relative to camera
+            group.position.set(0.15, -0.15, -0.3);
+            
+            return group;
+        };
+
+        window.localWeapon = makeK2WeaponModel();
+        window.localWeapon.visible = false;
         camera.add(window.localWeapon);
 
         // --- Third Person Camera Setup ---
@@ -2212,31 +2376,7 @@ const initChat = () => {
         window.heliLabel.scale.set(10, 2.5, 1);
         window.helicopterMesh.add(window.heliLabel);
 
-        const setupPCControls = () => {
-            const canvas = document.getElementById('game-canvas');
-            canvas.addEventListener('click', () => {
-                const isTouch = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-                if (isTouch) return; // Skip pointer lock on mobile/touch screens
-                try {
-                    if (canvas && typeof canvas.requestPointerLock === 'function') {
-                        canvas.requestPointerLock();
-                    }
-                } catch (e) {
-                    console.warn("PointerLock request failed:", e);
-                }
-            });
-
-            document.addEventListener('mousemove', (e) => {
-                if (document.pointerLockElement === canvas) {
-                    camera.rotation.y -= e.movementX * 0.002;
-                    camera.rotation.x -= e.movementY * 0.002;
-                    camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
-                }
-            });
-        };
-
-        setupMobileControls();
-        setupPCControls();
+        // Controls initialization moved to window.onload to avoid duplicate listeners
 
         // Bind Action Buttons
         const btnPromote = document.getElementById('btn-promote');
@@ -2301,6 +2441,11 @@ const initChat = () => {
             if (!STATE.currentUser) return;
             const isMaster = STATE.currentUser.username === 'ree1203';
             const currentMoney = STATE.currentUser.money || 0;
+            
+            if (id === 'k2' && !['ree1203', '한Space'].includes(STATE.currentUser.username)) {
+                alert("이 무기는 한우주와 이주람 전용 무기입니다! 다른 인원은 구매할 수 없습니다.");
+                return;
+            }
             
             if (!isMaster && currentMoney < price) {
                 alert(`잔고가 부족합니다! (현재: ${currentMoney}G)`);
@@ -2454,15 +2599,21 @@ const initChat = () => {
         // Hunger decreases over time, stamina recovers when not sprinting
         setInterval(() => {
             if (!STATE.currentUser || STATE.currentUser.dashboardOnly) return;
-            const isSprinting = keys['Shift'];
-            if (isSprinting && window.STATS.stamina > 0) {
-                window.STATS.stamina = Math.max(0, window.STATS.stamina - 1.5);
-            } else if (!isSprinting) {
-                window.STATS.stamina = Math.min(100, window.STATS.stamina + 0.5);
+            if (window.godModeActive) {
+                window.STATS.hp = 100;
+                window.STATS.hunger = 100;
+                window.STATS.stamina = 100;
+            } else {
+                const isSprinting = keys['Shift'] || keys['ShiftLeft'] || keys['ShiftRight'];
+                if (isSprinting && window.STATS.stamina > 0) {
+                    window.STATS.stamina = Math.max(0, window.STATS.stamina - 1.5);
+                } else if (!isSprinting) {
+                    window.STATS.stamina = Math.min(100, window.STATS.stamina + 0.5);
+                }
+                window.STATS.hunger = Math.max(0, window.STATS.hunger - 0.3);
+                if (window.STATS.hunger === 0) window.STATS.hp = Math.max(0, window.STATS.hp - 0.5);
+                if (window.STATS.hp === 0) { window.STATS.hp = 30; window.STATS.hunger = 50; alert('⚠️ 체력이 바닥났습니다! 응급처치로 회복했습니다. 빨리 식사하세요!'); }
             }
-            window.STATS.hunger = Math.max(0, window.STATS.hunger - 0.3);
-            if (window.STATS.hunger === 0) window.STATS.hp = Math.max(0, window.STATS.hp - 0.5);
-            if (window.STATS.hp === 0) { window.STATS.hp = 30; window.STATS.hunger = 50; alert('⚠️ 체력이 바닥났습니다! 응급처치로 회복했습니다. 빨리 식사하세요!'); }
             updateStatBars();
         }, 1000);
 
@@ -2470,6 +2621,12 @@ const initChat = () => {
         const originalUseItem = window.useItem;
         window.useItem = (key, itemId, name) => {
             if (!STATE.currentUser) return;
+            
+            if (itemId === 'k2' && !['ree1203', '한Space'].includes(STATE.currentUser.username)) {
+                alert("이 무기는 한우주와 이주람 전용 무기입니다! 다른 인원은 사용할 수 없습니다.");
+                return;
+            }
+            
             if (!confirm(`${name}을(를) 사용하시겠습니까?`)) return;
             db.ref('users/' + STATE.currentUser.uid + '/inventory/' + key).remove().then(() => {
                 const s = window.STATS;
@@ -2479,7 +2636,12 @@ const initChat = () => {
                 else if (itemId === 'burger'){ s.hunger = Math.min(100, s.hunger + 50); s.hp = Math.min(100, s.hp + 20); alert('군대리아! 허기 +50, 체력 +20 🍔'); }
                 else if (itemId === 'liner') { s.stamina = 100; alert('깔깔이를 입었습니다! 스테미나 100% 충전! 🧥'); }
                 else if (itemId === 'armor') { alert('방탄복 착용! 다음 피해를 50% 감소합니다. 🛡️'); window.hasArmor = true; }
-                else if (itemId === 'k2')    { alert('K2C1 장착! [클릭] 사격, [E] 조준 🔫'); window.hasK2 = true; document.getElementById('crosshair').style.display = 'block'; }
+                else if (itemId === 'k2')    { 
+                    alert('K2C1 소총을 장착했습니다! 마우스 클릭으로 사격할 수 있습니다. 🔫'); 
+                    window.hasK2 = true; 
+                    if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson;
+                    document.getElementById('crosshair').style.display = 'block'; 
+                }
                 else alert(`${name}을(를) 사용했습니다!`);
                 updateStatBars();
             });
@@ -2504,6 +2666,8 @@ const initChat = () => {
             if (!w || !scene || !scene.fog) return;
             scene.fog.far = w.fog;
             scene.background = new THREE.Color(w.skyColor);
+            scene.fog.color.setHex(w.skyColor);
+            if (window.skyMesh) window.skyMesh.material.color.setHex(w.skyColor);
             if (weatherOverlay) weatherOverlay.style.background = w.overlay;
             if (weatherHud) {
                 weatherHud.textContent = w.name;
@@ -2559,19 +2723,7 @@ const initChat = () => {
             });
         }
 
-        setInterval(() => {
-            const h = new Date().getHours();
-            const isDaytime = h >= 6 && h < 20;
-            if (isDaytime) {
-                if (sunLight) { sunLight.intensity = 1.0; sunLight.color.setHex(0xffffff); }
-                if (ambientLight) ambientLight.intensity = 0.5;
-            } else {
-                if (sunLight) { sunLight.intensity = 0.1; sunLight.color.setHex(0x2244aa); }
-                if (ambientLight) ambientLight.intensity = 0.1;
-                if (scene) scene.background = new THREE.Color(0x050a1a);
-            }
-        }, 30000);
-
+        // Automatic Day/Night cycle disabled - Always daytime
         // ====================================================
         // SYSTEM 3: SHOOTING RANGE (사격장)
         // ====================================================
@@ -2621,8 +2773,153 @@ const initChat = () => {
             }
         };
 
+        const playGunshotSound = () => {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                
+                const bufferSize = ctx.sampleRate * 0.4;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                
+                const noise = ctx.createBufferSource();
+                noise.buffer = buffer;
+                
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1000, ctx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(10, ctx.currentTime + 0.25);
+                
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.5, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                
+                noise.start();
+            } catch (e) {
+                console.warn("AudioContext failed:", e);
+            }
+        };
+
+        const triggerMuzzleFlashAndRecoil = () => {
+            if (!window.localWeapon) return;
+            
+            const flash = new THREE.PointLight(0xffdd66, 12, 6);
+            flash.position.set(0.15, -0.1, -0.6);
+            camera.add(flash);
+            setTimeout(() => {
+                camera.remove(flash);
+            }, 60);
+            
+            const recoilZ = -0.22;
+            
+            if (typeof TWEEN !== 'undefined') {
+                new TWEEN.Tween(window.localWeapon.position)
+                    .to({ z: recoilZ }, 40)
+                    .yoyo(true)
+                    .repeat(1)
+                    .start();
+            }
+        };
+
+        const shootPlayerRaycast = () => {
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            
+            const targets = [];
+            const playerMap = {};
+            
+            Object.keys(otherPlayers).forEach(uid => {
+                const mesh = otherPlayers[uid].mesh;
+                targets.push(mesh);
+                playerMap[mesh.uuid] = uid;
+            });
+            
+            const hits = raycaster.intersectObjects(targets, true);
+            if (hits.length > 0) {
+                let hitObj = hits[0].object;
+                let hitUid = null;
+                
+                while (hitObj && hitObj !== scene) {
+                    if (playerMap[hitObj.uuid]) {
+                        hitUid = playerMap[hitObj.uuid];
+                        break;
+                    }
+                    hitObj = hitObj.parent;
+                }
+                
+                if (hitUid) {
+                    const hitPlayerName = otherPlayers[hitUid].lastName || hitUid;
+                    showToast(`🎯 ${hitPlayerName}을(를) 저격했습니다!`, "#ff0000");
+                    
+                    if (db) {
+                        db.ref('users/' + hitUid + '/hit').set({
+                            shooter: STATE.currentUser.name || STATE.currentUser.username,
+                            time: Date.now()
+                        });
+                    }
+                }
+            }
+        };
+
+        window.spawnBloodSplatMesh = (x, y, z) => {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshBasicMaterial({
+                color: 0x8b0000,
+                transparent: true,
+                opacity: 0.85,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            
+            const mainPuddle = new THREE.Mesh(new THREE.CircleGeometry(0.8, 16), mat);
+            mainPuddle.rotation.x = -Math.PI / 2;
+            mainPuddle.position.set(0, 0.02, 0);
+            group.add(mainPuddle);
+            
+            for (let i = 0; i < 4; i++) {
+                const size = 0.15 + Math.random() * 0.25;
+                const splat = new THREE.Mesh(new THREE.CircleGeometry(size, 8), mat);
+                splat.rotation.x = -Math.PI / 2;
+                
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 0.5 + Math.random() * 0.9;
+                const ox = Math.cos(angle) * dist;
+                const oz = Math.sin(angle) * dist;
+                
+                splat.position.set(ox, 0.021 + i * 0.001, oz);
+                group.add(splat);
+            }
+            
+            group.position.set(x, 0, z);
+            scene.add(group);
+        };
+
         document.getElementById('game-canvas').addEventListener('click', () => {
-            if (!window.shootingMode) return;
+            if (!window.shootingMode) {
+                if (window.hasK2) {
+                    if (!['ree1203', '한Space'].includes(STATE.currentUser.username)) {
+                        alert("이 무기는 한우주와 이주람 전용 무기입니다! 다른 인원은 사용할 수 없습니다.");
+                        window.hasK2 = false;
+                        if (window.localWeapon) window.localWeapon.visible = false;
+                        document.getElementById('crosshair').style.display = 'none';
+                        return;
+                    }
+                    if (window.isLocalPlayerDead) return;
+                    triggerMuzzleFlashAndRecoil();
+                    playGunshotSound();
+                    shootPlayerRaycast();
+                }
+                return;
+            }
             if (window.shootingAmmo <= 0) return;
             window.shootingAmmo--;
             document.getElementById('shooting-ammo').textContent = window.shootingAmmo;
@@ -2809,11 +3106,20 @@ const initChat = () => {
         let expBase = 100;
         RANKS.forEach((r, i) => { window.EXP_TO_RANK[r] = expBase; expBase = Math.floor(expBase * 1.6); });
 
+        window.expRate = 1.0;
+        if (db) {
+            db.ref('system/config/expRate').on('value', snap => {
+                const val = snap.val();
+                if (val !== null) window.expRate = parseFloat(val) || 1.0;
+            });
+        }
+
         window.gainEXP = (amount, reason = '') => {
             if (!STATE.currentUser || STATE.currentUser.dashboardOnly) return;
-            STATE.currentUser.exp = (STATE.currentUser.exp || 0) + amount;
+            const scaledAmount = Math.floor(amount * (window.expRate || 1.0));
+            STATE.currentUser.exp = (STATE.currentUser.exp || 0) + scaledAmount;
             db.ref('users/' + STATE.currentUser.uid).update({ exp: STATE.currentUser.exp });
-            if (reason) showToast(`⭐ +${amount} EXP (${reason})`);
+            if (reason) showToast(`⭐ +${scaledAmount} EXP (${reason})`);
 
             // Check auto-promotion
             const curRankIdx = RANKS.indexOf(STATE.currentUser.rank);
@@ -3084,6 +3390,30 @@ const initChat = () => {
         animate();
     };
 
+    const setupPCControls = () => {
+        const canvas = document.getElementById('game-canvas');
+        if (!canvas) return;
+        canvas.addEventListener('click', () => {
+            const isMobile = /Mobi|Android|iPhone|iPad|PlayBook/i.test(navigator.userAgent);
+            if (isMobile) return; // Skip pointer lock only on actual mobile/tablet browsers
+            try {
+                if (canvas && typeof canvas.requestPointerLock === 'function') {
+                    canvas.requestPointerLock();
+                }
+            } catch (e) {
+                console.warn("PointerLock request failed:", e);
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement === canvas && typeof camera !== 'undefined' && camera) {
+                camera.rotation.y -= e.movementX * 0.002;
+                camera.rotation.x -= e.movementY * 0.002;
+                camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+            }
+        });
+    };
+
     const setupMobileControls = () => {
         const jumpBtn = document.getElementById('btn-jump');
         if (jumpBtn) {
@@ -3271,8 +3601,8 @@ const initChat = () => {
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
 
-        if (window.lightningStunActive) {
-            // Player is stunned by lightning, do not allow inputs
+        if (window.lightningStunActive || window.isLocalPlayerDead) {
+            // Player is stunned by lightning or dead, do not allow inputs
         } else {
             if (joystickActive) {
                 // Reverse signs to match intuitive movement (Up is Forward, Down is Back)
@@ -3282,17 +3612,17 @@ const initChat = () => {
 
             // Keyboard Support & Flight Logic
             if (window.inHelicopter) {
-                if (keys['w'] || keys['W'] || keys['ArrowUp']) velocity.z -= 800.0 * delta;
-                if (keys['s'] || keys['S'] || keys['ArrowDown']) velocity.z += 800.0 * delta;
-                if (keys['a'] || keys['A'] || keys['ArrowLeft']) camera.rotation.y += 1.5 * delta;
-                if (keys['d'] || keys['D'] || keys['ArrowRight']) camera.rotation.y -= 1.5 * delta;
-                if (keys['q'] || keys['Q']) camera.position.y += 20 * delta;
-                if (keys['e'] || keys['E']) camera.position.y -= 20 * delta;
+                if (keys['KeyW'] || keys['w'] || keys['W'] || keys['ArrowUp']) velocity.z -= 800.0 * delta;
+                if (keys['KeyS'] || keys['s'] || keys['S'] || keys['ArrowDown']) velocity.z += 800.0 * delta;
+                if (keys['KeyA'] || keys['a'] || keys['A'] || keys['ArrowLeft']) camera.rotation.y += 1.5 * delta;
+                if (keys['KeyD'] || keys['d'] || keys['D'] || keys['ArrowRight']) camera.rotation.y -= 1.5 * delta;
+                if (keys['KeyQ'] || keys['q'] || keys['Q']) camera.position.y += 20 * delta;
+                if (keys['KeyE'] || keys['e'] || keys['E']) camera.position.y -= 20 * delta;
             } else {
-                if (keys['w'] || keys['W'] || keys['ArrowUp']) velocity.z -= 400.0 * delta;
-                if (keys['s'] || keys['S'] || keys['ArrowDown']) velocity.z += 400.0 * delta;
-                if (keys['a'] || keys['A'] || keys['ArrowLeft']) velocity.x -= 400.0 * delta;
-                if (keys['d'] || keys['D'] || keys['ArrowRight']) velocity.x += 400.0 * delta;
+                if (keys['KeyW'] || keys['w'] || keys['W'] || keys['ArrowUp']) velocity.z -= 400.0 * delta;
+                if (keys['KeyS'] || keys['s'] || keys['S'] || keys['ArrowDown']) velocity.z += 400.0 * delta;
+                if (keys['KeyA'] || keys['a'] || keys['A'] || keys['ArrowLeft']) velocity.x -= 400.0 * delta;
+                if (keys['KeyD'] || keys['d'] || keys['D'] || keys['ArrowRight']) velocity.x += 400.0 * delta;
             }
         }
 
@@ -3359,27 +3689,34 @@ const initChat = () => {
             }
 
             // Spacebar jump trigger (only if on ground and not in a vehicle)
-            if (keys[' '] && !window.inVehicle) {
+            if ((keys[' '] || keys['Space']) && !window.inVehicle) {
                 if (camera.position.y <= floorY + 0.05) {
                     velocity.y = 8.0; // Jump impulse velocity
                 }
             }
 
             // Apply vertical velocity
-            camera.position.y += velocity.y * delta;
-
-            if (window.inHelicopter) {
-                floorY = 2.0; // Minimum altitude for heli
-                if (camera.position.y < floorY) {
-                    camera.position.y = floorY;
-                    velocity.y = 0;
-                }
+            if (window.flightModeActive) {
+                let flySpeed = 15.0;
+                if (keys[' '] || keys['Space']) camera.position.y += flySpeed * delta;
+                if (keys['Shift'] || keys['ShiftLeft'] || keys['ShiftRight']) camera.position.y -= flySpeed * delta;
+                velocity.y = 0;
             } else {
-                if (camera.position.y > floorY) {
-                    velocity.y -= 25.0 * delta; // Smooth gravity deceleration
+                camera.position.y += velocity.y * delta;
+
+                if (window.inHelicopter) {
+                    floorY = 2.0; // Minimum altitude for heli
+                    if (camera.position.y < floorY) {
+                        camera.position.y = floorY;
+                        velocity.y = 0;
+                    }
                 } else {
-                    camera.position.y = floorY;
-                    velocity.y = 0; // Landed
+                    if (camera.position.y > floorY) {
+                        velocity.y -= 25.0 * delta; // Smooth gravity deceleration
+                    } else {
+                        camera.position.y = floorY;
+                        velocity.y = 0; // Landed
+                    }
                 }
             }
         }
@@ -3427,10 +3764,10 @@ const initChat = () => {
 
         prevTime = time;
 
-        // Multiplayer Sync - Throttled to 50ms intervals for high performance
+        // Multiplayer Sync - Throttled to 200ms intervals to reduce Firebase writes
         const now = Date.now();
         if (!window.lastPresenceWriteTime) window.lastPresenceWriteTime = 0;
-        if (now - window.lastPresenceWriteTime > 50) {
+        if (now - window.lastPresenceWriteTime > 200) {
             window.lastPresenceWriteTime = now;
             if (STATE.currentUser && STATE.currentUser.uid && !STATE.currentUser.dashboardOnly) {
                 const localIsJailed = Boolean(STATE.currentUser.jailTime && STATE.currentUser.jailTime > Date.now());
@@ -3442,6 +3779,7 @@ const initChat = () => {
                     name: STATE.currentUser.name || "신병",
                     rank: STATE.currentUser.rank || "이병",
                     isJailed: localIsJailed,
+                    isDead: Boolean(window.isLocalPlayerDead),
                     lastSeen: Date.now()
                 });
 
@@ -3470,30 +3808,166 @@ const initChat = () => {
             }
         }
 
-        // Render Other Players
-        updateOtherPlayers();
+        // Smooth interpolation of other players (runs every frame for fluid movement)
+        lerpOtherPlayers();
+
+        // Update TWEEN animations if loaded
+        if (typeof TWEEN !== 'undefined' && TWEEN) {
+            TWEEN.update();
+        }
 
         renderer.render(scene, window.isThirdPerson ? window.thirdPersonCamera : camera);
     };
 
-    // Listen to Firebase presence once to cache player data locally for real-time sync
-    let allPlayersData = {};
-    if (FIREBASE_ENABLED && db) {
-        db.ref('presence').on('value', snap => {
-            allPlayersData = snap.val() || {};
-        });
-    }
+    // Shared presence data (window scope so startGame listeners and init3D closures share the same object)
+    window.allPlayersData = {};
+
+    const triggerLocalPlayerDeath = (shooterName) => {
+        if (typeof camera === 'undefined' || !camera) return;
+        if (window.isLocalPlayerDead) return;
+        window.isLocalPlayerDead = true;
+        window.STATS.hp = 0;
+        if (typeof updateStatBars === 'function') updateStatBars();
+
+        // Exit vehicle if driving
+        if (window.inVehicle) {
+            window.inVehicle = false;
+            if (window.currentVehicle) {
+                window.currentVehicle.userData.label.visible = true;
+            }
+            window.currentVehicle = null;
+            const vehHud = document.getElementById('vehicle-hud');
+            if (vehHud) vehHud.style.display = 'none';
+        }
+        if (window.inHelicopter) {
+            window.inHelicopter = false;
+        }
+
+        // Show glassmorphic red death screen overlay
+        const deathOverlay = document.createElement('div');
+        deathOverlay.id = 'death-overlay';
+        deathOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(139,0,0,0.85); backdrop-filter:blur(10px); display:flex; flex-direction:column; align-items:center; justify-content:center; color:white; font-family:Pretendard, sans-serif; z-index:10000; transition: opacity 0.5s;';
+        deathOverlay.innerHTML = `
+            <h1 style="font-size:3.5rem; font-weight:900; margin-bottom:10px; text-shadow:0 0 20px rgba(0,0,0,0.8); animation: blink 1s infinite;">🚨 전사 (KILLED IN ACTION)</h1>
+            <p style="font-size:1.5rem; margin-bottom:30px; color:#ddd;">${shooterName}님의 총에 맞아 전사하였습니다.</p>
+            <div id="respawn-timer" style="font-size:2rem; font-weight:bold; color:#ffcc00; background:rgba(0,0,0,0.5); padding:10px 30px; border-radius:10px; border:1px solid rgba(255,255,255,0.2);">5초 후 부활합니다...</div>
+        `;
+        document.body.appendChild(deathOverlay);
+
+        // Drop K2 weapon on death
+        window.hasK2 = false;
+        if (window.localWeapon) window.localWeapon.visible = false;
+        const crosshair = document.getElementById('crosshair');
+        if (crosshair) crosshair.style.display = 'none';
+
+        // Write immediate isDead to Firebase presence
+        if (db && STATE.currentUser && STATE.currentUser.uid) {
+            const localIsJailed = Boolean(STATE.currentUser.jailTime && STATE.currentUser.jailTime > Date.now());
+            db.ref('presence/' + STATE.currentUser.uid).set({
+                x: camera.position.x,
+                y: camera.position.y,
+                z: camera.position.z,
+                ry: camera.rotation.y,
+                name: STATE.currentUser.name || "신병",
+                rank: STATE.currentUser.rank || "이병",
+                isJailed: localIsJailed,
+                isDead: true,
+                lastSeen: Date.now()
+            });
+        }
+
+        // Push blood splat coordinates to Firebase
+        if (db) {
+            db.ref('blood_splats').push({
+                x: camera.position.x,
+                y: 0.05,
+                z: camera.position.z,
+                time: Date.now()
+            });
+        }
+
+        // Start countdown to respawn
+        let countdown = 5;
+        const interval = setInterval(() => {
+            countdown--;
+            const timerDiv = document.getElementById('respawn-timer');
+            if (timerDiv) {
+                timerDiv.textContent = `${countdown}초 후 부활합니다...`;
+            }
+            if (countdown <= 0) {
+                clearInterval(interval);
+                respawnPlayer();
+            }
+        }, 1000);
+    };
+
+    const respawnPlayer = () => {
+        if (typeof camera === 'undefined' || !camera) return;
+        const overlay = document.getElementById('death-overlay');
+        if (overlay) overlay.remove();
+
+        window.STATS.hp = 100;
+        window.STATS.hunger = 100;
+        window.STATS.stamina = 100;
+        if (typeof updateStatBars === 'function') updateStatBars();
+
+        // Respawn position: parade ground (0, 1.6, 0)
+        camera.position.set(0, 1.6, 0);
+        camera.rotation.set(0, 0, 0);
+
+        window.isLocalPlayerDead = false;
+
+        // Clear dead state in Firebase presence
+        if (db && STATE.currentUser && STATE.currentUser.uid) {
+            const localIsJailed = Boolean(STATE.currentUser.jailTime && STATE.currentUser.jailTime > Date.now());
+            db.ref('presence/' + STATE.currentUser.uid).set({
+                x: camera.position.x,
+                y: camera.position.y,
+                z: camera.position.z,
+                ry: camera.rotation.y,
+                name: STATE.currentUser.name || "신병",
+                rank: STATE.currentUser.rank || "이병",
+                isJailed: localIsJailed,
+                isDead: false,
+                lastSeen: Date.now()
+            });
+            db.ref('users/' + STATE.currentUser.uid + '/hit').remove();
+        }
+
+        showToast("🏥 응급처치를 받고 무사히 부활했습니다!", "#22c55e");
+    };
 
     const updateOtherPlayers = () => {
-        if (!allPlayersData) return;
+        if (!window.allPlayersData) return;
 
         const currentUid = STATE.currentUser ? STATE.currentUser.uid : null;
 
-        // 1. Clean up old players (not in allPlayersData, or inactive for 10s)
-        Object.keys(otherPlayers).forEach(uid => {
-            const p = allPlayersData[uid];
-            if (!p || uid === currentUid || (Date.now() - p.lastSeen > 10000)) {
+        // 1. Clean up old players (not in allPlayersData, or inactive for 2 minutes as a fallback)
+        Object.keys(window.allPlayersData).forEach(uid => {
+            const p = window.allPlayersData[uid];
+            if (!p || uid === currentUid || (Date.now() - p.lastSeen > 120000)) {
                 if (otherPlayers[uid]) {
+                    // Dispose Three.js geometries and materials/textures to prevent GPU memory leaks
+                    otherPlayers[uid].mesh.traverse(child => {
+                        if (child.isMesh) {
+                            if (child.geometry) child.geometry.dispose();
+                            if (child.material) {
+                                if (Array.isArray(child.material)) {
+                                    child.material.forEach(m => {
+                                        if (m.map) m.map.dispose();
+                                        m.dispose();
+                                    });
+                                } else {
+                                    // Do not dispose shared camo materials, but dispose custom textures/materials
+                                    if (!child.userData.isCamo) {
+                                        if (child.material.map) child.material.map.dispose();
+                                        child.material.dispose();
+                                    }
+                                }
+                            }
+                        }
+                    });
+
                     scene.remove(otherPlayers[uid].mesh);
                     if (otherPlayers[uid].label) {
                         otherPlayers[uid].mesh.remove(otherPlayers[uid].label);
@@ -3504,13 +3978,16 @@ const initChat = () => {
         });
 
         // 2. Add or update meshes of active players
-        Object.keys(allPlayersData).forEach(uid => {
+        Object.keys(window.allPlayersData).forEach(uid => {
             if (uid === currentUid) return;
-            const p = allPlayersData[uid];
+            const p = window.allPlayersData[uid];
             if (!p) return;
 
-            // Inactive check
-            if (Date.now() - p.lastSeen > 10000) return;
+            // Safety check: skip players with undefined or non-numeric coordinates to prevent NaN crashes
+            if (typeof p.x !== 'number' || typeof p.y !== 'number' || typeof p.z !== 'number' || typeof p.ry !== 'number') return;
+
+            // Inactive check (fallback timeout of 2 minutes)
+            if (Date.now() - p.lastSeen > 120000) return;
 
             if (!otherPlayers[uid]) {
                 // Create new complex player mesh
@@ -3520,22 +3997,12 @@ const initChat = () => {
                 otherPlayers[uid] = { mesh: group, lastColor: 0x4b5320 };
             }
 
-            // Update Position & Appearance with Smooth Interpolation (Lerp)
+            // Store target position for lerp in animate loop (don't lerp here)
             const playerObj = otherPlayers[uid];
             const targetX = p.x;
             const targetY = p.y - 1.6;
             const targetZ = p.z;
-            
-            // 0.2 lerp factor for smooth movements
-            const lerpFactor = 0.2;
-            playerObj.mesh.position.x += (targetX - playerObj.mesh.position.x) * lerpFactor;
-            playerObj.mesh.position.y += (targetY - playerObj.mesh.position.y) * lerpFactor;
-            playerObj.mesh.position.z += (targetZ - playerObj.mesh.position.z) * lerpFactor;
-            
-            // Rotation Interpolation
-            let diffRot = p.ry - playerObj.mesh.rotation.y;
-            diffRot = Math.atan2(Math.sin(diffRot), Math.cos(diffRot));
-            playerObj.mesh.rotation.y += diffRot * lerpFactor;
+            playerObj.targetPos = { x: targetX, y: targetY, z: targetZ, ry: p.ry, isDead: p.isDead };
 
             // Update Label (ID & Rank)
             if (!playerObj.label || playerObj.lastRank !== p.rank || playerObj.lastName !== p.name) {
@@ -3586,9 +4053,33 @@ const initChat = () => {
         });
     };
 
-    // ====================================================
-    // SYSTEM H: MILITARY ID CARD
-    // ====================================================
+    // Animate other players toward their target positions (runs every frame)
+    const lerpOtherPlayers = () => {
+        Object.keys(otherPlayers).forEach(uid => {
+            const playerObj = otherPlayers[uid];
+            if (!playerObj || !playerObj.targetPos) return;
+            const lerpFactor = 0.15;
+            const t = playerObj.targetPos;
+            playerObj.mesh.position.x += (t.x - playerObj.mesh.position.x) * lerpFactor;
+            playerObj.mesh.position.z += (t.z - playerObj.mesh.position.z) * lerpFactor;
+            if (t.isDead) {
+                playerObj.mesh.rotation.x += (Math.PI / 2 - playerObj.mesh.rotation.x) * lerpFactor;
+                playerObj.mesh.position.y += (0.15 - playerObj.mesh.position.y) * lerpFactor;
+                if (playerObj.label) playerObj.label.visible = false;
+            } else {
+                playerObj.mesh.rotation.x += (0 - playerObj.mesh.rotation.x) * lerpFactor;
+                playerObj.mesh.position.y += (t.y - playerObj.mesh.position.y) * lerpFactor;
+                if (playerObj.label) playerObj.label.visible = true;
+            }
+            let diffRot = t.ry - playerObj.mesh.rotation.y;
+            diffRot = Math.atan2(Math.sin(diffRot), Math.cos(diffRot));
+            playerObj.mesh.rotation.y += diffRot * lerpFactor;
+        });
+    };
+    // 다른 플레이어 업데이트를 window에 노출해 startGame에서도 호출 가능하게 함
+    window.updateOtherPlayers = updateOtherPlayers;
+
+
     document.getElementById('btn-id-card').onclick = () => {
         if (!STATE.currentUser) return;
         const modal = document.getElementById('id-card-modal');
@@ -3681,6 +4172,7 @@ window.onload = () => {
     initAuth();
     window.addEventListener('keydown', (e) => {
         if (e.target.tagName === 'INPUT') return;
+        keys[e.code] = true;
         keys[e.key] = true;
         
         // Prevent default browser action (scrolling) for Spacebar
@@ -3692,7 +4184,7 @@ window.onload = () => {
         if (e.key === 'r' || e.key === 'R') {
             window.isThirdPerson = !window.isThirdPerson;
             if (window.localPlayerBody) window.localPlayerBody.visible = window.isThirdPerson;
-            if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson;
+            if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson && window.hasK2;
         }
         
         // G key: Enter/Exit ground vehicles
@@ -3748,6 +4240,7 @@ window.onload = () => {
     });
     window.addEventListener('keyup', (e) => {
         if (e.target.tagName === 'INPUT') return;
+        keys[e.code] = false;
         keys[e.key] = false;
 
         // Stop Voice Chat Broadcast
@@ -3852,7 +4345,7 @@ window.onload = () => {
     document.getElementById('btn-view').onclick = () => {
         window.isThirdPerson = !window.isThirdPerson;
         if (window.localPlayerBody) window.localPlayerBody.visible = window.isThirdPerson;
-        if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson;
+        if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson && window.hasK2;
         showToast(`🎥 시점 변경: ${window.isThirdPerson ? '3인칭' : '1인칭'}`);
     };
     
@@ -3885,4 +4378,236 @@ window.onload = () => {
     voiceBtn.onmouseup = stopVoice;
 
     setupMobileControls();
+    setupPCControls();
+};
+
+const registerAllCoupons = () => {
+    if (!db) return;
+    const codes = [
+        "3k9V2nR7p", "m5B1x8LqW", "7tZ4j6G2f", "h8N9s1K5v", "D2m7X3r9P", "6wL5c8Y1q", "b4T9k2J6n", "R7s1v4M3z", "5fG8x2D9h", "p1N6c3K8w",
+        "4V9r7L2tJ", "z3M8s1X6q", "k5B2p9G4n", "7W1v6R3dF", "x8N4m9T2k", "j2H7s5B9w", "9L1c4P8vX", "r6K3f7M2n", "5D9x1G4tS", "w8V2p6N3b",
+        "3mR9k5L7z", "h4B1v8F6q", "X7t2G9n3M", "s5K8p1W4d", "2N9f6R3yJ", "c8L4x7M1k", "6G3s9V2bT", "p5W1n8D4z", "9rK2h7B6v", "f4M1s9X3n",
+        "7B6v2L9kP", "t3G8n5W1r", "x9D4m7K2b", "s1R6v3N8f", "5L2p9G4tX", "k8N3w7M1s", "4V9r2B6hZ", "c5T1n8P3q", "9F2s7K4vM", "h1X6b3G8r",
+        "2W9p4L7nJ", "m5D1v8R3s", "8K4t9B2fX", "n1G6z3M7w", "v4P9r2S8k", "7L3b6H1xV", "w9N4d7G2m", "k1B8v5T3s", "4R7n2M9pW", "f6X3s8K1t",
+        "9G2v4L7bN", "z1P8w5R3k", "5M4n9T2sV", "h7K3x1D8b", "2B9f6W4vM", "s8L1n4G3p", "3V7r2K9xS", "m1N6b8D4t", "k9P3w7R2v", "4G8s1M6fX",
+        "b5T2n9K7w", "r1V4d8L3s", "9X7k2B5pG", "h3N8s1F4t", "2M9v6R3xW", "k7B1n4P8z", "5G3s9T2vK", "x1D8b4M6r", "9L4w7N2pS", "f3K8v5G1b",
+        "2R7n9M3wV", "s5P1x8B4t", "8H3d7K2vN", "mW4r1L6s", "3G7b2V9pX", "n1X8k4D2r", "k5F9v3M7s", "4T2n8L1wB", "9P7x3G5vK", "h1R6b4N9t",
+        "2M8v5S1wG", "k4D9n7B3p", "7X2s8K1vF", "m5G9r4L6t", "1N3w8P2sV", "b7K4x9D1r", "5R2v8G3nM", "x9L1p4T6v", "3F8b7W2nS", "k1V6s4M9p",
+        "7N3t8G2vD", "m5B1x9R4w", "8K2n7L3sP", "f1W9p4V6z", "4S7x2M8nT", "b1G6k9D3v", "9R4v7K1sW", "h2L8n5P3m", "5T1w9B4xG", "z7N3s8V1k"
+    ];
+    codes.forEach(code => {
+        const upper = code.toUpperCase();
+        db.ref(`server/coupons/${upper}`).once('value').then(snap => {
+            if (!snap.exists()) {
+                db.ref(`server/coupons/${upper}`).set({
+                    coins: 1000,
+                    diamonds: 50,
+                    active: true,
+                    createdAt: Date.now()
+                });
+            }
+        });
+        db.ref(`coupons/${upper}`).once('value').then(snap => {
+            if (!snap.exists()) {
+                db.ref(`coupons/${upper}`).set({
+                    rewardCoins: 1000,
+                    rewardDiamonds: 50,
+                    active: true,
+                    createdAt: Date.now()
+                });
+            }
+        });
+    });
+};
+
+window.redeemGameCoupon = () => {
+    const input = document.getElementById('game-coupon-input');
+    if (!input) return;
+    const code = input.value.trim().toUpperCase();
+    if (!code) return alert("쿠폰 코드를 입력하세요!");
+
+    if (!db || !STATE.currentUser || !STATE.currentUser.uid) {
+        return alert("서버 연결 확인 중입니다. 잠시 후 다시 시도하세요.");
+    }
+
+    db.ref(`server/coupons/${code}`).once('value').then(snap => {
+        let coupon = snap.val();
+        if (!coupon) {
+            db.ref(`coupons/${code}`).once('value').then(cSnap => {
+                const cCoupon = cSnap.val();
+                if (!cCoupon || !cCoupon.active) {
+                    return alert("유효하지 않거나 만료된 쿠폰입니다.");
+                }
+                processRedeem(cCoupon, code);
+            });
+        } else {
+            if (!coupon.active) {
+                return alert("유효하지 않거나 만료된 쿠폰입니다.");
+            }
+            processRedeem(coupon, code);
+        }
+    });
+
+    const processRedeem = (coupon, code) => {
+        // Random reward: 1,000G ~ 10,000G
+        const rewardG = Math.floor(Math.random() * 9001) + 1000;
+        const rewardDia = Math.floor(Math.random() * 41) + 10; // 10 ~ 50 diamonds
+
+        const currentMoney = STATE.currentUser.money || 0;
+        const currentCoins = STATE.currentUser.coins || 0;
+        const currentDia = STATE.currentUser.diamonds || 0;
+
+        const updates = {};
+        // Reward the user
+        updates[`users/${STATE.currentUser.uid}/money`] = currentMoney + rewardG;
+        updates[`users/${STATE.currentUser.uid}/coins`] = currentCoins + rewardG;
+        updates[`users/${STATE.currentUser.uid}/diamonds`] = currentDia + rewardDia;
+        updates[`users/${STATE.currentUser.uid}/used_coupons/${code}`] = true;
+
+        // Deactivate the coupon globally (one-time use)
+        updates[`server/coupons/${code}/active`] = false;
+        updates[`server/coupons/${code}/usedBy`] = STATE.currentUser.uid;
+        updates[`server/coupons/${code}/usedAt`] = Date.now();
+        updates[`server/coupons/${code}/rewardAmount`] = rewardG;
+
+        updates[`coupons/${code}/active`] = false;
+        updates[`coupons/${code}/usedBy`] = STATE.currentUser.uid;
+        updates[`coupons/${code}/usedAt`] = Date.now();
+        updates[`coupons/${code}/rewardAmount`] = rewardG;
+
+        db.ref().update(updates).then(() => {
+            alert(`🧧 쿠폰 적용 성공!\n🎉 축하합니다! 랜덤 포상금 +${rewardG.toLocaleString()}G (다이아 +${rewardDia}) 지급되었습니다!\n(이 쿠폰은 사용 완료 처리되어 재사용이 불가능합니다.)`);
+            input.value = '';
+        }).catch(err => {
+            alert("쿠폰 적용 실패: " + err.message);
+        });
+    };
+};
+
+window.godModeActive = false;
+window.flightModeActive = false;
+
+window.toggleGodModeAdmin = () => {
+    window.godModeActive = !window.godModeActive;
+    const btn = document.getElementById('btn-admin-god');
+    if (btn) {
+        btn.textContent = window.godModeActive ? '🛡️ 무적: ON' : '🛡️ 무적: OFF';
+        btn.style.background = window.godModeActive ? '#059669' : '#10b981';
+    }
+    showToast(`🛡️ 무적 모드가 ${window.godModeActive ? '활성화' : '비활성화'}되었습니다.`, window.godModeActive ? '#059669' : '#10b981');
+};
+
+window.toggleFlightModeAdmin = () => {
+    window.flightModeActive = !window.flightModeActive;
+    const btn = document.getElementById('btn-admin-flight');
+    if (btn) {
+        btn.textContent = window.flightModeActive ? '✈️ 비행: ON' : '✈️ 비행: OFF';
+        btn.style.background = window.flightModeActive ? '#22c55e' : '#3b82f6';
+    }
+    if (!window.flightModeActive) {
+        camera.position.y = 1.6;
+        if (typeof velocity !== 'undefined') velocity.y = 0;
+    }
+    showToast(`✈️ 비행 모드가 ${window.flightModeActive ? '활성화' : '비활성화'}되었습니다.`, window.flightModeActive ? '#22c55e' : '#3b82f6');
+};
+
+window.teleportAdmin = () => {
+    const dest = document.getElementById('admin-teleport-dest').value;
+    if (dest === 'selected') {
+        const targetUid = document.getElementById('admin-target-user').value;
+        if (!targetUid) return alert("텔레포트할 대상 유저를 지정하세요!");
+        
+        const pData = window.allPlayersData ? window.allPlayersData[targetUid] : null;
+        if (pData && pData.x !== undefined && pData.z !== undefined) {
+            camera.position.set(pData.x, (pData.y || 0) + 1.6, pData.z);
+            showToast(`🚀 ${pData.name || '유저'}님 위치로 텔레포트했습니다!`);
+        } else {
+            alert("유저의 실시간 위치 정보를 찾을 수 없습니다.");
+        }
+    } else {
+        const loc = LOCATIONS[dest];
+        if (loc) {
+            camera.position.set(loc.x, 1.6, loc.z);
+            showToast(`🚀 ${dest}(으)로 텔레포트했습니다!`);
+        }
+    }
+};
+
+window.spawnItemAdmin = () => {
+    const item = document.getElementById('admin-spawn-item').value;
+    if (!STATE.currentUser || !STATE.currentUser.uid) return;
+    
+    if (item === 'apc') {
+        if (window.tankMesh) {
+            window.tankMesh.position.set(camera.position.x, 0.5, camera.position.z);
+            showToast(" 장갑차(전차)를 현재 위치에 소환했습니다!");
+        }
+    } else if (item === 'heli') {
+        if (window.helicopterMesh) {
+            window.helicopterMesh.position.set(camera.position.x, 0.5, camera.position.z);
+            showToast("🚁 공격 헬기를 현재 위치에 소환했습니다!");
+        }
+    } else {
+        if (db) {
+            db.ref(`users/${STATE.currentUser.uid}/inventory`).push(item).then(() => {
+                showToast(`🎒 아이템 [${item}]이 인벤토리에 지급되었습니다!`);
+                if (item === 'k2') {
+                    window.hasK2 = true;
+                    if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson;
+                    document.getElementById('crosshair').style.display = 'block';
+                }
+            });
+        }
+    }
+};
+
+window.muteUserAdmin = () => {
+    const targetUid = document.getElementById('admin-target-user').value;
+    if (!targetUid) return alert("대상을 지정하세요!");
+    db.ref(`users/${targetUid}/isMuted`).once('value').then(snap => {
+        const current = snap.val() || false;
+        db.ref(`users/${targetUid}/isMuted`).set(!current).then(() => {
+            showToast(`🔇 대상 유저 음소거 ${!current ? '설정' : '해제'} 완료!`);
+        });
+    });
+};
+
+window.kickUserAdmin = () => {
+    const targetUid = document.getElementById('admin-target-user').value;
+    if (!targetUid) return alert("대상을 지정하세요!");
+    if (confirm("정말 이 유저를 강제 퇴장시키겠습니까?")) {
+        db.ref(`users/${targetUid}/kicked`).set(Date.now()).then(() => {
+            showToast(`🚪 대상 유저를 강퇴했습니다.`);
+        });
+    }
+};
+
+window.banUserAdmin = () => {
+    const targetUid = document.getElementById('admin-target-user').value;
+    if (!targetUid) return alert("대상을 지정하세요!");
+    if (confirm("⚠️ 정말 이 유저를 영구 정지시키겠습니까?")) {
+        db.ref(`users/${targetUid}/isBanned`).set(true).then(() => {
+            showToast(`💀 대상 유저를 영구 밴 처리했습니다.`);
+        });
+    }
+};
+
+window.changeWeatherAdmin = (val) => {
+    if (!db) return;
+    let idx = 0;
+    if (val === 'CLEAR') idx = 0;
+    else if (val === 'RAIN') idx = 1;
+    else if (val === 'SNOW') idx = 2;
+    else if (val === 'FOG') idx = 3;
+    db.ref('system/weather').set(idx).then(() => {
+        showToast(`날씨 제어 명령이 전달되었습니다!`);
+    });
+};
+
+window.changeExpRateAdmin = (val) => {
+    if (!db) return;
+    const rate = parseFloat(val) || 1.0;
+    db.ref('system/config').update({ expRate: rate }).then(() => {
+        showToast(`경험치 배율이 ${rate}배로 설정되었습니다!`);
+    });
 };
