@@ -1,11 +1,7 @@
 // military_game.js - Complete 3D Military Simulator Logic
 window.onerror = function(message, source, lineno, colno, error) {
-    const errorDiv = document.getElementById('js-error-banner') || document.createElement('div');
-    errorDiv.id = 'js-error-banner';
-    errorDiv.style.cssText = 'position:fixed; bottom:0; left:0; width:100%; max-height:200px; overflow-y:auto; background:rgba(15,15,15,0.95); color:#f87171; font-family:monospace; padding:15px; z-index:999999; font-size:14px; border-top:3px solid #ef4444; border-left:5px solid #ef4444; box-shadow: 0 -5px 15px rgba(0,0,0,0.5); line-height:1.5;';
     const msgText = message || 'Unknown Runtime Error';
-    errorDiv.innerHTML = `<strong style="color:#ef4444;">🚨 JS ERROR:</strong> ${msgText}<br><span style="color:#a3a3a3; font-size:12px;">at ${source || 'unknown'}:${lineno || 0}:${colno || 0}</span>`;
-    if (!errorDiv.parentElement) document.body.appendChild(errorDiv);
+    console.error("Runtime JS Error:", msgText, "at", source, ":", lineno, ":", colno);
 
     try {
         if (typeof db !== 'undefined' && db) {
@@ -48,7 +44,9 @@ const LOCATIONS = {
     "보급창고": { x: -60, z: 80, color: 0x666666, size: [30, 10, 30] },
     "PX": { x: 30, z: 80, color: 0x0000ff, size: [20, 8, 20] },
     "체력단련실": { x: -30, z: 80, color: 0xff8c00, size: [20, 10, 20] },
-    "면회실": { x: 20, z: 180, color: 0x008080, size: [15, 8, 15] }
+    "면회실": { x: 20, z: 180, color: 0x008080, size: [15, 8, 15] },
+    "심사장": { x: -100, z: -160, color: 0x1e2e1e, size: [35, 12, 25] },
+    "원수실": { x: 0, z: -150, color: 0x11111a, size: [25, 12, 25] }
 };
 
 const JAIL_CONFIG = {
@@ -57,24 +55,26 @@ const JAIL_CONFIG = {
 };
 
 const RANK_INFO = {
-    "이병": "기본 소총만 사용 가능. 줄 맞추기, 경례 등 기본 움직임 훈련.",
-    "일병": "보조 무기(권총) 해금. 사격 훈련 시작.",
-    "상병": "수류탄 및 연막탄 사용 가능. 전투 참여 가능.",
-    "병장": "총기 개조(스코프 부착) 해금.",
-    "하사": "특수 병과 선택 가능. 각개전투 훈련 시작.",
-    "중사": "팀장이 되어 AI 분대원 1명 지휘.",
-    "상사": "공중 보급 요청 (탄약, 체력킷) 가능.",
-    "원사": "특수 위장복(길리슈트 등) 해금.",
-    "소위": "미니맵 적 위치 스캔 해금. 하급자 교육 및 화생방.",
-    "중위": "2명 이상의 AI 분대원 지휘 가능.",
-    "대위": "박격포 지원 요청 가능.",
-    "소령": "전용 탈것(장갑차, 공격 헬기) 조종 권한 부여.",
-    "중령": "전용 탈것 및 고급 전술 지휘 가능.",
-    "대령": "전용 탈것 및 부대 총괄 지휘.",
-    "준장": "아군 전체 사기 버프 스킬 사용.",
-    "소장": "전체 맵 안개 제거 스킬 사용.",
-    "중장": "특수 전술 스킬 혼합 사용.",
-    "대장": "모든 권한 및 영창(감옥) 처벌 권한 보유."
+    "이등병": "군 생활을 처음 시작하는 계급. 기본 군사훈련을 마친 후 자대 배치. 선임의 지시를 배우며 수행. 청소, 경계근무, 장비 정리 등 기본 업무 담당. 아직 지휘 권한 없음.",
+    "일등병": "기본 업무에 익숙해진 병사. 개인 장비를 관리할 수 있음. 신병을 도와주기도 함. 각종 근무와 작업 수행. 부분적으로 책임 부여.",
+    "상등병": "숙련된 병사. 분대장의 업무 보조. 후임 교육. 부대 규정 준수 지도. 중요한 임무 참여 가능.",
+    "병장": "병사 최고 계급. 후임병 관리. 생활관 관리. 선임병 역할 수행. 분대 운영 보조.",
+    "하사": "최초의 직업군인 계급. 분대장 임무 수행. 병사 교육 및 관리. 훈련 계획 보조. 군기 유지.",
+    "중사": "숙련된 부사관. 여러 분대를 관리. 교육훈련 감독. 장비 관리. 병력 통솔.",
+    "상사": "중대 핵심 부사관. 부사관 지휘. 병사 생활 관리. 각종 행정업무 지원. 훈련 전반 감독.",
+    "원사": "최고참 부사관. 부대 전통 유지. 교육체계 감독. 지휘관 보좌. 부사관 대표 역할.",
+    "준위": "전문 기술 전문가. 무기체계 관리. 정비 감독. 특수 기술 교육. 특정 분야 최고 전문가.",
+    "소위": "초급 장교. 소대장 임무. 병력 약 30~50명 지휘. 훈련 계획 수립. 작전 수행.",
+    "중위": "경험 있는 소대장. 참모 업무 수행. 작전 계획 보조. 부대 운영 지원.",
+    "대위": "중대장. 약 100~200명 지휘. 훈련 총괄. 인사 및 행정 관리. 작전 책임자.",
+    "소령": "대대 참모. 작전 계획 작성. 부대 운영 감독. 여러 중대 통제.",
+    "중령": "대대장. 약 500~1,000명 지휘. 대대 전체 책임. 전투력 유지. 부대 운영 총괄.",
+    "대령": "연대장, 여단 참모장. 수천 명 규모 병력 관리. 전략 수립. 예산 및 행정 관리.",
+    "준장": "여단장. 수천 명 병력 지휘. 지역 방어 작전 책임. 부대 전투력 관리.",
+    "소장": "사단장. 약 1만 명 이상 지휘. 대규모 작전 수행. 부대 전체 운영.",
+    "중장": "군단장. 수만 명 병력 지휘. 광범위한 지역 방어. 여러 사단 통제.",
+    "대장": "육군·해군·공군 최고 지휘관급. 국가 방위 계획 수립. 군 전체 작전 지휘.",
+    "원수": "대한민국 최고 군 계급. 전시 국가 최고 군사 지휘관. 현재까지 실제 임명 사례 없음."
 };
 
 // DOM Elements
@@ -95,7 +95,7 @@ const initAuth = () => {
 
         // Master Admin Check (ree1203 - with game, juram1203 - dashboard only)
         if (uid === 'ree1203' && pw === 'hjklfdsa1203') {
-            STATE.currentUser = { username: uid, name: '이주람', rank: '대장', branch: '육군', role: 'master', uid: 'master_ree' };
+            STATE.currentUser = { username: uid, name: '이주람', rank: '원수', branch: '육군', role: 'master', uid: 'master_ree' };
             db.ref('users/master_ree').set(STATE.currentUser); // DB에 대장 데이터 저장
             startGame();
             return;
@@ -120,7 +120,7 @@ const initAuth = () => {
             return;
         }
         if (uid === 'test' && pw === '1234') {
-            STATE.currentUser = { username: uid, name: '테스트대원', rank: '이병', branch: '육군', role: 'user', uid: 'test_user', money: 5000 };
+            STATE.currentUser = { username: uid, name: '테스트대원', rank: '이등병', branch: '육군', role: 'user', uid: 'test_user', money: 5000 };
             db.ref('users/test_user').set(STATE.currentUser);
             startGame();
             return;
@@ -161,7 +161,7 @@ const initAuth = () => {
 
         db.ref('users').orderByChild('username').equalTo(uid).once('value', snap => {
             if (snap.exists()) return alert("이미 존재하는 아이디입니다.");
-            const newUser = { username: uid, password: pw, name: name, rank: '이병', role: 'user', created: Date.now(), money: 1000 };
+            const newUser = { username: uid, password: pw, name: name, rank: '이등병', role: 'user', created: Date.now(), money: 1000 };
             const ref = db.ref('users').push();
             ref.set(newUser).then(() => {
                 STATE.currentUser = { ...newUser, uid: ref.key };
@@ -194,13 +194,22 @@ const showLobby = () => {
             if (!STATE.currentUser) return;
             
             const rEl = document.getElementById('lobby-rank');
-            if (rEl) rEl.textContent = `[${STATE.currentUser.rank || '이병'}]`;
+            if (rEl) rEl.textContent = `[${STATE.currentUser.rank || '이등병'}]`;
             
             const nEl = document.getElementById('lobby-name');
             if (nEl) nEl.textContent = STATE.currentUser.name || '신병';
             
             const bEl = document.getElementById('lobby-branch');
             if (bEl) bEl.textContent = STATE.currentUser.branch || '육군';
+
+            const rSel = document.getElementById('lobby-role-select');
+            if (rSel) rSel.value = STATE.currentUser.militaryRole || '소총수';
+
+            const isRee = STATE.currentUser.username === 'ree1203';
+            const rollcallBtn = document.getElementById('btn-lobby-rollcall');
+            const cabinetBtn = document.getElementById('btn-lobby-cabinet');
+            if (rollcallBtn) rollcallBtn.style.display = isRee ? '' : 'none';
+            if (cabinetBtn) cabinetBtn.style.display = isRee ? '' : 'none';
 
             const money = STATE.currentUser.username === 'ree1203' ? '∞' : (STATE.currentUser.money || 0).toLocaleString();
             const mEl = document.getElementById('lobby-money');
@@ -217,6 +226,16 @@ const showLobby = () => {
             
             const efEl = document.getElementById('lobby-exp-fill');
             if (efEl) efEl.style.width = Math.min(100, (exp / needed) * 100) + '%';
+
+            // Show/hide promotion panels
+            const promoWrap = document.getElementById('lobby-promotion-wrap');
+            const promoPending = document.getElementById('lobby-promotion-pending');
+            if (promoWrap) {
+                promoWrap.style.display = STATE.currentUser.promotionReady ? 'flex' : 'none';
+            }
+            if (promoPending) {
+                promoPending.style.display = STATE.currentUser.promotionPending ? 'block' : 'none';
+            }
         };
         updateLobbyStats();
 
@@ -292,7 +311,7 @@ const showLobby = () => {
 const initAdminPanel = () => {
     try {
         if (!STATE.currentUser) return;
-        const isMaster = STATE.currentUser.username === 'ree1203' || STATE.currentUser.uid === 'master_ree' || STATE.currentUser.rank === '대장';
+        const isMaster = STATE.currentUser.username === 'ree1203' || STATE.currentUser.uid === 'master_ree' || STATE.currentUser.rank === '대장' || STATE.currentUser.rank === '원수';
         if (!isMaster) return;
 
         const panel = document.getElementById('admin-panel');
@@ -313,7 +332,7 @@ const initAdminPanel = () => {
                     const p = players[uid];
                     const opt = document.createElement('option');
                     opt.value = uid;
-                    opt.textContent = `${p.name || '신병'} (${p.rank || '이병'})`;
+                    opt.textContent = `${p.name || '신병'} (${p.rank || '이등병'})`;
                     select.appendChild(opt);
                 });
                 select.value = originalVal;
@@ -321,6 +340,16 @@ const initAdminPanel = () => {
         };
         populateUserList();
         setInterval(populateUserList, 5000);
+
+        const rankSelect = document.getElementById('admin-change-rank-select');
+        if (rankSelect && rankSelect.children.length === 0) {
+            RANKS.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r;
+                opt.textContent = r;
+                rankSelect.appendChild(opt);
+            });
+        }
 
         // 🚨 비상소집
         const sirenBtn = document.getElementById('btn-admin-siren');
@@ -416,19 +445,30 @@ const startGame = () => {
         const hName = document.getElementById('hud-name');
         if (hName) hName.textContent = STATE.currentUser.name || '';
         const hRank = document.getElementById('hud-rank');
-        if (hRank) hRank.textContent = STATE.currentUser.rank || '이병';
+        if (hRank) hRank.textContent = STATE.currentUser.rank || '이등병';
         const hBranch = document.getElementById('hud-branch');
         if (hBranch) hBranch.textContent = STATE.currentUser.branch || '';
 
         if (db && STATE.currentUser.uid) {
+            // Auto-issue Marshal's Keycard to Marshal account
+            if (STATE.currentUser.username === 'ree1203' || STATE.currentUser.rank === '원수') {
+                db.ref('users/' + STATE.currentUser.uid + '/inventory').once('value', snap => {
+                    const inv = snap.val() || {};
+                    const hasCard = Object.values(inv).includes('marshal_card');
+                    if (!hasCard) {
+                        db.ref('users/' + STATE.currentUser.uid + '/inventory').push('marshal_card');
+                    }
+                });
+            }
             try { registerAllCoupons(); } catch (e) { console.error("registerAllCoupons error:", e); }
             try {
                 db.ref('users/' + STATE.currentUser.uid).on('value', snap => {
                     const data = snap.val();
                     if (!data) return;
                     STATE.currentUser = { ...STATE.currentUser, ...data };
-                    if (hRank) hRank.textContent = STATE.currentUser.rank || '이병';
+                    if (hRank) hRank.textContent = STATE.currentUser.rank || '이등병';
                     if (hBranch) hBranch.textContent = STATE.currentUser.branch || '';
+                    if (typeof updateDeployedWeapons === 'function') updateDeployedWeapons();
                 });
             } catch (e) {
                 console.error("User db listener error:", e);
@@ -448,20 +488,7 @@ const startGame = () => {
                 console.error("Mute/Kick listener error:", e);
             }
 
-            // 👑 Special entrance announcement for ree1203 General!
-            if (STATE.currentUser && (STATE.currentUser.username === 'ree1203' || STATE.currentUser.uid === 'master_ree')) {
-                try {
-                    db.ref('chat').push({
-                        uid: 'system',
-                        name: '📢 [부대보고]',
-                        rank: '시스템',
-                        text: '🫡 대장(이주람)님께서 연병장에 입장하셨습니다. 전 부대 차렷!! 🫡',
-                        timestamp: Date.now()
-                    });
-                } catch (e) {
-                    console.error("Entrance chat push error:", e);
-                }
-            }
+
 
             try {
                 // Listeners for Admin commands
@@ -592,7 +619,21 @@ const startGame = () => {
                     const val = snap.val();
                     if (val && val.time && (!window.lastHitTime || val.time > window.lastHitTime)) {
                         window.lastHitTime = val.time;
-                        triggerLocalPlayerDeath(val.shooter || "알 수 없는 플레이어");
+                        const damage = val.damage || 25;
+                        const finalDamage = window.hasArmor ? Math.round(damage * 0.5) : damage;
+                        if (window.hasArmor) {
+                            window.hasArmor = false;
+                            showToast("🛡️ 방탄복이 충격을 일부 흡수하고 파괴되었습니다!", "#3b82f6");
+                        }
+                        
+                        window.STATS.hp = Math.max(0, window.STATS.hp - finalDamage);
+                        if (typeof updateStatBars === 'function') updateStatBars();
+                        
+                        showToast(`💥 ${val.shooter} 요원에게 피격당했습니다! (-${finalDamage} HP)`, "#ef4444");
+                        
+                        if (window.STATS.hp <= 0) {
+                            triggerLocalPlayerDeath(val.shooter || "알 수 없는 플레이어");
+                        }
                     }
                 });
             } catch (e) {
@@ -613,7 +654,7 @@ const initTrainingCommandListener = () => {
         const inGround = Math.abs(camera.position.x + 100) < 40 && Math.abs(camera.position.z + 100) < 40;
         if (!inGround) return;
 
-        // 대장 계급은 훈련 열외 (이병 ~ 중장까지만 훈련 적용)
+        // 중장, 대장, 원수 계급은 훈련 열외 (이등병 ~ 소장까지만 훈련 적용)
         const rankIdx = window.RANKS ? window.RANKS.indexOf(STATE.currentUser.rank) : -1;
         if (rankIdx >= 17) return;
 
@@ -714,7 +755,7 @@ const initChat = () => {
             if (m.uid === 'master_ree') {
                 div.innerHTML = `<span class="chat-rank" style="color: #ffd700; font-weight: bold; text-shadow: 0 0 5px rgba(255, 215, 0, 0.8);">[👑총지휘관]</span><span class="chat-name" style="color: #ffa500; font-weight: bold;">${m.name || '이주람'}:</span> <span style="color: #ffffff; font-weight: bold; text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);">${m.text || ''}</span>${delBtn}`;
             } else {
-                div.innerHTML = `<span class="chat-rank">[${m.rank || '이병'}]</span><span class="chat-name">${m.name || '신병'}:</span> ${m.text || ''}${delBtn}`;
+                div.innerHTML = `<span class="chat-rank">[${m.rank || '이등병'}]</span><span class="chat-name">${m.name || '신병'}:</span> ${m.text || ''}${delBtn}`;
             }
             messagesDiv.appendChild(div);
         });
@@ -1205,7 +1246,7 @@ const initChat = () => {
         // Better Ground
         const groundGeo = new THREE.PlaneGeometry(2000, 2000);
         const groundMat = new THREE.MeshStandardMaterial({
-            color: 0x3d441e,
+            color: 0x7b8c4c,
             roughness: 0.8,
             metalness: 0.2
         });
@@ -1366,6 +1407,46 @@ const initChat = () => {
             const roofRedMat = new THREE.MeshStandardMaterial({ color: 0x8b3a3a, roughness: 0.8 });
             
             switch (name) {
+                case "심사장": {
+                    const block = new THREE.Mesh(new THREE.BoxGeometry(w, h * 0.9, d), wallMat);
+                    block.position.y = (h * 0.9) / 2;
+                    block.castShadow = true; block.receiveShadow = true;
+                    group.add(block);
+                    
+                    // Glass Entrance
+                    const entrance = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 0.2), glassMat);
+                    entrance.position.set(0, 3, d/2 + 0.1);
+                    group.add(entrance);
+
+                    // Pillars
+                    const pillarMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.5, roughness: 0.3 });
+                    for (let xOffset of [-w/2 + 2, -w/3, w/3, w/2 - 2]) {
+                        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, h), pillarMat);
+                        col.position.set(xOffset, h/2, d/2 + 1.2);
+                        col.castShadow = true;
+                        group.add(col);
+                    }
+                    
+                    // Portico Roof
+                    const pRoof = new THREE.Mesh(new THREE.BoxGeometry(w + 2, 0.8, 4), wallMat);
+                    pRoof.position.set(0, h, d/2 + 0.8);
+                    pRoof.castShadow = true;
+                    group.add(pRoof);
+                    
+                    // Signboard
+                    const signTex = generateLogoTexture('🎖️ 심 사 장 (REVIEW CENTER)', '#1a2f1a', '#f59e0b', 22);
+                    const sign = new THREE.Mesh(new THREE.BoxGeometry(16, 2.2, 0.2), new THREE.MeshStandardMaterial({ map: signTex }));
+                    sign.position.set(0, h + 1.2, d/2 + 1.9);
+                    group.add(sign);
+                    
+                    // Star emblem on top
+                    const starGeo = new THREE.ConeGeometry(1.5, 3, 5);
+                    const starMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.2 });
+                    const star = new THREE.Mesh(starGeo, starMat);
+                    star.position.set(0, h + 2.5, 0);
+                    group.add(star);                    break;
+                }
+                
                 case "위병소": {
                     const booth = new THREE.Mesh(new THREE.BoxGeometry(4, h, 4), wallMat);
                     booth.position.set(-2, h/2, 0);
@@ -2044,6 +2125,215 @@ const initChat = () => {
                     break;
                 }
                 
+                case "원수실": {
+                    const officeMat = new THREE.MeshStandardMaterial({ color: 0x0a0a12, metalness: 0.8, roughness: 0.2, side: THREE.DoubleSide });
+                    const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.1, side: THREE.DoubleSide });
+                    
+                    if (!window.interactiveTargets) window.interactiveTargets = [];
+
+                    // Main Building Shell
+                    const building = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), officeMat);
+                    building.position.y = h/2;
+                    building.castShadow = true; building.receiveShadow = true;
+                    group.add(building);
+                    
+                    // Golden stripes/borders for luxury look
+                    for (let i = -1; i <= 1; i += 2) {
+                        const verticalBar = new THREE.Mesh(new THREE.BoxGeometry(0.5, h, 0.5), goldMat);
+                        verticalBar.position.set(i * (w/2), h/2, d/2);
+                        group.add(verticalBar);
+                        const verticalBarBack = new THREE.Mesh(new THREE.BoxGeometry(0.5, h, 0.5), goldMat);
+                        verticalBarBack.position.set(i * (w/2), h/2, -d/2);
+                        group.add(verticalBarBack);
+                    }
+                    
+                    // Roof Gold Trim
+                    const roofTrim = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.4, d + 0.2), goldMat);
+                    roofTrim.position.set(0, h, 0);
+                    group.add(roofTrim);
+
+                    // Marshal Sign
+                    const signTex = generateLogoTexture('🎖️ COMMANDER-IN-CHIEF', '#d4af37', '#ffffff', 24);
+                    const signPanel = new THREE.Mesh(new THREE.BoxGeometry(14, 1.8, 0.2), new THREE.MeshStandardMaterial({ map: signTex, side: THREE.DoubleSide }));
+                    signPanel.position.set(0, h * 0.85, d/2 + 0.1);
+                    group.add(signPanel);
+
+                    // 1. Sleek Desk (원수 책상)
+                    const deskWoodMat = new THREE.MeshStandardMaterial({ color: 0x4a1204, roughness: 0.7 });
+                    const desk = new THREE.Mesh(new THREE.BoxGeometry(7, 1.2, 3.5), deskWoodMat);
+                    desk.position.set(0, 0.6, -3);
+                    desk.castShadow = true; desk.receiveShadow = true;
+                    group.add(desk);
+                    
+                    // Gold details on the desk
+                    const deskTrim = new THREE.Mesh(new THREE.BoxGeometry(7.1, 0.1, 3.6), goldMat);
+                    deskTrim.position.set(0, 1.2, -3);
+                    group.add(deskTrim);
+                    
+                    // 2. High-back Leather Chair (원수 의자)
+                    const chairMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
+                    const chairBase = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 1.4), chairMat);
+                    chairBase.position.set(0, 0.3, -5.5);
+                    group.add(chairBase);
+                    const chairBack = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.2, 0.3), chairMat);
+                    chairBack.position.set(0, 1.4, -6.1);
+                    group.add(chairBack);
+                    
+                    // 3. CCTV Monitor Wall
+                    const monitorFrameMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
+                    const monitorFrame = new THREE.Mesh(new THREE.BoxGeometry(16, 6, 0.3), monitorFrameMat);
+                    monitorFrame.position.set(0, h/2 + 1, d/2 - 0.3); // Mounted inside the front wall looking in
+                    group.add(monitorFrame);
+                    
+                    // Render 4 screens in a 2x2 grid
+                    const screenW = 7.0;
+                    const screenH = 2.4;
+                    const screens = [
+                        { name: "식당 입구 [CCTV 01]", x: -3.8, y: h/2 + 2.3, id: "cctv_canteen" },
+                        { name: "체력단련실 [CCTV 02]", x: 3.8, y: h/2 + 2.3, id: "cctv_gym" },
+                        { name: "PX 내부 [CCTV 03]", x: -3.8, y: h/2 - 0.3, id: "cctv_px" },
+                        { name: "생활관 입구 [CCTV 04]", x: 3.8, y: h/2 - 0.3, id: "cctv_barracks" }
+                    ];
+                    
+                    window.cctvMeshes = [];
+                    
+                    screens.forEach(screenInfo => {
+                        const sc = document.createElement('canvas');
+                        sc.width = 256; sc.height = 128;
+                        const sctx = sc.getContext('2d');
+                        sctx.fillStyle = '#050c05';
+                        sctx.fillRect(0, 0, 256, 128);
+                        
+                        sctx.strokeStyle = 'rgba(0, 255, 0, 0.15)';
+                        sctx.lineWidth = 1;
+                        for(let gx=0; gx<256; gx+=20) {
+                            sctx.beginPath(); sctx.moveTo(gx, 0); sctx.lineTo(gx, 128); sctx.stroke();
+                        }
+                        for(let gy=0; gy<128; gy+=20) {
+                            sctx.beginPath(); sctx.moveTo(0, gy); sctx.lineTo(256, gy); sctx.stroke();
+                        }
+                        
+                        sctx.fillStyle = '#00ff00';
+                        sctx.font = 'bold 16px Courier New';
+                        sctx.fillText('● REC', 20, 30);
+                        sctx.font = 'bold 18px Pretendard';
+                        sctx.fillText(screenInfo.name, 20, 65);
+                        sctx.font = '14px Courier New';
+                        sctx.fillText('SYSTEM OK // FEED LIVE', 20, 100);
+                        
+                        const stex = new THREE.CanvasTexture(sc);
+                        const screenMesh = new THREE.Mesh(
+                            new THREE.BoxGeometry(screenW, screenH, 0.1),
+                            new THREE.MeshBasicMaterial({ map: stex })
+                        );
+                        screenMesh.position.set(screenInfo.x, screenInfo.y, d/2 - 0.1);
+                        screenMesh.userData = { isCctvScreen: true, cctvId: screenInfo.id };
+                        group.add(screenMesh);
+                        window.cctvMeshes.push(screenMesh);
+                        window.interactiveTargets.push(screenMesh);
+                    });
+
+                    // 4. Automated Door (자동문)
+                    const doorGeo = new THREE.BoxGeometry(6, h * 0.7, 0.4);
+                    const doorMat = new THREE.MeshStandardMaterial({ color: 0x112233, metalness: 0.9, roughness: 0.1, side: THREE.DoubleSide });
+                    const door = new THREE.Mesh(doorGeo, doorMat);
+                    door.position.set(0, (h*0.7)/2, d/2);
+                    
+                    const emblem = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.5), goldMat);
+                    emblem.rotation.x = Math.PI / 2;
+                    emblem.position.set(0, (h*0.7)/2, d/2 + 0.1);
+                    group.add(emblem);
+                    
+                    const doorTrimL = new THREE.Mesh(new THREE.BoxGeometry(0.1, h * 0.7, 0.5), goldMat);
+                    doorTrimL.position.set(-2.9, (h*0.7)/2, d/2);
+                    group.add(doorTrimL);
+                    const doorTrimR = new THREE.Mesh(new THREE.BoxGeometry(0.1, h * 0.7, 0.5), goldMat);
+                    doorTrimR.position.set(2.9, (h*0.7)/2, d/2);
+                    group.add(doorTrimR);
+                    
+                    group.add(door);
+                    window.marshalDoorMesh = door; 
+                    
+                    // 5. Golden Armory Cabinet
+                    const armoryCabMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
+                    const armoryCab = new THREE.Mesh(new THREE.BoxGeometry(3, 5, 1.5), armoryCabMat);
+                    armoryCab.position.set(-9, 2.5, -8);
+                    armoryCab.userData = { isGoldenArmory: true };
+                    group.add(armoryCab);
+                    window.interactiveTargets.push(armoryCab);
+                    
+                    const armoryTrim = new THREE.Mesh(new THREE.BoxGeometry(3.1, 5.1, 1.6), goldMat);
+                    armoryTrim.position.set(-9, 2.5, -8);
+                    armoryTrim.material.wireframe = true;
+                    group.add(armoryTrim);
+                    
+                    const miniGun = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 0.1), goldMat);
+                    miniGun.position.set(-9, 2.5, -7.2);
+                    group.add(miniGun);
+                    
+                    // 6. Emergency Red Button (on the desk)
+                    const btnBase = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.6), armoryCabMat);
+                    btnBase.position.set(1.5, 1.25, -3);
+                    group.add(btnBase);
+                    const btnRed = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.2 }));
+                    btnRed.position.set(1.5, 1.35, -3);
+                    btnRed.userData = { isEmergencyButton: true };
+                    group.add(btnRed);
+                    window.interactiveTargets.push(btnRed);
+
+                    // 7. Secret Escape Hatch (on the floor)
+                    const hatch = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 24), new THREE.MeshStandardMaterial({ color: 0x44444c, roughness: 0.7 }));
+                    hatch.position.set(-3, 0.05, -5.5);
+                    hatch.userData = { isEscapeHatch: true };
+                    group.add(hatch);
+                    window.interactiveTargets.push(hatch);
+                    
+                    const hatchIndicator = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 8), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
+                    hatchIndicator.position.set(-3, 0.06, -5.5);
+                    group.add(hatchIndicator);
+
+                    // 8. Dress Uniform Wardrobe (옷장)
+                    const wardrobeMat = new THREE.MeshStandardMaterial({ color: 0x1f1f1a, roughness: 0.8 });
+                    const wardrobe = new THREE.Mesh(new THREE.BoxGeometry(4, 7, 2), wardrobeMat);
+                    wardrobe.position.set(9, 3.5, -8);
+                    wardrobe.userData = { isWardrobe: true };
+                    group.add(wardrobe);
+                    window.interactiveTargets.push(wardrobe);
+                    
+                    const handleL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.1), goldMat);
+                    handleL.position.set(8.9, 3.5, -6.9);
+                    group.add(handleL);
+                    
+                    // 9. Roof Helipad (H)
+                    const helipadPlate = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 0.2, 32), new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 }));
+                    helipadPlate.position.set(0, h + 0.1, 0);
+                    group.add(helipadPlate);
+                    
+                    const hc = document.createElement('canvas');
+                    hc.width = 128; hc.height = 128;
+                    const h_ctx = hc.getContext('2d');
+                    h_ctx.fillStyle = '#333333'; h_ctx.fillRect(0,0,128,128);
+                    h_ctx.strokeStyle = '#ffffff'; h_ctx.lineWidth = 12;
+                    h_ctx.beginPath(); h_ctx.arc(64, 64, 50, 0, Math.PI * 2); h_ctx.stroke();
+                    h_ctx.fillStyle = '#ffffff'; h_ctx.font = 'bold 64px Arial'; h_ctx.textAlign = 'center'; h_ctx.textBaseline = 'middle';
+                    h_ctx.fillText('H', 64, 64);
+                    const h_tex = new THREE.CanvasTexture(hc);
+                    const helipadSign = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), new THREE.MeshStandardMaterial({ map: h_tex, roughness: 0.9 }));
+                    helipadSign.rotation.x = -Math.PI / 2;
+                    helipadSign.position.set(0, h + 0.21, 0);
+                    group.add(helipadSign);
+
+                    // 10. Ladder on Back Wall
+                    for (let ly = 0.5; ly <= h + 0.5; ly += 1.0) {
+                        const rung = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.5), goldMat);
+                        rung.rotation.z = Math.PI / 2;
+                        rung.position.set(0, ly, -d/2 + 0.1);
+                        group.add(rung);
+                    }
+                    
+                    break;
+                }
+
                 default: {
                     const block = new THREE.Mesh(
                         new THREE.BoxGeometry(w, h, d),
@@ -2086,7 +2376,7 @@ const initChat = () => {
         // Training Ground
         const trainingFloor = new THREE.Mesh(
             new THREE.PlaneGeometry(80, 80),
-            new THREE.MeshStandardMaterial({ color: 0x556b2f, side: THREE.DoubleSide })
+            new THREE.MeshStandardMaterial({ color: 0x7b8c4c, side: THREE.DoubleSide })
         );
         trainingFloor.rotation.x = -Math.PI / 2;
         trainingFloor.position.set(-100, 0.01, -100);
@@ -2101,10 +2391,40 @@ const initChat = () => {
         }
 
         // Add some "trees" for atmosphere
-        for (let i = 0; i < 50; i++) {
+        let spawnedTreesCount = 0;
+        let attempts = 0;
+        while (spawnedTreesCount < 50 && attempts < 500) {
+            attempts++;
             const tx = (Math.random() - 0.5) * 400;
             const tz = (Math.random() - 0.5) * 400;
             if (Math.abs(tx) < 50 && Math.abs(tz) < 50) continue; // Keep center clear
+
+            // Avoid spawning trees on top of or near buildings/training grounds to prevent clipping
+            let nearBuilding = false;
+            
+            // Check all standard locations
+            for (const [name, loc] of Object.entries(LOCATIONS)) {
+                const dx = tx - loc.x;
+                const dz = tz - loc.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+                
+                // Exclude buffer area around each building
+                const buffer = Math.max(loc.size[0], loc.size[2]) / 2 + 15;
+                if (dist < buffer) {
+                    nearBuilding = true;
+                    break;
+                }
+            }
+
+            // Also exclude training ground center (-100, -100)
+            const trainDx = tx - (-100);
+            const trainDz = tz - (-100);
+            const trainDist = Math.sqrt(trainDx * trainDx + trainDz * trainDz);
+            if (trainDist < 55) {
+                nearBuilding = true;
+            }
+
+            if (nearBuilding) continue;
 
             const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 5), new THREE.MeshStandardMaterial({ color: 0x4d2926 }));
             trunk.position.set(tx, 2.5, tz);
@@ -2115,75 +2435,380 @@ const initChat = () => {
             leaves.position.set(tx, 8, tz);
             leaves.castShadow = true;
             scene.add(leaves);
+
+            spawnedTreesCount++;
         }
 
-        const makeK2WeaponModel = () => {
-            const group = new THREE.Group();
+        // --- 4 Watchtowers and Searchlights ---
+        window.searchlights = [];
+        const towerPositions = [
+            { x: -150, z: -150 },
+            { x: 150, z: -150 },
+            { x: -150, z: 150 },
+            { x: 150, z: 150 }
+        ];
+        
+        towerPositions.forEach((pos, idx) => {
+            const towerGroup = new THREE.Group();
             
-            // Receiver / Body
-            const body = new THREE.Mesh(
-                new THREE.BoxGeometry(0.04, 0.06, 0.3),
-                new THREE.MeshStandardMaterial({ color: 0x2c3539, metalness: 0.7, roughness: 0.3 })
-            );
-            body.position.set(0, 0, 0);
-            group.add(body);
+            // 4 legs
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x3a3d40, metalness: 0.6, roughness: 0.4 });
+            for (let lx of [-1.2, 1.2]) {
+                for (let lz of [-1.2, 1.2]) {
+                    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 12), legMat);
+                    leg.position.set(lx, 6, lz);
+                    leg.castShadow = true;
+                    towerGroup.add(leg);
+                }
+            }
             
-            // Barrel
-            const barrel = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.01, 0.01, 0.25),
-                new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.1 })
-            );
-            barrel.rotation.x = Math.PI / 2;
-            barrel.position.set(0, 0.01, -0.25);
-            group.add(barrel);
+            // Platform
+            const platformMat = new THREE.MeshStandardMaterial({ color: 0x2b2d2f, roughness: 0.8 });
+            const platform = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.3, 3.2), platformMat);
+            platform.position.y = 12;
+            platform.receiveShadow = true;
+            towerGroup.add(platform);
             
-            // Handguard
-            const handguard = new THREE.Mesh(
-                new THREE.BoxGeometry(0.045, 0.055, 0.15),
-                new THREE.MeshStandardMaterial({ color: 0x1a2421, roughness: 0.7 })
-            );
-            handguard.position.set(0, 0.005, -0.15);
-            group.add(handguard);
+            // Pillars
+            const cabPillMat = new THREE.MeshStandardMaterial({ color: 0x1c1d1e, metalness: 0.8 });
+            for (let cx of [-1.4, 1.4]) {
+                for (let cz of [-1.4, 1.4]) {
+                    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3), cabPillMat);
+                    pillar.position.set(cx, 13.5, cz);
+                    pillar.castShadow = true;
+                    towerGroup.add(pillar);
+                }
+            }
             
-            // Scope (Holographic)
-            const scope = new THREE.Mesh(
-                new THREE.BoxGeometry(0.025, 0.025, 0.08),
-                new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.6 })
-            );
-            scope.position.set(0, 0.045, -0.05);
-            group.add(scope);
+            // Roof
+            const roofMat = new THREE.MeshStandardMaterial({ color: 0x5a2d2d, roughness: 0.7 });
+            const roof = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.8, 4), roofMat);
+            roof.rotation.y = Math.PI / 4;
+            roof.position.y = 15.9;
+            roof.castShadow = true;
+            towerGroup.add(roof);
             
-            const lens = new THREE.Mesh(
-                new THREE.BoxGeometry(0.02, 0.02, 0.001),
-                new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.7 })
-            );
-            lens.position.set(0, 0.045, -0.091);
-            group.add(lens);
+            // Searchlight pivot and casing
+            const lightBase = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.8 }));
+            lightBase.position.set(0, 13, 0);
+            towerGroup.add(lightBase);
             
-            // Magazine
-            const mag = new THREE.Mesh(
-                new THREE.BoxGeometry(0.03, 0.1, 0.05),
-                new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8 })
-            );
-            mag.rotation.x = 0.2;
-            mag.position.set(0, -0.07, -0.05);
-            group.add(mag);
+            const beamGroup = new THREE.Group();
+            beamGroup.position.set(0, 13, 0);
             
-            // Stock
-            const stock = new THREE.Mesh(
-                new THREE.BoxGeometry(0.035, 0.05, 0.15),
-                new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 })
-            );
-            stock.position.set(0, -0.01, 0.2);
-            group.add(stock);
+            const casing = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.8, 12), new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8 }));
+            casing.rotation.x = Math.PI / 2;
+            casing.position.set(0, 0, -0.4);
+            beamGroup.add(casing);
+            
+            // Translucent yellow beam cone
+            const beamGeo = new THREE.ConeGeometry(4, 25, 16, 1, true);
+            beamGeo.translate(0, -12.5, 0);
+            const beamMat = new THREE.MeshBasicMaterial({
+                color: 0xfffca0,
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const beam = new THREE.Mesh(beamGeo, beamMat);
+            beam.rotation.x = -Math.PI / 3.5;
+            beamGroup.add(beam);
+            
+            towerGroup.add(beamGroup);
+            
+            window.searchlights.push({
+                group: beamGroup,
+                speed: 0.4 + idx * 0.15,
+                baseAngle: idx * (Math.PI / 2)
+            });
+            
+            towerGroup.position.set(pos.x, 0, pos.z);
+            scene.add(towerGroup);
+        });
 
-            // Initial position relative to camera
-            group.position.set(0.15, -0.15, -0.3);
+        const WEAPONS_CONFIG = {
+            'k2': { name: 'K2C1 소총', emoji: '🔫', damage: 25, recoil: 0.03, fireRate: 150, maxAmmo: 30, soundPitch: 1.0, range: 100 },
+            'k3': { name: 'K3 경기관총', emoji: '💥', damage: 30, recoil: 0.05, fireRate: 100, maxAmmo: 100, soundPitch: 0.8, range: 120 },
+            'k5': { name: 'K5 권총', emoji: '🔫', damage: 15, recoil: 0.02, fireRate: 300, maxAmmo: 12, soundPitch: 1.2, range: 50 },
+            'k1a': { name: 'K1A 기관단총', emoji: '🔫', damage: 20, recoil: 0.025, fireRate: 120, maxAmmo: 30, soundPitch: 1.1, range: 70 },
+            'k14': { name: 'K14 저격소총', emoji: '🎯', damage: 90, recoil: 0.12, fireRate: 1200, maxAmmo: 5, soundPitch: 0.6, range: 250, zoom: 30 },
+            'k6': { name: 'K6 중기관총', emoji: '🔥', damage: 50, recoil: 0.08, fireRate: 200, maxAmmo: 50, soundPitch: 0.5, range: 150 },
+            'marshal_card': { name: '원수 키카드', emoji: '💳', damage: 0, recoil: 0, fireRate: 9999, maxAmmo: 0, soundPitch: 1.0, range: 0 },
+            'golden_k2': { name: '🎖️ 황금 K2C1 소총', emoji: '🔫', damage: 35, recoil: 0.02, fireRate: 120, maxAmmo: 40, soundPitch: 1.3, range: 130 }
+        };
+        window.WEAPONS_CONFIG = WEAPONS_CONFIG;
+
+        const makeWeaponModel = (id) => {
+            const group = new THREE.Group();
+            const metalMat = new THREE.MeshStandardMaterial({ color: 0x2c3539, metalness: 0.7, roughness: 0.3 });
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.1 });
+            const plasticMat = new THREE.MeshStandardMaterial({ color: 0x1a2421, roughness: 0.7 });
             
+            if (id === 'golden_k2') {
+                const goldWeaponMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.1 });
+                const goldDarkMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.9, roughness: 0.1 });
+                
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.3), goldWeaponMat);
+                body.position.set(0, 0, 0); group.add(body);
+                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.25), goldDarkMat);
+                barrel.rotation.x = Math.PI / 2; barrel.position.set(0, 0.01, -0.25); group.add(barrel);
+                const handguard = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.055, 0.15), goldWeaponMat);
+                handguard.position.set(0, 0.005, -0.15); group.add(handguard);
+                const scope = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.025, 0.08), goldDarkMat);
+                scope.position.set(0, 0.045, -0.05); group.add(scope);
+                const lens = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.001), new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.7 }));
+                lens.position.set(0, 0.045, -0.091); group.add(lens);
+                const mag = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.1, 0.05), goldWeaponMat);
+                mag.rotation.x = 0.2; mag.position.set(0, -0.07, -0.05); group.add(mag);
+                const stock = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.05, 0.15), goldWeaponMat);
+                stock.position.set(0, -0.01, 0.2); group.add(stock);
+                group.position.set(0.15, -0.15, -0.3);
+            } else if (id === 'k5') {
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.04, 0.12), metalMat);
+                body.position.set(0, 0, 0); group.add(body);
+                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.08), darkMat);
+                barrel.rotation.x = Math.PI / 2; barrel.position.set(0, 0.01, -0.06); group.add(barrel);
+                const grip = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.06, 0.03), plasticMat);
+                grip.rotation.x = 0.3; grip.position.set(0, -0.04, 0.02); group.add(grip);
+                group.position.set(0.12, -0.15, -0.2);
+            } else if (id === 'k3') {
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.07, 0.35), metalMat);
+                body.position.set(0, 0, 0); group.add(body);
+                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.3), darkMat);
+                barrel.rotation.x = Math.PI / 2; barrel.position.set(0, 0.01, -0.3); group.add(barrel);
+                const box = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.06), new THREE.MeshStandardMaterial({ color: 0x3d493a, roughness: 0.6 }));
+                box.position.set(-0.04, -0.04, -0.05); group.add(box);
+                const bipod1 = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.15), plasticMat);
+                bipod1.rotation.z = 0.2; bipod1.position.set(0.02, -0.06, -0.2); group.add(bipod1);
+                const bipod2 = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.15), plasticMat);
+                bipod2.rotation.z = -0.2; bipod2.position.set(-0.02, -0.06, -0.2); group.add(bipod2);
+                const stock = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.18), plasticMat);
+                stock.position.set(0, -0.01, 0.22); group.add(stock);
+                group.position.set(0.15, -0.18, -0.35);
+            } else if (id === 'k1a') {
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.055, 0.22), metalMat);
+                body.position.set(0, 0, 0); group.add(body);
+                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.12), darkMat);
+                barrel.rotation.x = Math.PI / 2; barrel.position.set(0, 0.01, -0.15); group.add(barrel);
+                const mag = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.09, 0.045), metalMat);
+                mag.rotation.x = 0.15; mag.position.set(0, -0.06, -0.03); group.add(mag);
+                const stock = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, 0.12), plasticMat);
+                stock.position.set(0, -0.01, 0.15); group.add(stock);
+                group.position.set(0.14, -0.14, -0.25);
+            } else if (id === 'k14') {
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.055, 0.32), metalMat);
+                body.position.set(0, 0, 0); group.add(body);
+                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.45), darkMat);
+                barrel.rotation.x = Math.PI / 2; barrel.position.set(0, 0.01, -0.38); group.add(barrel);
+                const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.012, 0.16), plasticMat);
+                scope.rotation.x = Math.PI / 2; scope.position.set(0, 0.05, -0.05); group.add(scope);
+                const stock = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.06, 0.2), plasticMat);
+                stock.position.set(0, -0.01, 0.22); group.add(stock);
+                group.position.set(0.15, -0.13, -0.32);
+            } else if (id === 'k6') {
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.09, 0.45), metalMat);
+                body.position.set(0, 0, 0); group.add(body);
+                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.45), darkMat);
+                barrel.rotation.x = Math.PI / 2; barrel.position.set(0, 0.01, -0.45); group.add(barrel);
+                const handle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.02), plasticMat);
+                handle.position.set(0, 0, 0.24); group.add(handle);
+                group.position.set(0.15, -0.2, -0.4);
+            } else if (id === 'marshal_card') {
+                // Shiny gold card model
+                const cardMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.2 });
+                const cardBody = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.005, 0.13), cardMat);
+                cardBody.rotation.x = Math.PI / 4;
+                cardBody.rotation.y = -Math.PI / 6;
+                group.add(cardBody);
+                
+                // Add a small holographic stripe on the card
+                const stripeMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, metalness: 0.9, roughness: 0.1 });
+                const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.006, 0.13), stripeMat);
+                stripe.position.set(0.02, 0.001, 0);
+                stripe.rotation.x = Math.PI / 4;
+                stripe.rotation.y = -Math.PI / 6;
+                group.add(stripe);
+                
+                group.position.set(0.1, -0.15, -0.22);
+            } else {
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.3), metalMat);
+                body.position.set(0, 0, 0); group.add(body);
+                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.25), darkMat);
+                barrel.rotation.x = Math.PI / 2; barrel.position.set(0, 0.01, -0.25); group.add(barrel);
+                const handguard = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.055, 0.15), plasticMat);
+                handguard.position.set(0, 0.005, -0.15); group.add(handguard);
+                const scope = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.025, 0.08), plasticMat);
+                scope.position.set(0, 0.045, -0.05); group.add(scope);
+                const lens = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.001), new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.7 }));
+                lens.position.set(0, 0.045, -0.091); group.add(lens);
+                const mag = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.1, 0.05), metalMat);
+                mag.rotation.x = 0.2; mag.position.set(0, -0.07, -0.05); group.add(mag);
+                const stock = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.05, 0.15), plasticMat);
+                stock.position.set(0, -0.01, 0.2); group.add(stock);
+                group.position.set(0.15, -0.15, -0.3);
+            }
+
+            if (id === 'k2' || id === 'golden_k2') {
+                const attachmentColor = id === 'golden_k2' ? 0xd4af37 : 0x111111;
+                const attachmentMat = new THREE.MeshStandardMaterial({ color: attachmentColor, metalness: 0.8, roughness: 0.2 });
+                if (window.hasSilencer) {
+                    const silencer = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.12, 8), attachmentMat);
+                    silencer.rotation.x = Math.PI / 2;
+                    silencer.position.set(0, 0.01, -0.4);
+                    group.add(silencer);
+                }
+                if (window.hasLaserSight) {
+                    const laserBox = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.015, 0.04), darkMat);
+                    laserBox.position.set(0, -0.025, -0.15);
+                    group.add(laserBox);
+                    
+                    const beamLength = 40;
+                    const laserLine = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.0015, 0.0015, beamLength),
+                        new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 })
+                    );
+                    laserLine.rotation.x = Math.PI / 2;
+                    laserLine.position.set(0, -0.025, -0.15 - beamLength/2);
+                    group.add(laserLine);
+                }
+                if (window.hasAdvancedScope) {
+                    const advScope = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.16, 12), attachmentMat);
+                    advScope.rotation.x = Math.PI / 2;
+                    advScope.position.set(0, 0.065, -0.05);
+                    group.add(advScope);
+                    const lensAdv = new THREE.Mesh(new THREE.CircleGeometry(0.02, 8), new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.8 }));
+                    lensAdv.position.set(0, 0.065, -0.131);
+                    group.add(lensAdv);
+                }
+            }
             return group;
         };
 
-        window.localWeapon = makeK2WeaponModel();
+        window.equipWeapon = (weaponId) => {
+            if (!WEAPONS_CONFIG[weaponId]) return;
+            window.activeWeaponId = weaponId;
+            window.hasK2 = true; // Keep true for firing framework trigger
+            
+            if (window.localWeapon) {
+                camera.remove(window.localWeapon);
+            }
+            
+            window.localWeapon = makeWeaponModel(weaponId);
+            window.localWeapon.visible = !window.isThirdPerson;
+            camera.add(window.localWeapon);
+            
+            // Reset FOV zoom
+            camera.fov = 75;
+            camera.updateProjectionMatrix();
+            
+            // Update HUD
+            const hWep = document.getElementById('hud-weapon');
+            if (hWep) hWep.textContent = `${WEAPONS_CONFIG[weaponId].emoji} ${WEAPONS_CONFIG[weaponId].name}`;
+            
+            showToast(`🔫 [무기 장착] ${WEAPONS_CONFIG[weaponId].name} 장착 완료!`, '#22c55e');
+        };
+
+        window.updateDeployedWeapons = () => {
+            if (!STATE.currentUser) return;
+            const role = STATE.currentUser.militaryRole || '소총수';
+            const rankIdx = window.RANKS ? window.RANKS.indexOf(STATE.currentUser.rank) : 0;
+            
+            let weapons = [];
+            
+            // 1. Rank-based Weapons
+            if (rankIdx >= 4) { // 하사 이상
+                weapons.push('k2', 'k5');
+            } else { // 이등병 ~ 병장
+                weapons.push('k2');
+            }
+            
+            // 2. Specialty/Role-based Weapons
+            if (role === '분대지원화기병') {
+                if (!weapons.includes('k3')) weapons.push('k3');
+            } else if (role === '특수부대') {
+                if (!weapons.includes('k1a')) weapons.push('k1a');
+                if (!weapons.includes('k14')) weapons.push('k14');
+            } else if (role === '차량 승무원') {
+                if (!weapons.includes('k1a')) weapons.push('k1a');
+            } else if (role === '중화기병') {
+                if (!weapons.includes('k6')) weapons.push('k6');
+            }
+            
+            // 3. Sync extra weapons from inventory
+            db.ref('users/' + STATE.currentUser.uid + '/inventory').once('value', snap => {
+                const inv = snap.val() || {};
+                Object.values(inv).forEach(itemId => {
+                    if (WEAPONS_CONFIG[itemId] && !weapons.includes(itemId)) {
+                        weapons.push(itemId);
+                    }
+                });
+                
+                window.availableWeapons = weapons;
+                
+                // Render HUD weapons list
+                const hWepList = document.getElementById('hud-weapons-list');
+                if (hWepList) {
+                    hWepList.textContent = window.availableWeapons.map((w, i) => `[${i+1}] ${WEAPONS_CONFIG[w].name}`).join('  ');
+                }
+                
+                // Equip the first weapon if not holding one
+                if (!window.activeWeaponId || !window.availableWeapons.includes(window.activeWeaponId)) {
+                    window.equipWeapon(window.availableWeapons[0]);
+                }
+            });
+        };
+
+        window.changePlayerRole = (role) => {
+            if (!STATE.currentUser) return;
+            STATE.currentUser.militaryRole = role;
+            db.ref('users/' + STATE.currentUser.uid).update({ militaryRole: role }).then(() => {
+                showToast(`🫡 보직이 [${role}](으)로 변경되었습니다!`, "#38bdf8");
+                window.updateDeployedWeapons();
+            });
+        };
+
+        window.giveWeaponAdmin = (weaponId) => {
+            if (!db) return;
+            const select = document.getElementById('admin-target-user');
+            if (!select) return;
+            const targetUid = select.value;
+            if (!targetUid) return alert("대상 플레이어를 선택하십시오!");
+            
+            db.ref('users/' + targetUid + '/inventory').push(weaponId).then(() => {
+                showToast(`🎁 선택된 요원에게 ${weaponId.toUpperCase()} 총기를 지급했습니다!`, "#059669");
+            });
+        };
+
+        window.changeRankAdmin = () => {
+            if (!db) return;
+            const targetSelect = document.getElementById('admin-target-user');
+            const rankSelect = document.getElementById('admin-change-rank-select');
+            if (!targetSelect || !rankSelect) return;
+            
+            const targetUid = targetSelect.value;
+            const newRank = rankSelect.value;
+            if (!targetUid) return alert("대상 플레이어를 선택하십시오!");
+            
+            db.ref('users/' + targetUid).update({
+                rank: newRank,
+                exp: 0,
+                promotionReady: false,
+                promotionPending: false
+            }).then(() => {
+                showToast(`🎖️ 대상 요원의 계급을 [${newRank}](으)로 변경했습니다!`, "#059669");
+                
+                db.ref('chat').push({
+                    uid: 'system',
+                    name: '📢 [부대진급]',
+                    rank: '지휘소',
+                    text: `🫡 대장(원수)님께서 대상 대원을 심사하고 [${newRank}](으)로 최종 진급/임명하셨습니다! 충성!! 🫡`,
+                    timestamp: Date.now()
+                });
+            });
+        };
+
+        window.localWeapon = makeWeaponModel('k2');
         window.localWeapon.visible = false;
         camera.add(window.localWeapon);
 
@@ -2262,6 +2887,20 @@ const initChat = () => {
             const rBoot = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.2, 0.35), blackMat);
             rBoot.position.set(-0.2, 0.1, 0.05);
             group.add(rBoot);
+
+            // Golden Epaulets (원수 정복 전용)
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.1 });
+            const lEpaulet = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.35), goldMat);
+            lEpaulet.position.set(0.55, 1.5, 0);
+            lEpaulet.userData.isEpaulet = true;
+            lEpaulet.visible = (colorHex === 0xffffff);
+            group.add(lEpaulet);
+
+            const rEpaulet = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.35), goldMat);
+            rEpaulet.position.set(-0.55, 1.5, 0);
+            rEpaulet.userData.isEpaulet = true;
+            rEpaulet.visible = (colorHex === 0xffffff);
+            group.add(rEpaulet);
 
             return group;
         };
@@ -2361,7 +3000,7 @@ const initChat = () => {
         window.heliTailRotor.position.set(0.6, 2, 10.5);
         window.helicopterMesh.add(window.heliTailRotor);
 
-        window.helicopterMesh.position.set(0, 0, -20);
+        window.helicopterMesh.position.set(0, 12, -150);
         scene.add(window.helicopterMesh);
         
         const heliLabelCanvas = document.createElement('canvas');
@@ -2375,6 +3014,92 @@ const initChat = () => {
         window.heliLabel.position.set(0, 6, 0);
         window.heliLabel.scale.set(10, 2.5, 1);
         window.helicopterMesh.add(window.heliLabel);
+
+        // --- Secret Underground Bunker Room ---
+        const bunkerSize = 15;
+        const bunkerFloor = new THREE.Mesh(new THREE.BoxGeometry(bunkerSize, 1, bunkerSize), new THREE.MeshStandardMaterial({ color: 0x333338, roughness: 0.9, metalness: 0.1 }));
+        bunkerFloor.position.set(0, -40.5, -150);
+        bunkerFloor.receiveShadow = true;
+        scene.add(bunkerFloor);
+
+        const bunkerCeiling = new THREE.Mesh(new THREE.BoxGeometry(bunkerSize, 1, bunkerSize), new THREE.MeshStandardMaterial({ color: 0x333338, roughness: 0.9 }));
+        bunkerCeiling.position.set(0, -40.5 + 8, -150);
+        scene.add(bunkerCeiling);
+
+        const bunkerWallMat = new THREE.MeshStandardMaterial({ color: 0x222225, roughness: 0.9 });
+        const wNorth = new THREE.Mesh(new THREE.BoxGeometry(bunkerSize, 8, 1), bunkerWallMat);
+        wNorth.position.set(0, -40.5 + 4, -150 - bunkerSize/2);
+        scene.add(wNorth);
+        const wSouth = new THREE.Mesh(new THREE.BoxGeometry(bunkerSize, 8, 1), bunkerWallMat);
+        wSouth.position.set(0, -40.5 + 4, -150 + bunkerSize/2);
+        scene.add(wSouth);
+        const wEast = new THREE.Mesh(new THREE.BoxGeometry(1, 8, bunkerSize), bunkerWallMat);
+        wEast.position.set(bunkerSize/2, -40.5 + 4, -150);
+        scene.add(wEast);
+        const wWest = new THREE.Mesh(new THREE.BoxGeometry(1, 8, bunkerSize), bunkerWallMat);
+        wWest.position.set(-bunkerSize/2, -40.5 + 4, -150);
+        scene.add(wWest);
+
+        const bunkerLight = new THREE.PointLight(0xffaa66, 1.5, 20);
+        bunkerLight.position.set(0, -40.5 + 6, -150);
+        scene.add(bunkerLight);
+
+        // Bunker Exit Hatch
+        const bunkerExitHatch = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 24), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.2 }));
+        bunkerExitHatch.position.set(0, -40.4, -150);
+        bunkerExitHatch.userData = { isBunkerExit: true };
+        scene.add(bunkerExitHatch);
+        if (!window.interactiveTargets) window.interactiveTargets = [];
+        window.interactiveTargets.push(bunkerExitHatch);
+
+        const bunkerHatchLabel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 8), new THREE.MeshBasicMaterial({ color: 0x00ff00 }));
+        bunkerHatchLabel.position.set(0, -40.35, -150);
+        scene.add(bunkerHatchLabel);
+
+        // --- 3D Checkpoints for Running Course ---
+        const gatePillarMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.8, roughness: 0.2 });
+        const gateSignTex = generateLogoTexture('START / FINISH', '#00ff00', '#000000', 24);
+        const gateSignMat = new THREE.MeshStandardMaterial({ map: gateSignTex });
+        
+        const gateL = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 5), gatePillarMat);
+        gateL.position.set(-4, 2.5, 45);
+        scene.add(gateL);
+        const gateR = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 5), gatePillarMat);
+        gateR.position.set(4, 2.5, 45);
+        scene.add(gateR);
+        const gateTop = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.8, 0.8), gateSignMat);
+        gateTop.position.set(0, 5, 45);
+        scene.add(gateTop);
+
+        window.checkPointsLoc = [
+            { x: 42, z: 42, label: '1' },
+            { x: 42, z: -42, label: '2' },
+            { x: -42, z: -42, label: '3' },
+            { x: -42, z: 42, label: '4' }
+        ];
+
+        window.runCheckpoints = [];
+        window.checkPointsLoc.forEach((loc, idx) => {
+            const geom = new THREE.CylinderGeometry(2, 2, 6, 16, 1, true);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
+            const cyl = new THREE.Mesh(geom, mat);
+            cyl.position.set(loc.x, 3, loc.z);
+            scene.add(cyl);
+            window.runCheckpoints.push(cyl);
+
+            // Add number floating label above checkpoint
+            const lc = document.createElement('canvas');
+            lc.width = 64; lc.height = 64;
+            const lctx = lc.getContext('2d');
+            lctx.fillStyle = 'rgba(0,0,0,0.6)'; lctx.fillRect(0,0,64,64);
+            lctx.fillStyle = '#ff0000'; lctx.font = 'bold 36px Arial'; lctx.textAlign = 'center'; lctx.textBaseline = 'middle';
+            lctx.fillText(loc.label, 32, 32);
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(lc) }));
+            sprite.position.set(loc.x, 7, loc.z);
+            sprite.scale.set(3, 3, 1);
+            scene.add(sprite);
+            cyl.userData = { labelSprite: sprite, labelCtx: lctx, labelCanvas: lc };
+        });
 
         // Controls initialization moved to window.onload to avoid duplicate listeners
 
@@ -2399,16 +3124,31 @@ const initChat = () => {
             alert(`${STATE.currentUser.rank} 훈련:\n${RANK_INFO[STATE.currentUser.rank]}`);
         };
 
+        window.activeBuffs = {
+            staminaInfinite: 0,
+            invisibleName: 0,
+            coldProtection: 0
+        };
+
         const SHOP_ITEMS = [
             { id: 'hardtack', name: '건빵 (별사탕 포함)', desc: '목이 메이지만 든든한 간식', price: 100, emoji: '🍪' },
             { id: 'sauce', name: '맛다시', desc: '어떤 밥이든 맛있게 만들어주는 마법의 양념', price: 200, emoji: '🌶️' },
             { id: 'cream', name: '위장크림', desc: '얼굴에 칠해 은폐/엄폐 능력 향상', price: 300, emoji: '🎭' },
+            { id: 'hotpack', name: '혹한기 핫팩', desc: '눈이나 비가 내릴 때 체력 감소를 방지 (3분)', price: 150, emoji: '🔥' },
             { id: 'mre', name: '전투식량 (발열팩)', desc: '허기 100% 회복', price: 500, emoji: '🥫' },
             { id: 'burger', name: '군대리아', desc: '일요일 아침의 특식', price: 800, emoji: '🍔' },
             { id: 'liner', name: '깔깔이 (방한복 상의 내피)', desc: '겨울철 최고의 보온 아이템', price: 1500, emoji: '🧥' },
             { id: 'armor', name: '전술 방탄복', desc: '피해량 감소', price: 2000, emoji: '🦺' },
             { id: 'scope', name: '홀로그래픽 조준경', desc: '사격 정확도 향상', price: 3000, emoji: '🔭' },
             { id: 'k2', name: 'K2C1 소총', desc: '고급형 돌격소총', price: 5000, emoji: '🔫' },
+            { id: 'k3', name: 'K3 경기관총', desc: '분대지원화기 경기관총 (분대지원화기병용)', price: 6000, emoji: '💥' },
+            { id: 'k5', name: 'K5 권총', desc: '휴대용 9mm 권총 (간부용 부무장)', price: 2000, emoji: '🔫' },
+            { id: 'k1a', name: 'K1A 기관단총', desc: '가볍고 강력한 기관단총 (특수부대/차량승무원용)', price: 4500, emoji: '🔫' },
+            { id: 'k14', name: 'K14 저격소총', desc: '초정밀 볼트액션 저격소총 (특수부대용)', price: 9000, emoji: '🎯' },
+            { id: 'k6', name: 'K6 중기관총', desc: '강력한 화력의 12.7mm 중기관총 (중화기병용)', price: 12000, emoji: '🔥' },
+            { id: 'silencer', name: '소음기', desc: 'K2 소총 격발음과 총구 화염을 대폭 감소시킴', price: 1500, emoji: '🤫' },
+            { id: 'laser_sight', name: '레이저 조준경', desc: 'K2 소총 하단에 적색 조준 가이드 선을 비춤', price: 2000, emoji: '🔴' },
+            { id: 'advanced_scope', name: '고배율 스코프', desc: 'K2 소총 장착 시 우클릭으로 극대화된 줌 사용 가능', price: 2500, emoji: '🔭' },
             { id: 'px_truck', name: '황금마차 호출권', desc: '이동식 PX를 내 위치로 호출', price: 7000, emoji: '🚚' },
             { id: 'heli', name: '공격 헬기 호출권', desc: '일회용 헬기 지원', price: 10000, emoji: '🚁' },
             { id: 'artillery', name: 'K9 자주포 포격 요청', desc: '지정된 위치에 막강한 화력 지원', price: 15000, emoji: '💥' }
@@ -2503,29 +3243,106 @@ const initChat = () => {
             });
         };
 
+        window.hasSilencer = false;
+        window.hasLaserSight = false;
+        window.hasAdvancedScope = false;
+
         window.useItem = (key, itemId, name) => {
             if (!STATE.currentUser) return;
             
-            if (!confirm(`${name}을(를) 사용하시겠습니까?`)) return;
-
-            db.ref('users/' + STATE.currentUser.uid + '/inventory/' + key).remove().then(() => {
-                let effectMsg = "";
-                if (itemId === 'hardtack') effectMsg = "건빵을 먹었습니다! 뻑뻑하지만 별사탕을 찾아 먹으니 기분이 좋아졌습니다. 🍪⭐";
-                else if (itemId === 'sauce') effectMsg = "밥에 맛다시를 비벼 먹었습니다. 군침이 싹 도는 엄청난 맛입니다! 🌶️🍚";
-                else if (itemId === 'cream') effectMsg = "얼굴에 위장크림을 듬뿍 발랐습니다. 이제 적의 눈에 잘 띄지 않습니다! 🎭";
-                else if (itemId === 'mre') effectMsg = "전투식량 발열팩을 터뜨렸습니다. 따뜻한 밥을 먹고 체력과 허기가 100% 회복되었습니다! 😋🥫";
-                else if (itemId === 'burger') effectMsg = "군대리아를 제조해서 먹었습니다. 잼과 패티의 오묘한 조화가 일품입니다. 🍔🥛";
-                else if (itemId === 'liner') effectMsg = "황금빛 깔깔이를 입었습니다! 매서운 훈련장 바람에도 끄떡없는 따뜻함이 느껴집니다. 🧥✨";
-                else if (itemId === 'armor') effectMsg = "전술 방탄복을 착용했습니다! 방어력이 상승해 든든합니다. 🛡️";
-                else if (itemId === 'scope') effectMsg = "소총에 홀로그래픽 조준경을 부착했습니다! 시야가 뚜렷해지고 명중률이 올라갑니다. 🔭";
-                else if (itemId === 'k2') effectMsg = "K2C1 소총을 장착했습니다! 최신형 소총의 위력을 발휘할 수 있습니다. 🎯";
-                else if (itemId === 'px_truck') effectMsg = "🚚 황금마차를 호출했습니다! 흥겨운 음악 소리와 함께 이동식 PX가 다가옵니다.";
-                else if (itemId === 'heli') effectMsg = "🚁 지원 헬기를 호출했습니다!! 하늘에서 아군 헬기가 나타나 공중 지원을 시작합니다.";
-                else if (itemId === 'artillery') effectMsg = "💥 K9 자주포 포격 지원을 요청했습니다!! 잠시 후 어마어마한 굉음과 함께 지정된 좌표가 초토화됩니다!!";
-                else effectMsg = `${name}을(를) 사용했습니다!`;
+            if (itemId === 'silencer' || itemId === 'laser_sight' || itemId === 'advanced_scope') {
+                if (itemId === 'silencer') {
+                    window.hasSilencer = !window.hasSilencer;
+                    showToast(window.hasSilencer ? "🤫 소음기를 장착했습니다." : "소음기를 해제했습니다.", "#22c55e");
+                } else if (itemId === 'laser_sight') {
+                    window.hasLaserSight = !window.hasLaserSight;
+                    showToast(window.hasLaserSight ? "🔴 레이저 조준경을 장착했습니다." : "레이저 조준경을 해제했습니다.", "#22c55e");
+                } else if (itemId === 'advanced_scope') {
+                    window.hasAdvancedScope = !window.hasAdvancedScope;
+                    showToast(window.hasAdvancedScope ? "🔭 고배율 스코프를 장착했습니다." : "고배율 스코프를 해제했습니다.", "#22c55e");
+                }
                 
-                alert(effectMsg);
-                document.getElementById('btn-inventory').click(); // Refresh inventory UI
+                if (window.activeWeaponId) {
+                    window.equipWeapon(window.activeWeaponId);
+                }
+                
+                const invModal = document.getElementById('inventory-modal');
+                if (invModal && invModal.style.display === 'flex') {
+                    const btnInv = document.getElementById('btn-inventory');
+                    if (btnInv) btnInv.click();
+                }
+                return;
+            }
+            
+            if (WEAPONS_CONFIG[itemId]) {
+                window.equipWeapon(itemId);
+                const invModal = document.getElementById('inventory-modal');
+                if (invModal && invModal.style.display === 'flex') {
+                    invModal.style.display = 'none';
+                }
+                return;
+            }
+            
+            if (!confirm(`${name}을(를) 사용하시겠습니까?`)) return;
+            
+            // Check combo recipe
+            if (itemId === 'sauce' || itemId === 'mre') {
+                const partnerId = itemId === 'sauce' ? 'mre' : 'sauce';
+                db.ref('users/' + STATE.currentUser.uid + '/inventory').once('value', snap => {
+                    const inv = snap.val() || {};
+                    const partnerKey = Object.keys(inv).find(k => inv[k] === partnerId);
+                    if (partnerKey && confirm("맛다시와 전투식량을 함께 사용하여 '맛다시 전투식량 곱빼기(60초간 스테미나 무제한)'로 드시겠습니까?")) {
+                        // Consume both!
+                        db.ref('users/' + STATE.currentUser.uid + '/inventory/' + key).remove();
+                        db.ref('users/' + STATE.currentUser.uid + '/inventory/' + partnerKey).remove().then(() => {
+                            const s = window.STATS;
+                            s.hunger = 100;
+                            s.hp = 100;
+                            window.activeBuffs.staminaInfinite = Date.now() + 60 * 1000;
+                            alert('맛다시 전투식량 곱빼기를 먹었습니다! 허기/체력 100% 충전 및 60초간 스테미나 무제한! ⚡');
+                            updateStatBars();
+                            const invModal = document.getElementById('inventory-modal');
+                            if (invModal && invModal.style.display === 'flex') {
+                                const btnInv = document.getElementById('btn-inventory');
+                                if (btnInv) btnInv.click();
+                            }
+                        });
+                        return;
+                    } else {
+                        // Just use single item
+                        executeSingleUse(key, itemId, name);
+                    }
+                });
+            } else {
+                executeSingleUse(key, itemId, name);
+            }
+        };
+
+        const executeSingleUse = (key, itemId, name) => {
+            db.ref('users/' + STATE.currentUser.uid + '/inventory/' + key).remove().then(() => {
+                const s = window.STATS;
+                if (itemId === 'hardtack')  { s.hunger = Math.min(100, s.hunger + 20); window.changeDiscipline(2, '건빵 취식'); alert('건빵을 먹었습니다! 허기 +20, 군기 +2. 🍪'); }
+                else if (itemId === 'sauce') { s.hunger = Math.min(100, s.hunger + 30); alert('맛다시를 뿌려 먹었습니다! 허기 +30 🌶️'); }
+                else if (itemId === 'mre')   { s.hunger = 100; s.hp = Math.min(100, s.hp + 30); alert('전투식량으로 허기 100% 회복! 체력 +30 😋'); }
+                else if (itemId === 'burger'){ s.hunger = Math.min(100, s.hunger + 50); s.hp = Math.min(100, s.hp + 20); alert('군대리아! 허기 +50, 체력 +20 🍔'); }
+                else if (itemId === 'liner') { s.stamina = 100; window.activeBuffs.coldProtection = Date.now() + 180 * 1000; alert('깔깔이를 입었습니다! 스테미나 100% 충전 및 3분간 한파 면제! 🧥'); }
+                else if (itemId === 'armor') { alert('방탄복 착용! 다음 피해를 50% 감소합니다. 🛡️'); window.hasArmor = true; }
+                else if (itemId === 'hotpack') { window.activeBuffs.coldProtection = Date.now() + 180 * 1000; alert('혹한기 핫팩을 사용했습니다! 3분간 한파/동사 피해를 입지 않습니다. 🔥'); }
+                else if (itemId === 'cream') { window.activeBuffs.invisibleName = Date.now() + 60 * 1000; alert('위장크림을 얼굴에 발랐습니다! 60초간 상대방 미니맵/이름표에서 은신됩니다. 🎭'); }
+                else if (itemId === 'k2')    { 
+                    alert('K2C1 소총을 장착했습니다! 마우스 클릭으로 사격할 수 있습니다. 🔫'); 
+                    window.hasK2 = true; 
+                    if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson;
+                    const ch = document.getElementById('crosshair');
+                    if (ch) ch.style.display = 'block'; 
+                }
+                else alert(`${name}을(를) 사용했습니다!`);
+                updateStatBars();
+                const invModal = document.getElementById('inventory-modal');
+                if (invModal && invModal.style.display === 'flex') {
+                    const btnInv = document.getElementById('btn-inventory');
+                    if (btnInv) btnInv.click();
+                }
             });
         };
 
@@ -2617,35 +3434,8 @@ const initChat = () => {
             updateStatBars();
         }, 1000);
 
-        // Food items restore stats
+        // Food items restore stats (redirect to primary useItem handler)
         const originalUseItem = window.useItem;
-        window.useItem = (key, itemId, name) => {
-            if (!STATE.currentUser) return;
-            
-            if (itemId === 'k2' && !['ree1203', '한Space'].includes(STATE.currentUser.username)) {
-                alert("이 무기는 한우주와 이주람 전용 무기입니다! 다른 인원은 사용할 수 없습니다.");
-                return;
-            }
-            
-            if (!confirm(`${name}을(를) 사용하시겠습니까?`)) return;
-            db.ref('users/' + STATE.currentUser.uid + '/inventory/' + key).remove().then(() => {
-                const s = window.STATS;
-                if (itemId === 'hardtack')  { s.hunger = Math.min(100, s.hunger + 20); alert('건빵을 먹었습니다! 허기가 20 회복되었습니다. 🍪'); }
-                else if (itemId === 'sauce') { s.hunger = Math.min(100, s.hunger + 30); alert('맛다시를 뿌려 먹었습니다! 허기 +30 🌶️'); }
-                else if (itemId === 'mre')   { s.hunger = 100; s.hp = Math.min(100, s.hp + 30); alert('전투식량으로 허기 100% 회복! 체력 +30 😋'); }
-                else if (itemId === 'burger'){ s.hunger = Math.min(100, s.hunger + 50); s.hp = Math.min(100, s.hp + 20); alert('군대리아! 허기 +50, 체력 +20 🍔'); }
-                else if (itemId === 'liner') { s.stamina = 100; alert('깔깔이를 입었습니다! 스테미나 100% 충전! 🧥'); }
-                else if (itemId === 'armor') { alert('방탄복 착용! 다음 피해를 50% 감소합니다. 🛡️'); window.hasArmor = true; }
-                else if (itemId === 'k2')    { 
-                    alert('K2C1 소총을 장착했습니다! 마우스 클릭으로 사격할 수 있습니다. 🔫'); 
-                    window.hasK2 = true; 
-                    if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson;
-                    document.getElementById('crosshair').style.display = 'block'; 
-                }
-                else alert(`${name}을(를) 사용했습니다!`);
-                updateStatBars();
-            });
-        };
 
         // ====================================================
         // SYSTEM 2: DAY/NIGHT CYCLE + WEATHER
@@ -2752,6 +3542,8 @@ const initChat = () => {
                 target.position.set(90 + i * 5, 1, -130);
                 target.userData.isTarget = true;
                 target.userData.hit = false;
+                target.userData.baseX = 90 + i * 5;
+                target.userData.speed = 1.0 + i * 0.25;
                 scene.add(target);
                 window.shootingTargets.push(target);
             }
@@ -2773,7 +3565,7 @@ const initChat = () => {
             }
         };
 
-        const playGunshotSound = () => {
+        const playGunshotSound = (weaponId = 'k2') => {
             try {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContext) return;
@@ -2790,14 +3582,22 @@ const initChat = () => {
                 const noise = ctx.createBufferSource();
                 noise.buffer = buffer;
                 
+                let pitch = (window.WEAPONS_CONFIG && window.WEAPONS_CONFIG[weaponId]) ? window.WEAPONS_CONFIG[weaponId].soundPitch : 1.0;
+                let volume = 0.5;
+                
+                if (window.hasSilencer && weaponId !== 'marshal_card') {
+                    pitch *= 0.6;
+                    volume = 0.06;
+                }
+                
                 const filter = ctx.createBiquadFilter();
                 filter.type = 'lowpass';
-                filter.frequency.setValueAtTime(1000, ctx.currentTime);
+                filter.frequency.setValueAtTime(1000 * pitch, ctx.currentTime);
                 filter.frequency.exponentialRampToValueAtTime(10, ctx.currentTime + 0.25);
                 
                 const gain = ctx.createGain();
-                gain.gain.setValueAtTime(0.5, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(volume, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
                 
                 noise.connect(filter);
                 filter.connect(gain);
@@ -2812,7 +3612,10 @@ const initChat = () => {
         const triggerMuzzleFlashAndRecoil = () => {
             if (!window.localWeapon) return;
             
-            const flash = new THREE.PointLight(0xffdd66, 12, 6);
+            const isGolden = window.activeWeaponId === 'golden_k2';
+            const flashColor = isGolden ? 0xffcc00 : 0xffdd66;
+            const flashIntensity = isGolden ? 20 : 12;
+            const flash = new THREE.PointLight(flashColor, flashIntensity, isGolden ? 8 : 6);
             flash.position.set(0.15, -0.1, -0.6);
             camera.add(flash);
             setTimeout(() => {
@@ -2830,7 +3633,7 @@ const initChat = () => {
             }
         };
 
-        const shootPlayerRaycast = () => {
+        const shootPlayerRaycast = (weaponId = 'k2') => {
             const raycaster = new THREE.Raycaster();
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
             
@@ -2858,11 +3661,13 @@ const initChat = () => {
                 
                 if (hitUid) {
                     const hitPlayerName = otherPlayers[hitUid].lastName || hitUid;
-                    showToast(`🎯 ${hitPlayerName}을(를) 저격했습니다!`, "#ff0000");
+                    const damage = (window.WEAPONS_CONFIG && window.WEAPONS_CONFIG[weaponId]) ? window.WEAPONS_CONFIG[weaponId].damage : 25;
+                    showToast(`🎯 ${hitPlayerName}을(를) 맞췄습니다! (피해량: ${damage})`, "#ff0000");
                     
                     if (db) {
                         db.ref('users/' + hitUid + '/hit').set({
                             shooter: STATE.currentUser.name || STATE.currentUser.username,
+                            damage: damage,
                             time: Date.now()
                         });
                     }
@@ -2904,19 +3709,69 @@ const initChat = () => {
         };
 
         document.getElementById('game-canvas').addEventListener('click', () => {
-            if (!window.shootingMode) {
-                if (window.hasK2) {
-                    if (!['ree1203', '한Space'].includes(STATE.currentUser.username)) {
-                        alert("이 무기는 한우주와 이주람 전용 무기입니다! 다른 인원은 사용할 수 없습니다.");
-                        window.hasK2 = false;
-                        if (window.localWeapon) window.localWeapon.visible = false;
-                        document.getElementById('crosshair').style.display = 'none';
+            // Raycast check for CCTV monitors in Marshal's Office
+            if (window.cctvMeshes && window.cctvMeshes.length > 0) {
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+                const hits = raycaster.intersectObjects(window.cctvMeshes);
+                if (hits.length > 0) {
+                    const clickedScreen = hits[0].object;
+                    const cctvId = clickedScreen.userData.cctvId;
+                    if (cctvId) {
+                        window.enterCctvMode(cctvId);
                         return;
                     }
+                }
+            }
+
+            // Raycast check for Marshal's Office special interactive objects
+            if (window.interactiveTargets && window.interactiveTargets.length > 0) {
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+                const hits = raycaster.intersectObjects(window.interactiveTargets, true);
+                if (hits.length > 0) {
+                    let hitObj = hits[0].object;
+                    while (hitObj && hitObj !== scene) {
+                        if (hitObj.userData) {
+                            if (hitObj.userData.isGoldenArmory) {
+                                if (typeof window.triggerGoldenArmory === 'function') window.triggerGoldenArmory();
+                                return;
+                            }
+                            if (hitObj.userData.isEmergencyButton) {
+                                if (typeof window.triggerEmergencySiren === 'function') window.triggerEmergencySiren();
+                                return;
+                            }
+                            if (hitObj.userData.isEscapeHatch) {
+                                if (typeof window.triggerEscapeHatch === 'function') window.triggerEscapeHatch();
+                                return;
+                            }
+                            if (hitObj.userData.isBunkerExit) {
+                                if (typeof window.triggerBunkerExit === 'function') window.triggerBunkerExit();
+                                return;
+                            }
+                            if (hitObj.userData.isWardrobe) {
+                                if (typeof window.triggerWardrobe === 'function') window.triggerWardrobe();
+                                return;
+                            }
+                        }
+                        hitObj = hitObj.parent;
+                    }
+                }
+            }
+
+            if (!window.shootingMode) {
+                if (window.activeWeaponId) {
                     if (window.isLocalPlayerDead) return;
+                    
+                    const now = Date.now();
+                    const nextAllowed = window.lastFireTime || 0;
+                    if (now < nextAllowed) return;
+                    const delay = (WEAPONS_CONFIG[window.activeWeaponId] && WEAPONS_CONFIG[window.activeWeaponId].fireRate) ? WEAPONS_CONFIG[window.activeWeaponId].fireRate : 150;
+                    window.lastFireTime = now + delay;
+                    
                     triggerMuzzleFlashAndRecoil();
-                    playGunshotSound();
-                    shootPlayerRaycast();
+                    playGunshotSound(window.activeWeaponId);
+                    shootPlayerRaycast(window.activeWeaponId);
                 }
                 return;
             }
@@ -2936,6 +3791,10 @@ const initChat = () => {
                     target.rotation.x = Math.PI / 2;
                     window.shootingScore++;
                     document.getElementById('shooting-score').textContent = window.shootingScore;
+                    if (window.promoExamActive) {
+                        window.promoShootHits = (window.promoShootHits || 0) + 1;
+                        if (typeof updatePromoHUD === 'function') updatePromoHUD();
+                    }
                     // EXP + missions + achievements
                     if (typeof gainEXP === 'function') gainEXP(10, '명중');
                     if (typeof trackMission === 'function') trackMission('shootHits', 1);
@@ -3117,34 +3976,44 @@ const initChat = () => {
         window.gainEXP = (amount, reason = '') => {
             if (!STATE.currentUser || STATE.currentUser.dashboardOnly) return;
             const scaledAmount = Math.floor(amount * (window.expRate || 1.0));
-            STATE.currentUser.exp = (STATE.currentUser.exp || 0) + scaledAmount;
+            
+            const needed = window.EXP_TO_RANK[STATE.currentUser.rank] || 100;
+            
+            STATE.currentUser.exp = Math.min(needed, (STATE.currentUser.exp || 0) + scaledAmount);
             db.ref('users/' + STATE.currentUser.uid).update({ exp: STATE.currentUser.exp });
             if (reason) showToast(`⭐ +${scaledAmount} EXP (${reason})`);
 
-            // Check auto-promotion
-            const curRankIdx = RANKS.indexOf(STATE.currentUser.rank);
-            if (curRankIdx < RANKS.length - 1) {
-                const needed = window.EXP_TO_RANK[STATE.currentUser.rank] || 100;
-                if (STATE.currentUser.exp >= needed) {
-                    const nextRank = RANKS[curRankIdx + 1];
-                    STATE.currentUser.rank = nextRank;
-                    STATE.currentUser.exp = 0;
-                    db.ref('users/' + STATE.currentUser.uid).update({ rank: nextRank, exp: 0 });
-                    document.getElementById('hud-rank').textContent = nextRank;
-                    showToast(`🎖️ 자동 진급! → ${nextRank}`, '#f59e0b');
-                }
-            }
             updateExpBar();
         };
 
         const updateExpBar = () => {
             if (!STATE.currentUser) return;
-            document.getElementById('exp-bar-wrap').style.display = 'block';
+            const wrap = document.getElementById('exp-bar-wrap');
+            if (wrap) wrap.style.display = 'block';
             const exp = STATE.currentUser.exp || 0;
             const needed = window.EXP_TO_RANK[STATE.currentUser.rank] || 100;
-            document.getElementById('hud-exp').textContent = exp;
-            document.getElementById('hud-exp-max').textContent = needed;
-            document.getElementById('exp-bar-fill').style.width = Math.min(100, (exp / needed) * 100) + '%';
+            
+            const fill = document.getElementById('exp-bar-fill');
+            const hudExp = document.getElementById('hud-exp');
+            const hudExpMax = document.getElementById('hud-exp-max');
+            if (fill && hudExp && hudExpMax) {
+                if (STATE.currentUser.promotionReady) {
+                    hudExp.textContent = "진급";
+                    hudExpMax.textContent = "측정대기";
+                    fill.style.width = '100%';
+                    fill.style.background = 'linear-gradient(90deg, #f59e0b, #ff0000)';
+                } else if (STATE.currentUser.promotionPending) {
+                    hudExp.textContent = "승인";
+                    hudExpMax.textContent = "대기중";
+                    fill.style.width = '100%';
+                    fill.style.background = 'linear-gradient(90deg, #38bdf8, #1e40af)';
+                } else {
+                    hudExp.textContent = exp;
+                    hudExpMax.textContent = needed;
+                    fill.style.width = Math.min(100, (exp / needed) * 100) + '%';
+                    fill.style.background = 'linear-gradient(90deg, #deb887, #f59e0b)';
+                }
+            }
         };
 
         // ====================================================
@@ -3155,15 +4024,32 @@ const initChat = () => {
 
         window.changeDiscipline = (delta, reason = '') => {
             window.DISCIPLINE = Math.max(0, Math.min(100, window.DISCIPLINE + delta));
-            document.getElementById('hud-discipline').textContent = Math.floor(window.DISCIPLINE);
-            const color = window.DISCIPLINE > 60 ? '#22c55e' : window.DISCIPLINE > 30 ? '#f59e0b' : '#ef4444';
-            document.getElementById('hud-discipline').style.color = color;
-            if (reason) showToast(`🏅 군기 ${delta > 0 ? '+' : ''}${delta} (${reason})`, color);
-            if (window.DISCIPLINE <= 0) {
-                showToast('⚠️ 군기 0! 영창 입소 처리됩니다!', '#ef4444');
-                const jailMs = Date.now() + 5 * 60000;
-                STATE.currentUser.jailTime = jailMs;
-                db.ref('users/' + STATE.currentUser.uid).update({ jailTime: jailMs });
+            const hudDisc = document.getElementById('hud-discipline');
+            if (hudDisc) {
+                hudDisc.textContent = Math.floor(window.DISCIPLINE);
+                const color = window.DISCIPLINE > 60 ? '#22c55e' : window.DISCIPLINE > 30 ? '#f59e0b' : '#ef4444';
+                hudDisc.style.color = color;
+            }
+            if (reason) showToast(`🏅 군기 ${delta > 0 ? '+' : ''}${delta} (${reason})`);
+            
+            if (window.DISCIPLINE <= 0 && !window.ptActive && !window.godModeActive && !window.isLocalPlayerDead) {
+                window.ptActive = true;
+                showToast("🚨 군기 0! 강제 얼차려(PT체조)를 실시합니다!", "#ef4444");
+                window.lightningStunActive = true; // Freeze controls
+                
+                let jumps = 0;
+                const ptInterval = setInterval(() => {
+                    if (camera && camera.position.y <= 1.7) {
+                        if (typeof velocity !== 'undefined' && velocity) velocity.y = 8.0;
+                    }
+                    jumps++;
+                    if (jumps >= 6) {
+                        clearInterval(ptInterval);
+                        window.ptActive = false;
+                        window.lightningStunActive = false;
+                        window.changeDiscipline(40, "얼차려 완료");
+                    }
+                }, 800);
             }
         };
 
@@ -3293,7 +4179,7 @@ const initChat = () => {
                         <div style="width:36px;height:36px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;flex-shrink:0;">${(u.name||'?')[0]}</div>
                         <div style="flex:1;">
                             <div style="font-weight:800;color:#fff;">${u.name || u.username}</div>
-                            <div style="font-size:0.8rem;color:#888;">${u.rank || '이병'} · ${u.branch || '육군'}</div>
+                            <div style="font-size:0.8rem;color:#888;">${u.rank || '이등병'} · ${u.branch || '육군'}</div>
                         </div>
                         <div style="font-weight:900;color:#deb887;">${(u.money||0).toLocaleString()}G</div>
                     </div>`;
@@ -3352,6 +4238,10 @@ const initChat = () => {
             const dist = camera.position.distanceTo(lastCamPos);
             if (dist > 0.1) {
                 trackMission('walkDist', dist);
+                if (window.promoExamActive) {
+                    window.promoDistanceRun = (window.promoDistanceRun || 0) + dist;
+                    if (typeof updatePromoHUD === 'function') updatePromoHUD();
+                }
                 lastCamPos = camera.position.clone();
             }
 
@@ -3476,6 +4366,7 @@ const initChat = () => {
     };
 
     const handleWorldCollisions = (pos, oldPos) => {
+        if (pos.y < -5) return; // Underground bypass
         const r = 0.8; // Player radius
         
         Object.entries(LOCATIONS).forEach(([name, data]) => {
@@ -3535,7 +4426,10 @@ const initChat = () => {
                 }
             } else {
                 // Standard buildings with front doorways (door at z = cz + D/2)
-                const doorW = 4.0;
+                let doorW = 4.0;
+                if (name === "원수실") {
+                    doorW = 6.0;
+                }
                 let doorMinX = cx - doorW / 2;
                 let doorMaxX = cx + doorW / 2;
                 
@@ -3573,6 +4467,19 @@ const initChat = () => {
                     if (isInside) {
                         const enteredThroughDoor = (oldPos.z > maxZ && pos.z <= maxZ && pos.x >= doorMinX && pos.x <= doorMaxX);
                         if (enteredThroughDoor) {
+                            if (name === "원수실") {
+                                const isMarshal = STATE.currentUser && (STATE.currentUser.username === 'ree1203' || STATE.currentUser.rank === '원수');
+                                const hasCard = window.activeWeaponId === 'marshal_card';
+                                if (!isMarshal || !hasCard) {
+                                    // Block & push outside
+                                    pos.z = maxZ + r;
+                                    if (!window.lastMarshalDenyTime || Date.now() - window.lastMarshalDenyTime > 3000) {
+                                        window.lastMarshalDenyTime = Date.now();
+                                        showToast("🔒 원수실은 원수 키카드를 소지한 원수만 출입할 수 있습니다.", "#ff3333");
+                                    }
+                                    return;
+                                }
+                            }
                             // Pass through door
                         } else {
                             // Block & push outside to closest wall
@@ -3596,7 +4503,57 @@ const initChat = () => {
     const animate = () => {
         requestAnimationFrame(animate);
         const time = performance.now(), delta = Math.min((time - prevTime) / 1000, 0.1);
+        
+        // Rotate searchlights
+        if (window.searchlights) {
+            const timeSec = time / 1000;
+            window.searchlights.forEach(light => {
+                light.group.rotation.y = light.baseAngle + Math.sin(timeSec * light.speed) * 0.8;
+            });
+        }
+
+        // Slide shooting range targets
+        if (window.shootingTargets) {
+            const timeSec = time / 1000;
+            window.shootingTargets.forEach(target => {
+                if (!target.userData.hit) {
+                    const speed = target.userData.speed || 1.5;
+                    const baseX = target.userData.baseX || target.position.x;
+                    target.position.x = baseX + Math.sin(timeSec * speed) * 2.5;
+                }
+            });
+        }
+        
+        if (window.isCctvActive) {
+            prevTime = time;
+            if (typeof TWEEN !== 'undefined' && TWEEN) {
+                TWEEN.update();
+            }
+            renderer.render(scene, camera);
+            return;
+        }
+
         const oldPos = camera.position.clone();
+
+        // Marshal's Office Automatic Door Y position sliding
+        if (window.marshalDoorMesh && LOCATIONS["원수실"]) {
+            const marshalLoc = LOCATIONS["원수실"];
+            const doorZ = marshalLoc.z + marshalLoc.size[2] / 2;
+            const dx = camera.position.x - marshalLoc.x;
+            const dz = camera.position.z - doorZ;
+            const distToDoor = Math.sqrt(dx * dx + dz * dz);
+            
+            const isMarshal = STATE.currentUser && (STATE.currentUser.username === 'ree1203' || STATE.currentUser.rank === '원수');
+            const hasCard = window.activeWeaponId === 'marshal_card';
+            
+            if (distToDoor < 6.0 && isMarshal && hasCard) {
+                const targetY = marshalLoc.size[1] * 1.2;
+                window.marshalDoorMesh.position.y += (targetY - window.marshalDoorMesh.position.y) * 8 * delta;
+            } else {
+                const targetY = (marshalLoc.size[1] * 0.7) / 2;
+                window.marshalDoorMesh.position.y += (targetY - window.marshalDoorMesh.position.y) * 8 * delta;
+            }
+        }
 
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
@@ -3678,12 +4635,18 @@ const initChat = () => {
                 handleWorldCollisions(camera.position, oldPos);
             }
 
+            // Proximity to Marshal's Office ladder (centered at x: 0, z: -162.4)
+            const nearLadder = Math.abs(camera.position.x) < 2.0 && Math.abs(camera.position.z - (-162.4)) < 2.0;
+
             // Gravity/Floor Check
             let floorY = 1.6;
 
             // Staircase collision check
             if (Math.abs(dx) < 5 && dz > 0 && dz < 40) {
                 floorY = (-dz * 0.5) + 1.6;
+            } else if (camera.position.y < -30 && Math.abs(camera.position.x) < 20 && Math.abs(camera.position.z + 150) < 20) {
+                // Underground bunker floor level
+                floorY = -40 + 1.6;
             } else if (camera.position.y < -10 || (Math.abs(dx) < 20 && Math.abs(dz) < 20 && camera.position.y < 0)) {
                 floorY = JAIL_CONFIG.pos.y + 1.6;
             }
@@ -3701,6 +4664,16 @@ const initChat = () => {
                 if (keys[' '] || keys['Space']) camera.position.y += flySpeed * delta;
                 if (keys['Shift'] || keys['ShiftLeft'] || keys['ShiftRight']) camera.position.y -= flySpeed * delta;
                 velocity.y = 0;
+            } else if (nearLadder) {
+                velocity.y = 0;
+                let climbSpeed = 8.0;
+                if (keys['KeyW'] || keys['w'] || keys['W'] || keys['ArrowUp'] || (joystickActive && joystickOffset.y < -0.2)) {
+                    camera.position.y += climbSpeed * delta;
+                }
+                if (keys['KeyS'] || keys['s'] || keys['S'] || keys['ArrowDown'] || (joystickActive && joystickOffset.y > 0.2)) {
+                    camera.position.y -= climbSpeed * delta;
+                }
+                camera.position.y = Math.max(floorY, Math.min(13.6, camera.position.y));
             } else {
                 camera.position.y += velocity.y * delta;
 
@@ -3714,8 +4687,16 @@ const initChat = () => {
                     if (camera.position.y > floorY) {
                         velocity.y -= 25.0 * delta; // Smooth gravity deceleration
                     } else {
-                        camera.position.y = floorY;
-                        velocity.y = 0; // Landed
+                        // Fall damage / death check when landing with high velocity
+                        if (velocity.y < -15.0 && !window.godModeActive && !window.isLocalPlayerDead) {
+                            camera.position.y = floorY;
+                            velocity.y = 0;
+                            triggerLocalPlayerDeath("낙하 및 추락");
+                            showToast("💀 낙하 충격으로 인해 전사하셨습니다!", "#ff0000");
+                        } else {
+                            camera.position.y = floorY;
+                            velocity.y = 0; // Landed
+                        }
                     }
                 }
             }
@@ -3777,15 +4758,18 @@ const initChat = () => {
                     z: camera.position.z,
                     ry: camera.rotation.y,
                     name: STATE.currentUser.name || "신병",
-                    rank: STATE.currentUser.rank || "이병",
+                    rank: STATE.currentUser.rank || "이등병",
                     isJailed: localIsJailed,
                     isDead: Boolean(window.isLocalPlayerDead),
+                    isStealth: Boolean(window.activeBuffs && window.activeBuffs.invisibleName > Date.now()),
+                    isDressUniform: Boolean(window.isDressUniform),
                     lastSeen: Date.now()
                 });
 
                 // Update Local Player Body Color for 3rd Person View
                 if (window.localPlayerBody) {
                     const getRankColor = (rank, isJailed) => {
+                        if (window.isDressUniform) return 0xffffff; // White dress uniform!
                         if (isJailed) return 0xffa500; // 영창: 주황색
                         const idx = window.RANKS ? window.RANKS.indexOf(rank) : -1;
                         if (idx >= 14) return 0x222222; // 장성급: 흑복(검정)
@@ -3799,13 +4783,90 @@ const initChat = () => {
                         window.localPlayerLastColor = targetColor;
                         const newMat = getCamoMaterial(targetColor);
                         window.localPlayerBody.traverse(child => {
-                            if (child.isMesh && child.userData.isCamo) {
-                                child.material = newMat;
+                            if (child.isMesh) {
+                                if (child.userData.isCamo) {
+                                    child.material = newMat;
+                                }
+                                if (child.userData.isEpaulet) {
+                                    child.visible = (targetColor === 0xffffff);
+                                }
                             }
                         });
                     }
                 }
             }
+        }
+
+        // ====================================================
+        // RUNNING COURSE TIME TRIAL LOGIC
+        // ====================================================
+        if (typeof window.runTrialActive === 'undefined') {
+            window.runTrialActive = false;
+            window.runTrialCheckpoint = 0; // 0 = not started, 1-4 = checkpoint index to tag, 5 = head to finish
+            window.runTrialStartTime = 0;
+        }
+
+        // Distance check to Start/Finish Gate at x: 0, z: 45
+        const distToStartGate = camera.position.distanceTo(new THREE.Vector3(0, camera.position.y, 45));
+
+        const updateCheckpointVisuals = (activeIdx) => {
+            if (!window.runCheckpoints) return;
+            window.runCheckpoints.forEach((cyl, idx) => {
+                const isCurrentTarget = (idx + 1) === activeIdx;
+                cyl.material.color.setHex(isCurrentTarget ? 0x00ff00 : 0xff0000);
+                
+                // Update label text color dynamically
+                const lctx = cyl.userData.labelCtx;
+                lctx.fillStyle = 'rgba(0,0,0,0.6)'; lctx.fillRect(0,0,64,64);
+                lctx.fillStyle = isCurrentTarget ? '#00ff00' : '#ff0000';
+                lctx.font = 'bold 36px Arial'; lctx.textAlign = 'center'; lctx.textBaseline = 'middle';
+                lctx.fillText(idx + 1, 32, 32);
+                cyl.userData.labelSprite.material.map.needsUpdate = true;
+            });
+            const chpText = activeIdx === 5 ? "🏁 결승선 복귀" : activeIdx === 0 ? "대기 중" : `📍 ${activeIdx}번 지점`;
+            const hudChp = document.getElementById('running-hud-checkpoint');
+            if (hudChp) hudChp.textContent = chpText;
+        };
+
+        if (!window.runTrialActive && distToStartGate < 4.0 && window.runTrialCheckpoint === 0) {
+            // Start!
+            window.runTrialActive = true;
+            window.runTrialCheckpoint = 1;
+            window.runTrialStartTime = Date.now();
+            showToast("🏃 달리기 측정이 시작되었습니다! 1번 체크포인트로 가십시오!", "#00ff00");
+            const hud = document.getElementById('running-trial-hud');
+            if (hud) hud.style.display = 'block';
+            updateCheckpointVisuals(1);
+        } else if (window.runTrialActive) {
+            const elapsed = ((Date.now() - window.runTrialStartTime) / 1000).toFixed(2);
+            const hudTime = document.getElementById('running-hud-time');
+            if (hudTime) hudTime.textContent = `${elapsed}s`;
+
+            if (window.checkPointsLoc && window.runTrialCheckpoint >= 1 && window.runTrialCheckpoint <= 4) {
+                const targetLoc = window.checkPointsLoc[window.runTrialCheckpoint - 1];
+                const distToTarget = camera.position.distanceTo(new THREE.Vector3(targetLoc.x, camera.position.y, targetLoc.z));
+                if (distToTarget < 5.0) {
+                    if (window.runTrialCheckpoint === 4) {
+                        window.runTrialCheckpoint = 5;
+                        showToast("🏁 모든 체크포인트 완료! 시작/결승선으로 돌아오십시오!", "#00ff00");
+                        updateCheckpointVisuals(5);
+                    } else {
+                        window.runTrialCheckpoint++;
+                        showToast(`📍 체크포인트 ${window.runTrialCheckpoint - 1} 완료! 다음 지점으로!`, "#00ff00");
+                        updateCheckpointVisuals(window.runTrialCheckpoint);
+                    }
+                }
+            }
+        } else if (window.runTrialCheckpoint === 5 && distToStartGate < 4.0) {
+            // Finish!
+            window.runTrialActive = false;
+            window.runTrialCheckpoint = 0;
+            const finalTime = ((Date.now() - window.runTrialStartTime) / 1000).toFixed(2);
+            showToast(`🏁 완주 성공! 최종 기록: ${finalTime}초`, "#00ff00");
+            alert(`🏃 [달리기 완주 기록]\n최종 시간: ${finalTime}초!`);
+            const hud = document.getElementById('running-trial-hud');
+            if (hud) hud.style.display = 'none';
+            updateCheckpointVisuals(0);
         }
 
         // Smooth interpolation of other players (runs every frame for fluid movement)
@@ -3869,7 +4930,7 @@ const initChat = () => {
                 z: camera.position.z,
                 ry: camera.rotation.y,
                 name: STATE.currentUser.name || "신병",
-                rank: STATE.currentUser.rank || "이병",
+                rank: STATE.currentUser.rank || "이등병",
                 isJailed: localIsJailed,
                 isDead: true,
                 lastSeen: Date.now()
@@ -3926,7 +4987,7 @@ const initChat = () => {
                 z: camera.position.z,
                 ry: camera.rotation.y,
                 name: STATE.currentUser.name || "신병",
-                rank: STATE.currentUser.rank || "이병",
+                rank: STATE.currentUser.rank || "이등병",
                 isJailed: localIsJailed,
                 isDead: false,
                 lastSeen: Date.now()
@@ -4028,8 +5089,12 @@ const initChat = () => {
                 playerObj.lastRank = p.rank;
                 playerObj.lastName = p.name;
             }
+            if (playerObj.label) {
+                playerObj.label.visible = !p.isStealth;
+            }
 
             const getRankColor = (rank, isJailed) => {
+                if (p.isDressUniform) return 0xffffff; // White dress uniform!
                 if (isJailed) return 0xffa500;
                 const ranksArr = (typeof RANKS !== 'undefined' ? RANKS : []);
                 const idx = ranksArr.indexOf(rank);
@@ -4045,8 +5110,13 @@ const initChat = () => {
                 playerObj.lastColor = targetColor;
                 const newMat = getCamoMaterial(targetColor);
                 playerObj.mesh.traverse(child => {
-                    if (child.isMesh && child.userData.isCamo) {
-                        child.material = newMat;
+                    if (child.isMesh) {
+                        if (child.userData.isCamo) {
+                            child.material = newMat;
+                        }
+                        if (child.userData.isEpaulet) {
+                            child.visible = (targetColor === 0xffffff);
+                        }
                     }
                 });
             }
@@ -4084,7 +5154,7 @@ const initChat = () => {
         if (!STATE.currentUser) return;
         const modal = document.getElementById('id-card-modal');
         document.getElementById('id-name').textContent = STATE.currentUser.name || "신병";
-        document.getElementById('id-rank').textContent = STATE.currentUser.rank || "이병";
+        document.getElementById('id-rank').textContent = STATE.currentUser.rank || "이등병";
         document.getElementById('id-serial').textContent = `24-${STATE.currentUser.uid.slice(0, 8).toUpperCase()}`;
         
         const badgeContainer = document.getElementById('id-badges');
@@ -4170,10 +5240,54 @@ const initChat = () => {
 
 window.onload = () => {
     initAuth();
+    
+    window.addEventListener('mousedown', (e) => {
+        if (e.button === 2) {
+            if (window.activeWeaponId === 'k14') {
+                camera.fov = camera.fov === 75 ? 20 : 75;
+                camera.updateProjectionMatrix();
+                showToast(camera.fov === 20 ? "🎯 저격 스코프 조준" : "조준 해제", "#3b82f6");
+            } else if (window.hasAdvancedScope && (window.activeWeaponId === 'k2' || window.activeWeaponId === 'golden_k2')) {
+                camera.fov = camera.fov === 75 ? 12 : 75;
+                camera.updateProjectionMatrix();
+                showToast(camera.fov === 12 ? "🎯 고배율 조준경 조준" : "조준 해제", "#3b82f6");
+            }
+        }
+    });
+    window.addEventListener('contextmenu', (e) => {
+        if (window.activeWeaponId === 'k14') {
+            e.preventDefault();
+        }
+    });
+    
     window.addEventListener('keydown', (e) => {
         if (e.target.tagName === 'INPUT') return;
         keys[e.code] = true;
         keys[e.key] = true;
+        
+        // CCTV Mode overrides
+        if (window.isCctvActive) {
+            if (e.key === '1') { window.enterCctvMode('cctv_canteen'); e.preventDefault(); return; }
+            if (e.key === '2') { window.enterCctvMode('cctv_gym'); e.preventDefault(); return; }
+            if (e.key === '3') { window.enterCctvMode('cctv_px'); e.preventDefault(); return; }
+            if (e.key === '4') { window.enterCctvMode('cctv_barracks'); e.preventDefault(); return; }
+            if (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27) {
+                window.exitCctvMode();
+                e.preventDefault();
+                return;
+            }
+        }
+        
+        // Weapon switching keys 1, 2, 3
+        if (e.key === '1') {
+            if (window.availableWeapons && window.availableWeapons[0]) window.equipWeapon(window.availableWeapons[0]);
+        }
+        if (e.key === '2') {
+            if (window.availableWeapons && window.availableWeapons[1]) window.equipWeapon(window.availableWeapons[1]);
+        }
+        if (e.key === '3') {
+            if (window.availableWeapons && window.availableWeapons[2]) window.equipWeapon(window.availableWeapons[2]);
+        }
         
         // Prevent default browser action (scrolling) for Spacebar
         if (e.key === ' ' || e.code === 'Space') {
@@ -4197,7 +5311,7 @@ window.onload = () => {
             const hPos = window.helicopterMesh.position;
             const dist = Math.sqrt(Math.pow(camera.position.x - hPos.x, 2) + Math.pow(camera.position.z - hPos.z, 2));
             if (dist < 15) {
-                if (STATE.currentUser.username !== 'ree1203') { alert("이 헬기는 대장(ree1203) 전용입니다!"); return; }
+                if (STATE.currentUser.username !== 'ree1203') { alert("이 헬기는 원수(ree1203) 전용입니다!"); return; }
                 window.inHelicopter = !window.inHelicopter;
                 if (window.inHelicopter) {
                     alert("🚁 대장 전용 헬기에 탑승했습니다!\n[W/S: 전진/후진] [A/D: 회전] [Q/E: 고도] [F: 내리기]");
@@ -4323,7 +5437,7 @@ window.onload = () => {
 
             // Admin only for notice
             if (window.currentOfficialChannel === 'notice' && STATE.currentUser.username !== 'ree1203') {
-                alert("공지사항 채널은 대장님만 작성할 수 있습니다.");
+                alert("공지사항 채널은 원수님만 작성할 수 있습니다.");
                 input.value = '';
                 return;
             }
@@ -4331,7 +5445,7 @@ window.onload = () => {
             db.ref(`official_chat/${window.currentOfficialChannel}`).push({
                 uid: STATE.currentUser.uid,
                 name: STATE.currentUser.name || "신병",
-                rank: STATE.currentUser.rank || "이병",
+                rank: STATE.currentUser.rank || "이등병",
                 text: text,
                 timestamp: Date.now()
             });
@@ -4611,3 +5725,755 @@ window.changeExpRateAdmin = (val) => {
         showToast(`경험치 배율이 ${rate}배로 설정되었습니다!`);
     });
 };
+
+// ====================================================
+// SYSTEM H: PROMOTION REVIEW & EXAM SYSTEM (승급 심사)
+// ====================================================
+const PROMO_QUIZ_QUESTIONS = [
+    {
+        q: "대한민국 국군의 주적은 누구인가?",
+        a: ["미국 및 서방 우방국", "북한 정권과 북한군", "중화인민공화국", "가상의 국가"],
+        correct: 1
+    },
+    {
+        q: "군인의 의무 중 '상관의 직무상 명령에 절대 복종해야 하는 의무'는 무엇인가?",
+        a: ["성실의 의무", "비밀엄수의 의무", "복종의 의무", "품위유지의 의무"],
+        correct: 2
+    },
+    {
+        q: "대한민국 국군의 창설 목적과 군인의 최종적 사명은 무엇인가?",
+        a: ["국가안전보장과 국토수호 (전쟁 승리)", "개인의 체력 단련 및 복지 증진", "군자금 축적 및 세금 징수", "국제 평화 유지 활동만 수행"],
+        correct: 0
+    }
+];
+let currentPromoQuizIdx = 0;
+
+window.startPromotionExamFlow = () => {
+    if (!STATE.currentUser || !STATE.currentUser.promotionReady) return;
+    currentPromoQuizIdx = 0;
+    
+    // Hide lobby screen temporarily
+    const lobby = document.getElementById('lobby-screen');
+    if (lobby) lobby.classList.remove('active');
+    
+    // Show quiz modal
+    const modal = document.getElementById('promotion-quiz-modal');
+    if (modal) modal.style.display = 'flex';
+    
+    window.loadPromoQuizQuestion(0);
+};
+
+window.loadPromoQuizQuestion = (idx) => {
+    currentPromoQuizIdx = idx;
+    const qData = PROMO_QUIZ_QUESTIONS[idx];
+    if (!qData) return;
+    
+    document.getElementById('quiz-question-num').textContent = `QUESTION ${idx + 1}/3`;
+    document.getElementById('quiz-question-text').textContent = qData.q;
+    
+    const optionsDiv = document.getElementById('quiz-options');
+    optionsDiv.innerHTML = '';
+    
+    qData.a.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.style.cssText = 'margin: 5px 0; text-align: left; padding: 12px 15px; font-size: 0.95rem; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); width: 100%; border-radius: 8px; cursor: pointer; transition: 0.2s;';
+        btn.textContent = `${optIdx + 1}. ${optText}`;
+        btn.onclick = () => window.selectPromoQuizAnswer(optIdx);
+        optionsDiv.appendChild(btn);
+    });
+};
+
+window.selectPromoQuizAnswer = (answerIdx) => {
+    const qData = PROMO_QUIZ_QUESTIONS[currentPromoQuizIdx];
+    if (answerIdx === qData.correct) {
+        showToast('🎯 정답입니다! 다음 문항으로 이동합니다.', '#22c55e');
+        if (currentPromoQuizIdx + 1 < PROMO_QUIZ_QUESTIONS.length) {
+            window.loadPromoQuizQuestion(currentPromoQuizIdx + 1);
+        } else {
+            // Passed Quiz
+            const modal = document.getElementById('promotion-quiz-modal');
+            if (modal) modal.style.display = 'none';
+            alert("정신전력 필기시험 합격! 실기 측정을 시작합니다. 연병장 구보 및 사격을 수행하십시오.");
+            window.startPromotionPracticalPhase();
+        }
+    } else {
+        // Failed
+        const modal = document.getElementById('promotion-quiz-modal');
+        if (modal) modal.style.display = 'none';
+        
+        // Reset promotionReady so they must retake training or retry
+        STATE.currentUser.promotionReady = false;
+        STATE.currentUser.exp = Math.max(0, STATE.currentUser.exp - 30); // deduct 30 exp as penalty
+        db.ref('users/' + STATE.currentUser.uid).update({ promotionReady: false, exp: STATE.currentUser.exp });
+        
+        alert("🚨 불합격 (오답)! 정신전력 평가에서 탈락하여 진급 누락(진누)되었습니다. 훈련을 다시 이수하십시오. (경험치 감점 -30)");
+        if (typeof showLobby === 'function') showLobby();
+    }
+};
+
+window.startPromotionPracticalPhase = () => {
+    // Hide Lobby screen to start in-game exam
+    const lobby = document.getElementById('lobby-screen');
+    if (lobby) lobby.classList.remove('active');
+    
+    // Teleport to 심사장 entrance to begin physical test
+    if (typeof camera !== 'undefined') {
+        camera.position.set(-100, 1.6, -140);
+    }
+    
+    const curRankIdx = RANKS.indexOf(STATE.currentUser.rank);
+    window.promoExamActive = true;
+    window.promoShootHits = 0;
+    window.promoDistanceRun = 0;
+    window.promoDistanceTarget = 150; // 150 meters
+    window.promoShootHitsNeeded = curRankIdx < 3 ? 5 : 8; // 5 hits for lower ranks, 8 hits for higher ranks
+    
+    const hud = document.getElementById('promotion-exam-hud');
+    if (hud) hud.style.display = 'block';
+    
+    // Force K2 weapon for the duration of the exam
+    window.hasK2 = true;
+    if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson;
+    const ch = document.getElementById('crosshair');
+    if (ch) ch.style.display = 'block';
+    
+    showToast("⚔️ 진급 실기 측정 시작! 사격장에서 과녁을 맞추고, 연병장을 달리십시오!", '#f59e0b');
+    window.updatePromoHUD();
+};
+
+window.updatePromoHUD = () => {
+    if (!window.promoExamActive) return;
+    
+    const sEl = document.getElementById('promo-hud-shoot');
+    const fEl = document.getElementById('promo-hud-fit');
+    
+    if (sEl) {
+        sEl.textContent = `${window.promoShootHits} / ${window.promoShootHitsNeeded} 명중`;
+        sEl.style.color = window.promoShootHits >= window.promoShootHitsNeeded ? '#22c55e' : '#f59e0b';
+    }
+    
+    if (fEl) {
+        const pct = Math.floor(window.promoDistanceRun);
+        fEl.textContent = `${pct}m / ${window.promoDistanceTarget}m`;
+        fEl.style.color = window.promoDistanceRun >= window.promoDistanceTarget ? '#22c55e' : '#f59e0b';
+    }
+    
+    if (window.promoShootHits >= window.promoShootHitsNeeded && window.promoDistanceRun >= window.promoDistanceTarget) {
+        window.completePromotionExam();
+    }
+};
+
+window.completePromotionExam = () => {
+    window.promoExamActive = false;
+    const hud = document.getElementById('promotion-exam-hud');
+    if (hud) hud.style.display = 'none';
+    
+    const curRankIdx = RANKS.indexOf(STATE.currentUser.rank);
+    const nextRank = RANKS[curRankIdx + 1];
+    
+    if (curRankIdx + 1 >= 4) {
+        // NCO/Officer (하사 이상) -> Commander Approval Workflow
+        STATE.currentUser.promotionReady = false;
+        STATE.currentUser.promotionPending = true;
+        
+        db.ref('users/' + STATE.currentUser.uid).update({ 
+            promotionReady: false, 
+            promotionPending: true 
+        });
+        
+        // Push Request to db
+        db.ref('promotion_requests/' + STATE.currentUser.uid).set({
+            uid: STATE.currentUser.uid,
+            username: STATE.currentUser.username,
+            name: STATE.currentUser.name,
+            currentRank: STATE.currentUser.rank,
+            nextRank: nextRank,
+            timestamp: Date.now()
+        }).then(() => {
+            alert("🎉 진급 실기 측정 통과! 하사 이상의 간부 진급은 대장(이주람)의 최종 결재가 필요합니다. 승인을 대기하십시오.");
+            if (typeof showLobby === 'function') showLobby();
+        });
+    } else {
+        // Direct Promotion for soldier ranks (이병~병장)
+        window.applyPromotion(nextRank);
+    }
+};
+
+window.applyPromotion = (nextRank) => {
+    STATE.currentUser.promotionReady = false;
+    STATE.currentUser.promotionPending = false;
+    STATE.currentUser.rank = nextRank;
+    STATE.currentUser.exp = 0;
+    
+    db.ref('users/' + STATE.currentUser.uid).update({
+        promotionReady: false,
+        promotionPending: false,
+        rank: nextRank,
+        exp: 0
+    }).then(() => {
+        // Send Chat Announcement
+        db.ref('chat').push({
+            uid: 'system',
+            name: '📢 [부대진급]',
+            rank: '지휘소',
+            text: `🫡 ${STATE.currentUser.name} 대원이 모든 심사를 통과하고 [${nextRank}](으)로 진급하였습니다! 충성!! 🫡`,
+            timestamp: Date.now()
+        });
+        
+        alert(`🎖️ 진급 완료! 축하합니다! 이제 [${nextRank}] 계급입니다.`);
+        if (typeof showLobby === 'function') showLobby();
+    });
+};
+
+// --- Commander Promotion Approval Dashboard Listeners ---
+const initPromotionApprovalSync = () => {
+    if (!db) return;
+    
+    // Listen to promotion requests
+    db.ref('promotion_requests').on('value', snap => {
+        const reqs = snap.val() || {};
+        
+        // Update Dashboard tab list
+        const listDiv = document.getElementById('admin-promotion-list');
+        if (listDiv) {
+            listDiv.innerHTML = '';
+            const keys = Object.keys(reqs);
+            if (keys.length === 0) {
+                listDiv.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">대기 중인 결재 요청이 없습니다.</div>';
+            } else {
+                keys.forEach(uid => {
+                    const r = reqs[uid];
+                    const div = document.createElement('div');
+                    div.style.cssText = 'background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px;';
+                    div.innerHTML = `
+                        <div>
+                            <div style="font-weight: bold; color: #fff; font-size: 1.05rem;">${r.name} 요원 (${r.username})</div>
+                            <div style="font-size: 0.8rem; color: #aaa; margin-top: 4px;">진급: ${r.currentRank} ➡️ <span style="color: var(--accent); font-weight: bold;">${r.nextRank}</span></div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn" style="background: #059669; width: auto; margin: 0; padding: 8px 15px;" onclick="approvePromotion('${uid}', '${r.nextRank}')">결재 승인</button>
+                            <button class="btn" style="background: #b91c1c; width: auto; margin: 0; padding: 8px 15px;" onclick="rejectPromotion('${uid}')">반려</button>
+                        </div>
+                    `;
+                    listDiv.appendChild(div);
+                });
+            }
+        }
+        
+        // Update Game screen Admin HUD panel list
+        const hudListDiv = document.getElementById('admin-hud-promo-list');
+        if (hudListDiv) {
+            hudListDiv.innerHTML = '';
+            const keys = Object.keys(reqs);
+            if (keys.length === 0) {
+                hudListDiv.innerHTML = '<div style="color: #888; text-align: center; font-size: 0.7rem; padding: 5px;">대기 요청 없음</div>';
+            } else {
+                keys.forEach(uid => {
+                    const r = reqs[uid];
+                    const div = document.createElement('div');
+                    div.style.cssText = 'background: rgba(255,255,255,0.05); padding: 6px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 4px;';
+                    div.innerHTML = `
+                        <div style="font-size: 0.72rem;">
+                            <span style="font-weight: bold;">${r.name}</span> (${r.currentRank}➡️${r.nextRank})
+                        </div>
+                        <div style="display: flex; gap: 4px;">
+                            <button onclick="approvePromotion('${uid}', '${r.nextRank}')" style="background: #059669; border: none; color: white; padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; cursor: pointer;">✔️</button>
+                            <button onclick="rejectPromotion('${uid}')" style="background: #b91c1c; border: none; color: white; padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; cursor: pointer;">❌</button>
+                        </div>
+                    `;
+                    hudListDiv.appendChild(div);
+                });
+            }
+        }
+    });
+};
+
+window.approvePromotion = (uid, nextRank) => {
+    if (!db) return;
+    if (!confirm("이 요원의 간부 승급을 승인 결재하시겠습니까?")) return;
+    
+    // Update target player rank in database
+    db.ref('users/' + uid).update({
+        promotionPending: false,
+        promotionReady: false,
+        rank: nextRank,
+        exp: 0
+    }).then(() => {
+        // Remove Request
+        db.ref('promotion_requests/' + uid).remove();
+        
+        // Log GM action
+        if (typeof logAdminAction === 'function') {
+            logAdminAction(`승급 승인: ${uid} -> ${nextRank}`);
+        }
+        
+        // Send Chat Announcement
+        db.ref('chat').push({
+            uid: 'system',
+            name: '📢 [부대진급]',
+            rank: '지휘소',
+            text: `🫡 대장님께서 대상 대원의 자질을 높이 사 [${nextRank}] 임관/진급을 최종 결재하셨습니다! 전 부대 경례!! 🫡`,
+            timestamp: Date.now()
+        });
+        
+        showToast("🎖️ 승급 심사 결재가 완료되었습니다!", "#059669");
+    });
+};
+
+window.rejectPromotion = (uid) => {
+    if (!db) return;
+    if (!confirm("⚠️ 이 요원의 승급 결재를 반려하시겠습니까?")) return;
+    
+    db.ref('users/' + uid).update({
+        promotionPending: false,
+        promotionReady: false,
+        exp: 0 // Reset exp to 0 as penalty
+    }).then(() => {
+        db.ref('promotion_requests/' + uid).remove();
+        
+        if (typeof logAdminAction === 'function') {
+            logAdminAction(`승급 반려: ${uid}`);
+        }
+        
+        showToast("❌ 승급 결재를 반려했습니다. 대상 유저는 진급 누락(진누) 처리되었습니다.", "#b91c1c");
+    });
+};
+
+// Initialize listeners
+setTimeout(initPromotionApprovalSync, 2000);
+
+// ====================================================
+// NEW TACTICAL SYSTEMS (Buffs, Branch Skills, Sandbags, Attendance, Cabinet)
+// ====================================================
+
+// 1. Shaky Hands (Discipline Debuff) and Buffs
+const originalShootRaycast = window.shootPlayerRaycast;
+window.shootPlayerRaycast = () => {
+    if (window.DISCIPLINE <= 30 && typeof camera !== 'undefined' && camera) {
+        camera.rotation.y += (Math.random() - 0.5) * 0.08;
+        camera.rotation.x += (Math.random() - 0.5) * 0.05;
+        showToast("💨 군기 저하 상태! 조준선이 흔들립니다!", "#ef4444");
+    }
+    if (originalShootRaycast) originalShootRaycast();
+};
+
+// 2. Cold Damage / Snow Weather Logic
+setInterval(() => {
+    if (!STATE.currentUser || window.isLocalPlayerDead || window.godModeActive) return;
+    const isColdWeather = typeof currentWeatherIdx !== 'undefined' && (currentWeatherIdx === 2 || currentWeatherIdx === 3);
+    if (isColdWeather) {
+        const hasProtection = (window.activeBuffs && (window.activeBuffs.coldProtection > Date.now() || window.activeBuffs.staminaInfinite > Date.now()));
+        const barracks = LOCATIONS['생활관'];
+        const isInside = barracks && (camera && camera.position.y > 0 && Math.abs(camera.position.x - barracks.x) < 20 && Math.abs(camera.position.z - barracks.z) < 30);
+        
+        if (!hasProtection && !isInside) {
+            window.STATS.hp = Math.max(0, window.STATS.hp - 2);
+            if (Math.random() < 0.15) {
+                showToast("🥶 동사 위험! 몸을 녹이거나 핫팩/깔깔이를 사용하십시오!", "#ef4444");
+            }
+            if (window.STATS.hp <= 0) {
+                triggerLocalPlayerDeath("한파 및 동사");
+            }
+            if (typeof updateStatBars === 'function') updateStatBars();
+        }
+    }
+}, 2000);
+
+// 3. activeBuffs HUD updates
+window.updateBuffHUD = () => {
+    const container = document.getElementById('hud-buffs');
+    if (!container) return;
+    container.innerHTML = '';
+    const now = Date.now();
+    if (!window.activeBuffs) return;
+    
+    if (window.activeBuffs.staminaInfinite > now) {
+        const d = document.createElement('div');
+        d.style.cssText = 'background: rgba(245, 158, 11, 0.85); color: black; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; border: 1px solid #fff;';
+        d.textContent = `⚡ 곱빼기 (${Math.ceil((window.activeBuffs.staminaInfinite - now)/1000)}s)`;
+        container.appendChild(d);
+        if (window.STATS) window.STATS.stamina = 100; // Force stamina infinite
+    }
+    if (window.activeBuffs.invisibleName > now) {
+        const d = document.createElement('div');
+        d.style.cssText = 'background: rgba(88, 101, 242, 0.85); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; border: 1px solid #fff;';
+        d.textContent = `🎭 위장은신 (${Math.ceil((window.activeBuffs.invisibleName - now)/1000)}s)`;
+        container.appendChild(d);
+    }
+    if (window.activeBuffs.coldProtection > now) {
+        const d = document.createElement('div');
+        d.style.cssText = 'background: rgba(56, 189, 248, 0.85); color: black; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; border: 1px solid #fff;';
+        d.textContent = `🧥 방한보온 (${Math.ceil((window.activeBuffs.coldProtection - now)/1000)}s)`;
+        container.appendChild(d);
+    }
+};
+setInterval(() => {
+    if (window.updateBuffHUD) window.updateBuffHUD();
+}, 1000);
+
+// 4. Branch Specific Skills (Key V)
+window.triggerBranchSkill = () => {
+    if (!STATE.currentUser || window.isLocalPlayerDead || !db) return;
+    const branch = STATE.currentUser.branch || '육군';
+    const now = Date.now();
+    if (window.lastSkillTime && now - window.lastSkillTime < 10000) {
+        showToast("⏳ 스킬 대기 시간 (10초)", "#ffcc00");
+        return;
+    }
+    window.lastSkillTime = now;
+
+    if (branch === '육군') {
+        const x = camera.position.x - Math.sin(camera.rotation.y) * 4;
+        const z = camera.position.z - Math.cos(camera.rotation.y) * 4;
+        db.ref('system/sandbags').push({
+            x: x, y: 0.5, z: z,
+            creator: STATE.currentUser.name || "육군대원",
+            time: now
+        });
+        showToast("🪖 육군 전술: 참호(모래주머니)를 구축했습니다!", "#22c55e");
+        gainEXP(15, "참호 구축");
+    } else if (branch === '해군') {
+        const dist = camera.position.distanceTo(new THREE.Vector3(30, 1.6, 80)); // Lake PX Area
+        if (dist < 40) {
+            showToast("⚓ 해군 작전: 해상 조난자를 성공적으로 구조했습니다!", "#38bdf8");
+            gainEXP(20, "조난자 구조");
+            changeDiscipline(3, "조난 구조 공로");
+        } else {
+            showToast("⚓ 해군 작전은 PX 호수 부근에서만 수행 가능합니다!", "#ef4444");
+            window.lastSkillTime = 0;
+        }
+    } else if (branch === '공군') {
+        const dist = camera.position.distanceTo(new THREE.Vector3(100, 1.6, -100)); // Shooting range runway
+        if (dist < 50) {
+            showToast("✈️ 공군 작전: 활주로 유도로 항공기 착륙을 지원했습니다!", "#38bdf8");
+            gainEXP(20, "항공기 유도");
+            changeDiscipline(3, "착륙 유도 공로");
+        } else {
+            showToast("✈️ 공군 작전은 사격장 활주로 부근에서만 수행 가능합니다!", "#ef4444");
+            window.lastSkillTime = 0;
+        }
+    } else if (branch === '해병대') {
+        const dist = camera.position.distanceTo(new THREE.Vector3(-100, 1.6, 50)); // Training/Obstacle river
+        if (dist < 40) {
+            showToast("🛡️ 해병대 전술: IBS 고무보트 해안 기습 상륙 성공!", "#deb887");
+            gainEXP(20, "IBS 기습 상륙");
+            changeDiscipline(3, "상륙 침투 공로");
+        } else {
+            showToast("🛡️ 해병대 전술은 유격장 수로 부근에서만 수행 가능합니다!", "#ef4444");
+            window.lastSkillTime = 0;
+        }
+    }
+};
+
+window.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'v' || e.key === 'V') {
+        window.triggerBranchSkill();
+    }
+});
+
+// 5. Sandbags Sync
+window.sandbagsList = {};
+setTimeout(() => {
+    if (db && typeof THREE !== 'undefined' && scene) {
+        db.ref('system/sandbags').on('child_added', snap => {
+            const data = snap.val();
+            if (data) {
+                const geom = new THREE.BoxGeometry(3, 1, 1.5);
+                const mat = new THREE.MeshStandardMaterial({ color: 0x555533, roughness: 0.95 });
+                const mesh = new THREE.Mesh(geom, mat);
+                mesh.position.set(data.x, data.y, data.z);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                scene.add(mesh);
+                window.sandbagsList[snap.key] = mesh;
+            }
+        });
+        db.ref('system/sandbags').on('child_removed', snap => {
+            const mesh = window.sandbagsList[snap.key];
+            if (mesh && scene) {
+                scene.remove(mesh);
+                delete window.sandbagsList[snap.key];
+            }
+        });
+    }
+}, 3000);
+
+// 6. Roll Call (Attendance) & Cabinet Decoration
+window.triggerRollCall = () => {
+    if (!STATE.currentUser || !db) return;
+    const now = Date.now();
+    const lastTime = STATE.currentUser.lastRollCallTime || 0;
+    if (now - lastTime < 12 * 60 * 60 * 1000) {
+        const leftSecs = Math.ceil((12 * 60 * 60 * 1000 - (now - lastTime)) / 1000);
+        const leftHrs = Math.floor(leftSecs / 3600);
+        const leftMins = Math.floor((leftSecs % 3600) / 60);
+        alert(`🫡 오늘 점호 행사는 이미 참여하셨습니다!\n다음 점호 가능 시간까지 ${leftHrs}시간 ${leftMins}분 남았습니다.`);
+        return;
+    }
+    
+    STATE.currentUser.money = (STATE.currentUser.money || 0) + 500;
+    STATE.currentUser.lastRollCallTime = now;
+    db.ref('users/' + STATE.currentUser.uid).update({
+        money: STATE.currentUser.money,
+        lastRollCallTime: now
+    }).then(() => {
+        gainEXP(100, "일일 점호 완료");
+        showToast("🫡 충성! 아침/저녁 점호 완료! 포상금 +500G, +100 EXP", "#22c55e");
+        alert("🫡 충성! 아침/저녁 점호 행사에 정상 참여하여 포상금 500G 및 100 EXP가 지급되었습니다.");
+    });
+};
+
+window.openCabinetModal = () => {
+    const modal = document.getElementById('cabinet-modal');
+    const slotsDiv = document.getElementById('cabinet-slots');
+    if (!modal || !slotsDiv) return;
+    
+    slotsDiv.innerHTML = '<div style="color:#aaa;">인벤토리 불러오는 중...</div>';
+    modal.style.display = 'flex';
+    
+    db.ref('users/' + STATE.currentUser.uid).once('value', snap => {
+        const user = snap.val() || {};
+        const inv = user.inventory || {};
+        const cabinet = user.cabinet || [];
+        
+        const ownedItems = Object.values(inv);
+        slotsDiv.innerHTML = '';
+        
+        for (let i = 0; i < 3; i++) {
+            const slotVal = cabinet[i] || '';
+            const itemSelect = document.createElement('select');
+            itemSelect.id = `cabinet-slot-${i}`;
+            itemSelect.style.cssText = 'width: 100%; padding: 10px; background: #223022; color: white; border: 1px solid var(--tactical-neon); border-radius: 6px; font-weight: bold; margin-bottom: 8px;';
+            
+            const emptyOpt = document.createElement('option');
+            emptyOpt.value = '';
+            emptyOpt.textContent = `비어 있음 (Slot ${i+1})`;
+            itemSelect.appendChild(emptyOpt);
+            
+            const uniqueOwned = Array.from(new Set(ownedItems));
+            uniqueOwned.forEach(itemId => {
+                const opt = document.createElement('option');
+                opt.value = itemId;
+                opt.textContent = itemId.toUpperCase();
+                if (slotVal === itemId) opt.selected = true;
+                itemSelect.appendChild(opt);
+            });
+            
+            const label = document.createElement('label');
+            label.style.cssText = 'font-size: 0.75rem; color: #888; display: block; margin-bottom: 4px;';
+            label.textContent = `진열 슬롯 ${i+1}`;
+            slotsDiv.appendChild(label);
+            slotsDiv.appendChild(itemSelect);
+        }
+    });
+};
+
+window.saveCabinetSetup = () => {
+    const c1 = document.getElementById('cabinet-slot-0').value;
+    const c2 = document.getElementById('cabinet-slot-1').value;
+    const c3 = document.getElementById('cabinet-slot-2').value;
+    
+    const cabinet = [c1, c2, c3].filter(Boolean);
+    db.ref('users/' + STATE.currentUser.uid).update({ cabinet: cabinet }).then(() => {
+        showToast("🗄️ 개인 관물대 배치가 저장되었습니다!", "#22c55e");
+        document.getElementById('cabinet-modal').style.display = 'none';
+    });
+};
+
+window.enterCctvMode = (cctvId) => {
+    window.isCctvActive = true;
+    window.cctvScreenId = cctvId;
+    if (velocity) velocity.set(0, 0, 0);
+    
+    if (window.localWeapon) window.localWeapon.visible = false;
+    
+    const cctvCameras = {
+        cctv_canteen: { pos: { x: 60, y: 7, z: 20 }, look: { x: 60, y: 0, z: 0 } },
+        cctv_gym: { pos: { x: -30, y: 9, z: 90 }, look: { x: -30, y: 0, z: 80 } },
+        cctv_px: { pos: { x: 30, y: 7, z: 90 }, look: { x: 30, y: 0, z: 80 } },
+        cctv_barracks: { pos: { x: -60, y: 9, z: 25 }, look: { x: -60, y: 0, z: 0 } }
+    };
+    
+    const camData = cctvCameras[cctvId];
+    if (camData) {
+        if (!window.cctvPrePosition) {
+            window.cctvPrePosition = camera.position.clone();
+            window.cctvPreRotation = camera.rotation.clone();
+        }
+        
+        camera.position.set(camData.pos.x, camData.pos.y, camData.pos.z);
+        camera.lookAt(new THREE.Vector3(camData.look.x, camData.look.y, camData.look.z));
+        
+        const cctvOverlay = document.getElementById('cctv-overlay');
+        if (cctvOverlay) {
+            cctvOverlay.style.display = 'flex';
+            let camName = "";
+            if (cctvId === 'cctv_canteen') camName = "병영식당 입구 [CH 01]";
+            else if (cctvId === 'cctv_gym') camName = "체력단련실 내부 [CH 02]";
+            else if (cctvId === 'cctv_px') camName = "WA-MART PX [CH 03]";
+            else if (cctvId === 'cctv_barracks') camName = "생활관 진입구 [CH 04]";
+            document.getElementById('cctv-camera-name').textContent = camName;
+        }
+        
+        showToast("🛰️ CCTV 화면 전환: " + (cctvId === 'cctv_canteen' ? "식당" : cctvId === 'cctv_gym' ? "체력단련실" : cctvId === 'cctv_px' ? "PX" : "생활관"), "#00ff00");
+    }
+};
+
+window.exitCctvMode = () => {
+    if (!window.isCctvActive) return;
+    window.isCctvActive = false;
+    if (velocity) velocity.set(0, 0, 0);
+    
+    if (window.cctvPrePosition) {
+        camera.position.copy(window.cctvPrePosition);
+        camera.rotation.copy(window.cctvPreRotation);
+        window.cctvPrePosition = null;
+        window.cctvPreRotation = null;
+    }
+    
+    if (window.localWeapon && !window.isThirdPerson) window.localWeapon.visible = true;
+    
+    const cctvOverlay = document.getElementById('cctv-overlay');
+    if (cctvOverlay) cctvOverlay.style.display = 'none';
+    
+    showToast("🛰️ CCTV 모니터링을 종료하고 복귀했습니다.", "#deb887");
+};
+
+// ====================================================
+// MARSHAL'S OFFICE SPECIAL FUNCTION CALLBACKS & SIREN
+// ====================================================
+let sirenOscillator = null;
+let sirenGain = null;
+let sirenInterval = null;
+let sirenCtx = null;
+
+const startSirenAudio = () => {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        sirenCtx = new AudioContext();
+        sirenOscillator = sirenCtx.createOscillator();
+        sirenGain = sirenCtx.createGain();
+        
+        sirenOscillator.type = 'sawtooth';
+        sirenOscillator.frequency.setValueAtTime(300, sirenCtx.currentTime);
+        sirenGain.gain.setValueAtTime(0.15, sirenCtx.currentTime);
+        
+        sirenOscillator.connect(sirenGain);
+        sirenGain.connect(sirenCtx.destination);
+        sirenOscillator.start();
+        
+        let time = sirenCtx.currentTime;
+        sirenInterval = setInterval(() => {
+            if (!sirenCtx || sirenCtx.state === 'closed') return;
+            const now = sirenCtx.currentTime;
+            sirenOscillator.frequency.cancelScheduledValues(now);
+            sirenOscillator.frequency.setValueAtTime(sirenOscillator.frequency.value, now);
+            sirenOscillator.frequency.linearRampToValueAtTime(800, now + 1.0);
+            sirenOscillator.frequency.linearRampToValueAtTime(300, now + 2.0);
+        }, 2000);
+    } catch (e) {
+        console.warn("Siren Audio Context failed:", e);
+    }
+};
+
+const stopSirenAudio = () => {
+    if (sirenInterval) {
+        clearInterval(sirenInterval);
+        sirenInterval = null;
+    }
+    if (sirenOscillator) {
+        try { sirenOscillator.stop(); } catch(e){}
+        sirenOscillator.disconnect();
+        sirenOscillator = null;
+    }
+    if (sirenGain) {
+        sirenGain.disconnect();
+        sirenGain = null;
+    }
+    if (sirenCtx) {
+        try { sirenCtx.close(); } catch(e){}
+        sirenCtx = null;
+    }
+};
+
+window.triggerGoldenArmory = () => {
+    const isMarshal = STATE.currentUser && (STATE.currentUser.username === 'ree1203' || STATE.currentUser.rank === '원수');
+    if (!isMarshal) {
+        showToast("🔒 이 무기고는 원수(이주람) 전용입니다!", "#ff3333");
+        return;
+    }
+    window.equipWeapon('golden_k2');
+    db.ref('users/' + STATE.currentUser.uid + '/inventory').once('value', snap => {
+        const inv = snap.val() || {};
+        if (!Object.values(inv).includes('golden_k2')) {
+            db.ref('users/' + STATE.currentUser.uid + '/inventory').push('golden_k2');
+        }
+    });
+};
+
+window.triggerEmergencySiren = () => {
+    const isMarshal = STATE.currentUser && (STATE.currentUser.username === 'ree1203' || STATE.currentUser.rank === '원수');
+    if (!isMarshal) {
+        showToast("🔒 비상 사이렌 단추는 원수(이주람)님만 누를 수 있습니다.", "#ff3333");
+        return;
+    }
+    db.ref('system/siren_emergency').once('value', snap => {
+        const nextState = !snap.val();
+        db.ref('system/siren_emergency').set(nextState).then(() => {
+            showToast(nextState ? "🚨 비상 경보 발령!" : "🟢 비상 경보 해제", nextState ? "#ff3333" : "#00ff00");
+        });
+    });
+};
+
+window.triggerEscapeHatch = () => {
+    const isMarshal = STATE.currentUser && (STATE.currentUser.username === 'ree1203' || STATE.currentUser.rank === '원수');
+    if (!isMarshal) {
+        showToast("🔒 비밀 탈출구는 원수 전용입니다.", "#ff3333");
+        return;
+    }
+    camera.position.set(0, -38.4, -150);
+    showToast("🌀 지하 벙커로 대피했습니다!", "#deb887");
+};
+
+window.triggerBunkerExit = () => {
+    camera.position.set(0, 1.6, -142);
+    showToast("🚀 원수실로 복귀했습니다!", "#deb887");
+};
+
+window.triggerWardrobe = () => {
+    const isMarshal = STATE.currentUser && (STATE.currentUser.username === 'ree1203' || STATE.currentUser.rank === '원수');
+    if (!isMarshal) {
+        showToast("🔒 옷장은 원수 전용입니다.", "#ff3333");
+        return;
+    }
+    window.isDressUniform = !window.isDressUniform;
+    showToast(window.isDressUniform ? "🎖️ 원수 정복을 장착했습니다!" : " 기성 군복으로 환복했습니다.", "#ffffff");
+    window.localPlayerLastColor = null;
+};
+
+setTimeout(() => {
+    if (db) {
+        db.ref('system/siren_emergency').on('value', snap => {
+            const active = snap.val();
+            const overlay = document.getElementById('emergency-overlay');
+            if (overlay) {
+                overlay.style.display = active ? 'block' : 'none';
+            }
+            if (active) {
+                showToast("🚨 [비상 계엄] 기지 전체에 비상 사태가 선포되었습니다! 대피하십시오!", "#ff0000");
+                if (!window.sirenAudioActive) {
+                    window.sirenAudioActive = true;
+                    startSirenAudio();
+                }
+            } else {
+                if (window.sirenAudioActive) {
+                    window.sirenAudioActive = false;
+                    stopSirenAudio();
+                }
+            }
+        });
+    }
+}, 3000);

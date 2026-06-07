@@ -69,7 +69,7 @@ function autoRegister(username, password) {
         username: username,
         password: password,
         name: username + " 요원",
-        rank: "이병",
+        rank: "이등병",
         branch: "육군",
         role: "user",
         team: "SOLDIER"
@@ -91,7 +91,7 @@ function guestLogin() {
         uid: "guest_" + randomId,
         username: "guest_" + randomId,
         name: "게스트_" + randomId,
-        rank: "이병",
+        rank: "이등병",
         branch: "방문객",
         role: "guest",
         team: "SOLDIER",

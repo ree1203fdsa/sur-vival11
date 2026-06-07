@@ -281,6 +281,12 @@
             100% { opacity: 0.3; }
         }
 
+        @keyframes red-alarm-flash {
+            0% { background: rgba(255, 0, 0, 0); }
+            50% { background: rgba(255, 0, 0, 0.35); }
+            100% { background: rgba(255, 0, 0, 0); }
+        }
+
         #weather-hud {
             position: absolute;
             top: 30px;
@@ -1705,11 +1711,22 @@
                 <div class="avatar-box">🎖️</div>
                 <div class="details-box">
                     <div class="player-name-row">
-                        <span id="lobby-rank" style="color: #ffd700;">[이병]</span>
+                        <span id="lobby-rank" style="color: #ffd700;">[이등병]</span>
                         <span id="lobby-name">신병</span>
                     </div>
                     <div class="player-info-row">
                         소속: <span id="lobby-branch" style="color: var(--tactical-blue); font-weight: bold;">육군</span>
+                    </div>
+                    <div class="player-info-row" style="margin-top: 4px; display: flex; align-items: center; gap: 5px;">
+                        보직: 
+                        <select id="lobby-role-select" onchange="changePlayerRole(this.value)" style="background: rgba(0,0,0,0.6); color: #deb887; border: 1px solid var(--tactical-blue); padding: 2px 4px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; cursor: pointer; outline: none; font-family: Pretendard, sans-serif;">
+                            <option value="소총수">소총수 (기본)</option>
+                            <option value="분대지원화기병">분대지원화기병 (K3)</option>
+                            <option value="하사 이상">하사 이상 (K2+K5)</option>
+                            <option value="특수부대">특수부대 (K1A+K14)</option>
+                            <option value="차량 승무원">차량 승무원 (K1A)</option>
+                            <option value="중화기병">중화기병 (K6)</option>
+                        </select>
                     </div>
                     <div class="player-info-row">
                         군자금: <span id="lobby-money" style="color: var(--tactical-neon); font-weight: bold;">0</span> G
@@ -1723,6 +1740,20 @@
                         <div class="lobby-exp-bar-bg">
                             <div id="lobby-exp-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--tactical-neon), #22c55e); transition: width 0.3s;"></div>
                         </div>
+                    </div>
+
+                    <!-- Promotion Alert & Button - Hidden as Marshall handles promotion manually -->
+                    <div id="lobby-promotion-wrap" style="display: none !important;">
+                        <div style="flex: 1; text-align: left;">
+                            <div style="font-family: var(--font-orbitron); font-size: 0.8rem; font-weight: 900; color: var(--tactical-amber); letter-spacing: 1px;">🎖️ 진급 심사 대상자 선발</div>
+                            <div style="font-size: 0.7rem; color: #ccc; margin-top: 2px;">필기 및 실기 측정을 시작하십시오.</div>
+                        </div>
+                        <button id="btn-promotion-apply" onclick="startPromotionExamFlow()" style="width: auto; margin: 0; padding: 6px 12px; font-size: 0.8rem; background: var(--tactical-amber); color: #000; border-radius: 6px; border: none; font-weight: 900; cursor: pointer; transition: 0.2s;">심사 시작</button>
+                    </div>
+
+                    <div id="lobby-promotion-pending" style="display: none !important;">
+                        <div style="font-family: var(--font-orbitron); font-size: 0.8rem; font-weight: 900; color: var(--tactical-blue); letter-spacing: 1px;">⏳ 지휘관 승인 대기 중</div>
+                        <div style="font-size: 0.7rem; color: #ccc; margin-top: 2px;">본청 지휘소의 대장 최종 승인을 대기 중입니다.</div>
                     </div>
                 </div>
             </div>
@@ -1744,6 +1775,14 @@
                 <button id="btn-lobby-leaderboard" class="lobby-menu-btn">
                     <span>🏆</span>
                     <span>명예의 전당 (랭킹)</span>
+                </button>
+                <button id="btn-lobby-rollcall" class="lobby-menu-btn" onclick="triggerRollCall()">
+                    <span>🫡</span>
+                    <span>일일 점호 행사</span>
+                </button>
+                <button id="btn-lobby-cabinet" class="lobby-menu-btn" onclick="openCabinetModal()">
+                    <span>🗄️</span>
+                    <span>개인 관물대 진열</span>
                 </button>
             </div>
             
@@ -1771,8 +1810,12 @@
         <!-- HUD -->
         <div id="hud">
             <div>이름: <span id="hud-name" class="highlight"></span></div>
-            <div>계급: <span id="hud-rank" class="highlight">이병</span></div>
+            <div>계급: <span id="hud-rank" class="highlight">이등병</span></div>
             <div>소속: <span id="hud-branch" class="highlight"></span></div>
+            <div style="margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px;">
+                무기: <span id="hud-weapon" class="highlight" style="color: #deb887;">K2C1 소총</span>
+            </div>
+            <div id="hud-weapons-list" style="font-size: 0.72rem; color: #aaa; margin-top: 2px;">[1] K2C1 소총</div>
             <div style="margin-top: 8px;">💰 <span id="hud-money" class="highlight">0</span>G</div>
             <div class="stat-bar-wrap">
                 <div class="stat-bar-label">❤️ 체력 <span id="hud-hp">100</span>/100</div>
@@ -1791,6 +1834,57 @@
                 <div class="stat-bar-bg">
                     <div class="stat-bar-fill" id="stamina-fill" style="width:100%"></div>
                 </div>
+            </div>
+            <div id="hud-buffs" style="margin-top: 8px; display: flex; gap: 4px; flex-wrap: wrap;"></div>
+        </div>
+
+        <!-- CCTV Overlay -->
+        <div id="cctv-overlay" style="display: none; position: absolute; inset: 0; z-index: 99; pointer-events: none; flex-direction: column; justify-content: space-between; padding: 30px; font-family: 'Courier New', Courier, monospace; color: #00ff00; text-shadow: 0 0 5px #00ff00; box-shadow: inset 0 0 100px rgba(0, 255, 0, 0.2);">
+            <!-- Screen Noise Scanlines Effect -->
+            <div style="position: absolute; inset: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 4px, 6px 100%; pointer-events: none; opacity: 0.85;"></div>
+            
+            <!-- Top HUD -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+                <div style="font-weight: bold; font-size: 1.5rem; display: flex; align-items: center; gap: 10px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; background: #00ff00; border-radius: 50%; animation: blink 1s infinite;"></span>
+                    LIVE MONITORING
+                </div>
+                <div id="cctv-camera-name" style="font-weight: bold; font-size: 1.2rem; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 4px; border: 1px solid #00ff00;">CAMERA FEED</div>
+            </div>
+            
+            <!-- Center Crosshair/Overlay details -->
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center;">
+                <div style="width: 40px; height: 40px; border: 1px solid #00ff00; border-radius: 50%; position: relative;">
+                    <div style="width: 10px; height: 1px; background: #00ff00; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+                    <div style="width: 1px; height: 10px; background: #00ff00; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+                </div>
+            </div>
+
+            <!-- Bottom HUD -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%;">
+                <div style="font-size: 1rem; background: rgba(0,0,0,0.6); padding: 8px 15px; border-radius: 4px; border: 1px solid #00ff00;">
+                    <div>SYSTEM STATUS: ONLINE // FEED CONNECTED</div>
+                    <div style="margin-top: 4px; font-size: 0.85rem; color: #88ff88;">[1-4]: 카메라 전환 | ESC: 복귀</div>
+                </div>
+                <div style="font-size: 1.2rem; font-weight: bold;">REC [HQ]</div>
+            </div>
+        </div>
+
+        <!-- Emergency Siren Flash Overlay -->
+        <div id="emergency-overlay" style="display: none; position: absolute; inset: 0; z-index: 90; pointer-events: none; animation: red-alarm-flash 1.5s infinite; mix-blend-mode: color-burn;"></div>
+
+        <!-- Cabinet Modal -->
+        <div id="cabinet-modal" class="big-modal">
+            <div class="big-modal-box" style="max-width: 450px; background: #1a2518; border: 2px solid var(--tactical-neon);">
+                <button class="close-btn" onclick="document.getElementById('cabinet-modal').style.display='none'">✕</button>
+                <h2 style="color: var(--tactical-neon); font-family: var(--font-orbitron);">🗄️ 개인 관물대 데코레이션</h2>
+                <div style="font-size: 0.8rem; color: #888; margin-bottom: 20px; border-bottom: 1px solid rgba(163, 230, 53, 0.2); padding-bottom: 8px;">
+                    보유한 장비를 관물대에 진열하십시오. (최대 3개)
+                </div>
+                <div id="cabinet-slots" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+                    <!-- Slots dynamic -->
+                </div>
+                <button onclick="saveCabinetSetup()" style="width: 100%; padding: 12px; background: var(--tactical-neon); color: black; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">진열 적용</button>
             </div>
         </div>
 
@@ -2013,6 +2107,40 @@
                 </div>
             </div>
         </div>
+
+        <!-- Promotion Quiz Modal -->
+        <div id="promotion-quiz-modal"
+            style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2500; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+            <div class="panel" style="width: 90%; max-width: 450px; text-align: left; position: relative; border: 2px solid var(--tactical-amber) !important; background: rgba(10, 15, 10, 0.95) !important;">
+                <h2 style="color: var(--tactical-amber); margin: 0 0 10px 0; font-family: var(--font-orbitron); font-size: 1.4rem; font-weight: 900; letter-spacing: 2px; text-shadow: 0 0 10px rgba(245, 158, 11, 0.3);">📝 정신전력 평가 (필기시험)</h2>
+                <div style="font-size: 0.8rem; color: #888; margin-bottom: 20px; border-bottom: 1px solid rgba(245, 158, 11, 0.2); padding-bottom: 8px;">대한민국 장병으로서 국가안보관 및 정신전력 측정</div>
+                
+                <div id="quiz-question-container">
+                    <div id="quiz-question-num" style="font-size: 0.8rem; color: var(--tactical-neon); font-family: var(--font-mono); font-weight: bold; margin-bottom: 5px;">QUESTION 1/3</div>
+                    <div id="quiz-question-text" style="font-size: 1.05rem; font-weight: 800; color: #fff; margin-bottom: 20px; line-height: 1.4;">우리의 주적은 누구인가?</div>
+                    
+                    <div id="quiz-options" style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Options injected dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Promotion Exam HUD -->
+        <div id="promotion-exam-hud"
+            style="display: none; position: absolute; top: 210px; left: 30px; z-index: 10; background: rgba(15, 20, 15, 0.9); border: 1.5px solid var(--tactical-amber); backdrop-filter: blur(10px); padding: 15px 20px; border-radius: 16px; min-width: 180px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); pointer-events: none;">
+            <div style="font-family: var(--font-orbitron); font-size: 0.9rem; font-weight: 900; color: var(--tactical-amber); border-bottom: 1px solid rgba(245,158,11,0.3); padding-bottom: 6px; margin-bottom: 8px;">🎖️ 진급 측정 진행 중</div>
+            <div style="font-size: 0.8rem; color: #eee; margin-bottom: 6px;">🎯 사격 통과: <span id="promo-hud-shoot" style="font-family: var(--font-mono); font-weight: bold; color: var(--tactical-neon);">대기 (0/15)</span></div>
+            <div style="font-size: 0.8rem; color: #eee;">🏃 체력 검정: <span id="promo-hud-fit" style="font-family: var(--font-mono); font-weight: bold; color: var(--tactical-neon);">구보 대기 (0m)</span></div>
+        </div>
+
+        <!-- Running Trial HUD -->
+        <div id="running-trial-hud"
+            style="display: none; position: absolute; top: 330px; left: 30px; z-index: 10; background: rgba(15, 15, 20, 0.9); border: 1.5px solid #00ff00; backdrop-filter: blur(10px); padding: 15px 20px; border-radius: 16px; min-width: 180px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); pointer-events: none; font-family: monospace;">
+            <div style="font-size: 0.9rem; font-weight: 900; color: #00ff00; border-bottom: 1px solid rgba(0,255,0,0.3); padding-bottom: 6px; margin-bottom: 8px;">🏃 달리기 코스 측정</div>
+            <div style="font-size: 0.85rem; color: #eee; margin-bottom: 6px;">⏱️ 경과 시간: <span id="running-hud-time" style="font-weight: bold; color: #00ff00;">0.00s</span></div>
+            <div style="font-size: 0.85rem; color: #eee;">📍 체크포인트: <span id="running-hud-checkpoint" style="font-weight: bold; color: #00ff00;">대기 중</span></div>
+        </div>
     </div>
 
     <!-- 5. MASTER ADMIN DASHBOARD (juram1203 Only) -->
@@ -2046,6 +2174,9 @@
                 <button class="action-btn" onclick="switchAdminTab('stats')"
                     style="width: 100%; height: auto; padding: 15px; border-radius: 12px; font-size: 1rem; border: none; background: rgba(255,255,255,0.05); color: white;">📊
                     통계/로그</button>
+                <button class="action-btn" onclick="switchAdminTab('promotions')"
+                    style="width: 100%; height: auto; padding: 15px; border-radius: 12px; font-size: 1rem; border: none; background: rgba(255,255,255,0.05); color: white;">🎖️
+                    승급 결재</button>
             </nav>
 
             <button class="btn secondary" onclick="location.reload()"
@@ -2096,9 +2227,9 @@
                             <input type="text" id="ai-name" placeholder="AI 이름" style="flex: 1;">
                             <select id="ai-rank"
                                 style="background: #333; color: white; border: 1px solid #555; padding: 10px; border-radius: 5px;">
-                                <option>이병</option>
-                                <option>일병</option>
-                                <option>상병</option>
+                                <option>이등병</option>
+                                <option>일등병</option>
+                                <option>상등병</option>
                                 <option>병장</option>
                             </select>
                             <button onclick="createAISoldier()"
@@ -2251,6 +2382,18 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Tab: Promotions -->
+            <div id="tab-promotions" class="admin-tab" style="display: none;">
+                <h2 style="font-size: 1.8rem; font-weight: 900; margin-bottom: 30px; color: var(--accent);">🎖️ 간부 승급 심사 결재</h2>
+                <div class="panel" style="max-width: none; text-align: left; padding: 30px; background: #1e293b; border: 1px solid rgba(255,255,255,0.1);">
+                    <h3 style="color: var(--accent); margin-bottom: 20px;">📋 승인 대기 목록</h3>
+                    <div id="admin-promotion-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 500px; overflow-y: auto;">
+                        <!-- Dynamic Promotion Requests -->
+                        <div style="color: #888; text-align: center; padding: 20px;">대기 중인 결재 요청이 없습니다.</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- User Edit Modal -->
@@ -2302,6 +2445,28 @@
             <div style="margin-bottom: 12px;">
                 <label style="font-size: 0.75rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 4px;">📍 대상 플레이어 지정</label>
                 <select id="admin-target-user" style="width: 100%; padding: 6px; background: #223022; color: #fff; border: 1px solid #556b2f; border-radius: 6px; font-weight: bold; font-size: 0.8rem;"></select>
+            </div>
+
+            <!-- Weapon Giving Controls -->
+            <div style="margin-bottom: 12px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                <label style="font-size: 0.75rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 4px;">🔫 무기 지급 (대장/원수 특권)</label>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;">
+                    <button onclick="giveWeaponAdmin('k2')" class="btn" style="margin: 0; padding: 6px 2px; background: #3b82f6; font-size: 0.7rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; color: white;">K2</button>
+                    <button onclick="giveWeaponAdmin('k3')" class="btn" style="margin: 0; padding: 6px 2px; background: #10b981; font-size: 0.7rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; color: white;">K3</button>
+                    <button onclick="giveWeaponAdmin('k5')" class="btn" style="margin: 0; padding: 6px 2px; background: #6366f1; font-size: 0.7rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; color: white;">K5</button>
+                    <button onclick="giveWeaponAdmin('k1a')" class="btn" style="margin: 0; padding: 6px 2px; background: #ec4899; font-size: 0.7rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; color: white;">K1A</button>
+                    <button onclick="giveWeaponAdmin('k14')" class="btn" style="margin: 0; padding: 6px 2px; background: #f59e0b; font-size: 0.7rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; color: white;">K14</button>
+                    <button onclick="giveWeaponAdmin('k6')" class="btn" style="margin: 0; padding: 6px 2px; background: #ef4444; font-size: 0.7rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; color: white;">K6</button>
+                </div>
+            </div>
+
+            <!-- Admin Rank Modifier Controls -->
+            <div style="margin-bottom: 12px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                <label style="font-size: 0.75rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 4px;">🎖️ 계급 진급/변경 (원수 권한)</label>
+                <div style="display: flex; gap: 5px;">
+                    <select id="admin-change-rank-select" style="flex: 1; padding: 6px; background: #223022; color: #fff; border: 1px solid #556b2f; border-radius: 6px; font-size: 0.8rem; font-weight: bold;"></select>
+                    <button onclick="changeRankAdmin()" class="btn" style="margin: 0; width: auto; background: #f59e0b; color: black; font-weight: bold; border-radius: 6px; border: none; padding: 6px 12px; font-size: 0.75rem; cursor: pointer;">변경</button>
+                </div>
             </div>
 
             <!-- Target User Control Actions (Mute, Kick, Ban) -->
@@ -2387,6 +2552,14 @@
                             <option value="10">10배</option>
                         </select>
                     </div>
+                </div>
+            </div>
+
+            <!-- Promotion Approvals in HUD Admin Panel -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; margin-bottom: 12px;">
+                <label style="font-size: 0.75rem; color: #aaa; font-weight: bold; display: block; margin-bottom: 4px;">🎖️ 간부 승급 심사 결재</label>
+                <div id="admin-hud-promo-list" style="display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem; max-height: 120px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 6px;">
+                    <div style="color: #888; text-align: center; font-size: 0.7rem; padding: 5px;">대기 요청 없음</div>
                 </div>
             </div>
 

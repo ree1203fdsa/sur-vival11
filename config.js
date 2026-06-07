@@ -25,13 +25,12 @@ if (typeof firebase !== 'undefined') {
     console.warn("Firebase script not loaded yet or failed.");
 }
 
-// 계급 목록
 const RANKS = [
-    "이병", "일병", "상병", "병장", 
-    "하사", "중사", "상사", "원사", 
+    "이등병", "일등병", "상등병", "병장", 
+    "하사", "중사", "상사", "원사", "준위",
     "소위", "중위", "대위", 
     "소령", "중령", "대령", 
-    "준장", "소장", "중장", "대장"
+    "준장", "소장", "중장", "대장", "원수"
 ];
 
 // 부대 종류
@@ -69,7 +68,7 @@ const STATE = {
             username: 'ree1203',
             password: 'hjklfdsa1203',
             name: '이주람',
-            rank: '대장',
+            rank: '원수',
             branch: '육군',
             role: 'master'
         },
