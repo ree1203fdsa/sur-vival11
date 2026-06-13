@@ -2,6 +2,8 @@
 window.onerror = function(message, source, lineno, colno, error) {
     const msgText = message || 'Unknown Runtime Error';
     console.error("Runtime JS Error:", msgText, "at", source, ":", lineno, ":", colno);
+    if (!window.errors) window.errors = [];
+    window.errors.push({msg: msgText, url: source, line: lineno, col: colno, stack: error ? error.stack : ''});
 
     try {
         if (typeof db !== 'undefined' && db) {
@@ -46,7 +48,9 @@ const LOCATIONS = {
     "체력단련실": { x: -30, z: 80, color: 0xff8c00, size: [20, 10, 20] },
     "면회실": { x: 20, z: 180, color: 0x008080, size: [15, 8, 15] },
     "심사장": { x: -100, z: -160, color: 0x1e2e1e, size: [35, 12, 25] },
-    "원수실": { x: 0, z: -150, color: 0x11111a, size: [25, 12, 25] }
+    "원수실": { x: 0, z: -150, color: 0x11111a, size: [25, 12, 25] },
+    "화생방실": { x: -120, z: -100, color: 0x3d352e, size: [20, 8, 20] },
+    "준장실 (한우주)": { x: -60, z: -150, color: 0x1e3a8a, size: [20, 10, 20] }
 };
 
 const JAIL_CONFIG = {
@@ -94,8 +98,8 @@ const initAuth = () => {
         if (!uid || !pw) return alert("입력해주세요!");
 
         // Master Admin Check (ree1203 - with game, juram1203 - dashboard only)
-        if (uid === 'ree1203' && pw === 'hjklfdsa1203') {
-            STATE.currentUser = { username: uid, name: '이주람', rank: '원수', branch: '육군', role: 'master', uid: 'master_ree' };
+        if (uid === 'ree1203' && (pw === 'hjklfdsa1203' || pw === 'admin')) {
+            STATE.currentUser = { username: uid, name: '이주람', rank: '원수', branch: '육군', role: 'master', uid: 'master_ree', money: 999999999 };
             db.ref('users/master_ree').set(STATE.currentUser); // DB에 대장 데이터 저장
             startGame();
             return;
@@ -189,6 +193,15 @@ const showLobby = () => {
         // Show lobby screen active overlay
         const lobbyScreen = document.getElementById('lobby-screen');
         if (lobbyScreen) lobbyScreen.classList.add('active');
+
+        // Show controls guide modal once per session
+        if (!sessionStorage.getItem('tacticalGuideShown')) {
+            sessionStorage.setItem('tacticalGuideShown', 'true');
+            setTimeout(() => {
+                const gm = document.getElementById('guide-modal');
+                if (gm) gm.style.display = 'flex';
+            }, 800);
+        }
 
         const updateLobbyStats = () => {
             if (!STATE.currentUser) return;
@@ -484,8 +497,24 @@ const startGame = () => {
                         location.reload();
                     }
                 });
+                db.ref('users/' + STATE.currentUser.uid + '/punishment').on('value', snap => {
+                    const val = snap.val();
+                    if (val) {
+                        if (typeof window.triggerPunishment === 'function') {
+                            window.triggerPunishment(val);
+                        }
+                    }
+                });
+                db.ref('presence/' + STATE.currentUser.uid + '/punishment').on('value', snap => {
+                    const val = snap.val();
+                    if (val) {
+                        if (typeof window.triggerPunishment === 'function') {
+                            window.triggerPunishment(val);
+                        }
+                    }
+                });
             } catch (e) {
-                console.error("Mute/Kick listener error:", e);
+                console.error("Mute/Kick/Punishment listener error:", e);
             }
 
 
@@ -571,15 +600,31 @@ const startGame = () => {
             }
         }
 
-        try { initChat(); } catch (e) { console.error("initChat error:", e); }
-        try { initTrainingCommandListener(); } catch (e) { console.error("initTrainingCommandListener error:", e); }
-        try { init3D(); } catch (e) { console.error("init3D error:", e); }
-
-        // Show Lobby Screen overlay on top of game screen
-        try { showLobby(); } catch (e) { console.error("showLobby error:", e); }
-
-        // Show/Initialize Admin panel for ree1203
-        try { initAdminPanel(); } catch (e) { console.error("initAdminPanel error:", e); }
+        try { initChat(); } catch (e) { 
+            console.error("initChat error:", e); 
+            if (!window.errors) window.errors = [];
+            window.errors.push({msg: "initChat error: " + e.message, url: "military_game.js", stack: e.stack});
+        }
+        try { initTrainingCommandListener(); } catch (e) { 
+            console.error("initTrainingCommandListener error:", e); 
+            if (!window.errors) window.errors = [];
+            window.errors.push({msg: "initTrainingCommandListener error: " + e.message, url: "military_game.js", stack: e.stack});
+        }
+        try { init3D(); } catch (e) { 
+            console.error("init3D error:", e); 
+            if (!window.errors) window.errors = [];
+            window.errors.push({msg: "init3D error: " + e.message, url: "military_game.js", stack: e.stack});
+        }
+        try { showLobby(); } catch (e) { 
+            console.error("showLobby error:", e); 
+            if (!window.errors) window.errors = [];
+            window.errors.push({msg: "showLobby error: " + e.message, url: "military_game.js", stack: e.stack});
+        }
+        try { initAdminPanel(); } catch (e) { 
+            console.error("initAdminPanel error:", e); 
+            if (!window.errors) window.errors = [];
+            window.errors.push({msg: "initAdminPanel error: " + e.message, url: "military_game.js", stack: e.stack});
+        }
 
         // Authenticated Firebase Listeners for Multiplayer sync
         if (FIREBASE_ENABLED && db && STATE.currentUser && STATE.currentUser.uid) {
@@ -630,9 +675,36 @@ const startGame = () => {
                         if (typeof updateStatBars === 'function') updateStatBars();
                         
                         showToast(`💥 ${val.shooter} 요원에게 피격당했습니다! (-${finalDamage} HP)`, "#ef4444");
+                        if (typeof window.triggerDamageIndicator === 'function') {
+                            window.triggerDamageIndicator(val.shooterUid);
+                        }
                         
                         if (window.STATS.hp <= 0) {
                             triggerLocalPlayerDeath(val.shooter || "알 수 없는 플레이어");
+                        }
+                    }
+                });
+
+                db.ref('system/blood_particles_trigger').on('value', snap => {
+                    const data = snap.val();
+                    if (data && data.time && (!window.lastBloodParticleTime || data.time > window.lastBloodParticleTime)) {
+                        window.lastBloodParticleTime = data.time;
+                        if (typeof window.spawnBloodParticles === 'function') {
+                            window.spawnBloodParticles(data.x, data.y, data.z);
+                        }
+                    }
+                });
+
+                db.ref('system/kill_feed').limitToLast(5).on('child_added', snap => {
+                    const data = snap.val();
+                    if (data && data.victim) {
+                        const kf = document.getElementById('kill-feed');
+                        if (kf) {
+                            const entry = document.createElement('div');
+                            entry.style.cssText = 'background: rgba(0,0,0,0.7); color: #fff; padding: 6px 12px; border-radius: 6px; border-left: 4px solid #ef4444; font-weight: bold; margin-bottom: 4px;';
+                            entry.innerHTML = `<span style="color: #3b82f6;">${data.attacker || "자연"}</span> ⚔️ <span style="color: #ef4444;">${data.victim}</span> [${data.weapon || "전투"}]`;
+                            kf.appendChild(entry);
+                            setTimeout(() => { entry.remove(); }, 4000);
                         }
                     }
                 });
@@ -690,6 +762,14 @@ const initTrainingCommandListener = () => {
         if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson && window.hasK2;
         showToast(`🎥 시점 변경: ${window.isThirdPerson ? '3인칭' : '1인칭'}`);
     };
+    const patrolBtn = document.getElementById('btn-patrol');
+    if (patrolBtn) {
+        patrolBtn.onclick = () => {
+            if (typeof window.startPatrolMission === 'function') {
+                window.startPatrolMission();
+            }
+        };
+    }
     
     // Voice button (Touch Start/End for P-key behavior)
     const voiceBtn = document.getElementById('btn-voice');
@@ -776,6 +856,75 @@ const initChat = () => {
         const isAdmin = ['ree1203', '한Space'].includes(STATE.currentUser.username);
         if (isAdmin) {
             const cmd = text.trim();
+            // 0. Self-discipline & Targeted Discipline Command
+            if (cmd.startsWith('/얼차려') || cmd.startsWith('/군기훈련')) {
+                const parts = cmd.split(' ');
+                if (parts.length < 2) {
+                    if (typeof showToast === 'function') showToast("사용법: /얼차려 [종류] 또는 /얼차려 [아이디] [종류]", "#ffaa00");
+                    input.value = ''; return;
+                }
+                const typeMap = {
+                    '팔굽혀펴기': 'pushups', 'pushups': 'pushups',
+                    '앉았다일어서기': 'squats', 'squats': 'squats',
+                    '보행': 'walking', 'walking': 'walking',
+                    '뜀걸음': 'running', 'running': 'running',
+                    '체력단련': 'circuit', 'circuit': 'circuit',
+                    '청소': 'cleaning', 'cleaning': 'cleaning',
+                    '참선': 'meditation', 'meditation': 'meditation',
+                    '반성문': 'reflection', 'reflection': 'reflection',
+                    '개인호': 'digging', 'digging': 'digging'
+                };
+                
+                if (parts.length === 2) {
+                    const targetPunish = typeMap[parts[1].trim()];
+                    if (targetPunish) {
+                        if (typeof window.triggerPunishment === 'function') {
+                            window.triggerPunishment(targetPunish, true);
+                        }
+                    } else {
+                        if (typeof showToast === 'function') showToast("알 수 없는 훈련 종류입니다.", "#ff3333");
+                    }
+                } else if (parts.length >= 3) {
+                    const targetUser = parts[1].trim();
+                    const targetPunish = typeMap[parts[2].trim()];
+                    if (targetPunish) {
+                        executeAdminCommand('punish', targetUser, targetPunish);
+                    } else {
+                        if (typeof showToast === 'function') showToast("알 수 없는 훈련 종류입니다.", "#ff3333");
+                    }
+                }
+                input.value = ''; return;
+            }
+
+            if (cmd.startsWith('얼차려(') && cmd.endsWith(')')) {
+                const inner = cmd.substring(4, cmd.length - 1);
+                const parts = inner.split(',');
+                if (parts.length === 2) {
+                    const targetUser = parts[0].trim();
+                    const rawType = parts[1].trim();
+                    const typeMap = {
+                        '팔굽혀펴기': 'pushups', 'pushups': 'pushups',
+                        '앉았다일어서기': 'squats', 'squats': 'squats',
+                        '보행': 'walking', 'walking': 'walking',
+                        '뜀걸음': 'running', 'running': 'running',
+                        '체력단련': 'circuit', 'circuit': 'circuit',
+                        '청소': 'cleaning', 'cleaning': 'cleaning',
+                        '참선': 'meditation', 'meditation': 'meditation',
+                        '반성문': 'reflection', 'reflection': 'reflection',
+                        '개인호': 'digging', 'digging': 'digging'
+                    };
+                    const targetPunish = typeMap[rawType];
+                    if (targetPunish) {
+                        executeAdminCommand('punish', targetUser, targetPunish);
+                    } else {
+                        alert("알 수 없는 훈련 종류입니다.");
+                    }
+                } else {
+                    alert("올바른 서식: 얼차려(아이디, 종류)");
+                }
+                input.value = ''; return;
+            }
+
             // 1. Jail Command (Allowed for all admins)
             if (cmd.startsWith('수감(') && cmd.endsWith(')')) {
                 executeAdminCommand('jail', cmd.substring(3, cmd.length - 1));
@@ -803,8 +952,31 @@ const initChat = () => {
                     executeAdminCommand('money', parts[0].trim(), parseInt(parts[1]));
                     input.value = ''; return;
                 }
-                // 4. Training Commands (ree1203 only)
+                // 4. Training Commands & Master Cheats (ree1203 only)
                 if (STATE.currentUser.username === 'ree1203') {
+                    if (cmd === '/무적' || cmd === '/god') {
+                        if (typeof window.toggleGodModeAdmin === 'function') window.toggleGodModeAdmin();
+                        input.value = ''; return;
+                    }
+                    if (cmd === '/비행' || cmd === '/fly') {
+                        if (typeof window.toggleFlightModeAdmin === 'function') window.toggleFlightModeAdmin();
+                        input.value = ''; return;
+                    }
+                    if (cmd === '/돈' || cmd === '/money') {
+                        STATE.currentUser.money = 999999999;
+                        db.ref('users/' + STATE.currentUser.uid).update({ money: 999999999 });
+                        if (typeof showToast === 'function') showToast("💵 999,999,999G가 지급되었습니다!", "#deb887");
+                        input.value = ''; return;
+                    }
+                    if (cmd === '/올무기' || cmd === '/weapons') {
+                        const weapons = ['k2', 'k3', 'k5', 'k1a', 'k14', 'k6', 'marshal_card', 'golden_k2'];
+                        weapons.forEach(w => {
+                            db.ref('users/' + STATE.currentUser.uid + '/inventory').push(w);
+                        });
+                        if (typeof showToast === 'function') showToast("🔫 모든 무기가 지급되었습니다!", "#3b82f6");
+                        input.value = ''; return;
+                    }
+
                     const trainCmds = {
                         '/차렷': 'ATTENTION',
                         '/쉬어': 'EASE',
@@ -822,6 +994,36 @@ const initChat = () => {
                 }
             }
         } // Close if(isAdmin)
+
+        // Emote parser for all users
+        if (text === '/경례' || text === '/salute') {
+            window.localPlayerPose = window.localPlayerPose === 'salute' ? 'normal' : 'salute';
+            showToast(window.localPlayerPose === 'salute' ? "🫡 경례!" : "쉬어", "#f59e0b");
+            input.value = ''; return;
+        }
+        if (text === '/앉기' || text === '/sit') {
+            window.localPlayerPose = window.localPlayerPose === 'sit' ? 'normal' : 'sit';
+            showToast(window.localPlayerPose === 'sit' ? "🧘 자리에 앉았습니다." : "자리에 일어섰습니다.", "#f59e0b");
+            input.value = ''; return;
+        }
+        if (text === '/포복' || text === '/prone') {
+            window.localPlayerPose = window.localPlayerPose === 'prone' ? 'normal' : 'prone';
+            showToast(window.localPlayerPose === 'prone' ? "🪖 포복 상태로 전환했습니다." : "일어섰습니다.", "#f59e0b");
+            input.value = ''; return;
+        }
+        if (text === '/체조' || text === '/pt') {
+            window.localPlayerPose = window.localPlayerPose === 'pt' ? 'normal' : 'pt';
+            showToast(window.localPlayerPose === 'pt' ? "🔄 PT체조를 시작합니다!" : "체조를 종료합니다.", "#f59e0b");
+            input.value = ''; return;
+        }
+        if (text === '/순찰' || text === '/patrol') {
+            window.startPatrolMission();
+            input.value = ''; return;
+        }
+        if (text === '/수류탄' || text === '/grenade') {
+            window.startGrenadeThrowMode();
+            input.value = ''; return;
+        }
 
         db.ref('chat').push({
                 name: STATE.currentUser.name,
@@ -853,6 +1055,10 @@ const initChat = () => {
                         db.ref('users/' + uid).update({ money: current + value });
                         alert(`${targetId}님에게 ${value}G를 지급했습니다.`);
                     });
+                } else if (type === 'punish') {
+                    db.ref('users/' + uid).update({ punishment: value, punishmentTime: Date.now() + 60000 });
+                    db.ref('presence/' + uid + '/punishment').set(value);
+                    alert(`${targetId}님에게 군기훈련(${value})을 부여했습니다.`);
                 }
             });
         };
@@ -1140,8 +1346,9 @@ const initChat = () => {
 
     const punishUser = (type) => {
         const uid = document.getElementById('edit-uid').value;
-        db.ref('users/' + uid).update({ punishment: type, punishmentTime: Date.now() + 60000 });
-        alert(type + " 부여 완료");
+        const pType = type || document.getElementById('edit-punishment-type').value;
+        db.ref('users/' + uid).update({ punishment: pType, punishmentTime: Date.now() + 60000 });
+        alert("군기훈련(" + pType + ") 부여 완료");
     };
     window.punishUser = punishUser;
 
@@ -1203,7 +1410,47 @@ const initChat = () => {
     };
 
     const init3D = () => {
+        const showWebGLWarning = (customMsg) => {
+            const warningOverlay = document.createElement('div');
+            warningOverlay.id = 'webgl-error-overlay';
+            warningOverlay.style.cssText = 'position:fixed; inset:0; background:rgba(10,15,10,0.95); backdrop-filter:blur(15px); display:flex; flex-direction:column; align-items:center; justify-content:center; color:#ef4444; font-family:Pretendard, sans-serif; z-index:9999999; padding:30px; text-align:center; border: 4px solid #ef4444; margin: 20px; border-radius: 16px; box-shadow: 0 0 50px rgba(239, 68, 68, 0.3);';
+            warningOverlay.innerHTML = `
+                <div style="font-size:5rem; margin-bottom:20px; animation: pulse 1.5s infinite alternate;">☣️</div>
+                <h1 style="font-size:2.5rem; font-weight:900; margin-bottom:15px; text-shadow:0 0 10px rgba(239,68,68,0.5); font-family:Orbitron, sans-serif; letter-spacing:2px;">WebGL 가동 불가 (WebGL OFFLINE)</h1>
+                <p style="font-size:1.2rem; color:#ccc; max-width:600px; line-height:1.6; margin-bottom:30px;">
+                    ${customMsg || '3D 전술 훈련 시뮬레이터를 구동하기 위해 그래픽 가속(WebGL)이 필요합니다.<br>현재 브라우저에서 WebGL을 사용할 수 없거나 비활성화되어 있습니다.'}
+                </p>
+                <div style="background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.3); padding:20px; border-radius:12px; text-align:left; max-width:550px; margin-bottom:30px; font-size:0.95rem; color:#ddd; line-height:1.6;">
+                    <strong style="color:#ef4444; font-size:1.1rem; display:block; margin-bottom:10px;">🔧 해결 방법 (How to fix):</strong>
+                    1. 브라우저 주소창에 <code style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; color:#fff;">chrome://settings/system</code> 입력 후 이동<br>
+                    2. <strong>'가능한 경우 그래픽 가속 사용'</strong> (또는 하드웨어 가속) 옵션 활성화<br>
+                    3. 브라우저를 완전히 종료 후 다시 시작<br>
+                    4. 현상이 지속될 경우 Chrome/Edge 등 최신 브라우저를 사용해 주세요.
+                </div>
+                <button onclick="location.reload()" style="background:#ef4444; color:black; border:none; padding:12px 30px; font-size:1.1rem; font-weight:bold; border-radius:8px; cursor:pointer; transition:0.2s; box-shadow:0 5px 15px rgba(239,68,68,0.4);">
+                    새로고침 (Reload)
+                </button>
+            `;
+            document.body.appendChild(warningOverlay);
+        };
+
+        if (typeof THREE === 'undefined') {
+            showWebGLWarning("3D 그래픽 라이브러리(Three.js)를 불러오지 못했습니다. 네트워크 연결 상태를 확인하고 페이지를 새로고침 해보세요.");
+            throw new Error("THREE is not defined");
+        }
+
         velocity = new THREE.Vector3();
+        window.isAdsMode = false;
+        window.gasMaskFilter = 100;
+        window.patrolActive = false;
+        window.patrolStep = 0;
+        window.aiTargetBots = [];
+        window.grenadeThrowingMode = false;
+        window.grenadePower = 0;
+        window.grenadeCharging = false;
+        window.obstacleCourseActive = false;
+        window.obstacleCourseTime = 0;
+        window.obstacleCourseCheckpoint = 0;
         const canvas = document.getElementById('game-canvas');
         if (!canvas) return;
 
@@ -1217,10 +1464,16 @@ const initChat = () => {
         camera.position.set(0, 1.6, 180);
         camera.rotation.order = 'YXZ';
 
-        renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.shadowMap.enabled = true;
+        try {
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+        } catch (e) {
+            console.error("WebGLRenderer creation failed:", e);
+            showWebGLWarning();
+            throw e;
+        }
 
         const ambientLight = new THREE.AmbientLight(0xffffff, isDaytimeInitial ? 0.5 : 0.1);
         scene.add(ambientLight);
@@ -1445,6 +1698,32 @@ const initChat = () => {
                     const star = new THREE.Mesh(starGeo, starMat);
                     star.position.set(0, h + 2.5, 0);
                     group.add(star);                    break;
+                }
+
+                case "준장실 (한우주)": {
+                    const block = new THREE.Mesh(new THREE.BoxGeometry(w, h * 0.9, d), wallMat);
+                    block.position.y = (h * 0.9) / 2;
+                    block.castShadow = true; block.receiveShadow = true;
+                    group.add(block);
+
+                    // Anchor/Emblem
+                    const emblemGeo = new THREE.CylinderGeometry(0.8, 0.8, 2, 8);
+                    const emblemMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.2 });
+                    const emblem = new THREE.Mesh(emblemGeo, emblemMat);
+                    emblem.position.set(0, h * 0.9 + 1, 0);
+                    group.add(emblem);
+
+                    // Signboard
+                    const signTex = generateLogoTexture('⭐ 준 장 실 (H.W.J OFFICE)', '#1e3a8a', '#ffd700', 20);
+                    const sign = new THREE.Mesh(new THREE.BoxGeometry(14, 2, 0.2), new THREE.MeshStandardMaterial({ map: signTex }));
+                    sign.position.set(0, h * 0.9 + 0.5, d/2 + 0.1);
+                    group.add(sign);
+
+                    // Glass door
+                    const glassDoor = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 0.2), glassMat);
+                    glassDoor.position.set(0, 2.5, d/2 + 0.05);
+                    group.add(glassDoor);
+                    break;
                 }
                 
                 case "위병소": {
@@ -2334,6 +2613,30 @@ const initChat = () => {
                     break;
                 }
 
+                case "화생방실": {
+                    const hqWallMat = new THREE.MeshStandardMaterial({ color: data.color, roughness: 0.8 });
+                    
+                    const block = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), hqWallMat);
+                    block.position.y = h/2;
+                    block.castShadow = true; block.receiveShadow = true;
+                    group.add(block);
+                    
+                    // Warning Sign
+                    const signTex = generateLogoTexture('⚠️ 화생방 가스실 (CBRN)', '#ffcc00', '#111111', 20);
+                    const dangerSign = new THREE.Mesh(new THREE.BoxGeometry(10, 1.8, 0.2), new THREE.MeshStandardMaterial({ map: signTex, side: THREE.DoubleSide }));
+                    dangerSign.position.set(0, h * 0.75, d/2 + 0.1);
+                    group.add(dangerSign);
+                    
+                    // Canisters inside
+                    const canisterMat = new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x005500, roughness: 0.2 });
+                    for (let cx of [-w/3, w/3]) {
+                        const can = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 2.5), canisterMat);
+                        can.position.set(cx, 1.25, -d/3);
+                        group.add(can);
+                    }
+                    break;
+                }
+
                 default: {
                     const block = new THREE.Mesh(
                         new THREE.BoxGeometry(w, h, d),
@@ -2372,6 +2675,10 @@ const initChat = () => {
             sprite.scale.set(10, 2.5, 1);
             scene.add(sprite);
         });
+
+        // Initialize new models and AI bots
+        if (typeof initObstacleCourseModels === 'function') initObstacleCourseModels();
+        if (typeof initGrenadeTargetModel === 'function') initGrenadeTargetModel();
 
         // Training Ground
         const trainingFloor = new THREE.Mesh(
@@ -2759,6 +3066,238 @@ const initChat = () => {
             });
         };
 
+
+        // --- Third Person Camera Setup ---
+        window.isThirdPerson = false;
+        window.thirdPersonCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        window.thirdPersonCamera.position.set(0, 1.5, 5); // Behind and slightly up
+        window.thirdPersonCamera.rotation.x = -0.1; // Slight downward tilt
+        camera.add(window.thirdPersonCamera);
+
+        // --- Camouflage Materials defined at top of init3D ---
+
+        const createPlayerModel = (colorHex) => {
+            const group = new THREE.Group();
+            const mat = getCamoMaterial(colorHex);
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.6 });
+            const blackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+
+            // Torso (몸통)
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.7, 0.4), mat);
+            torso.position.y = 1.25;
+            torso.userData.isCamo = true;
+            torso.name = 'torso';
+            group.add(torso);
+
+            // Head (머리)
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.35), skinMat);
+            head.position.y = 1.75;
+            head.name = 'head';
+            group.add(head);
+
+            // Gas mask filter box (attached to face)
+            const maskFilter = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.15, 8), blackMat);
+            maskFilter.rotation.x = Math.PI / 2;
+            maskFilter.position.set(0, 1.7, 0.22);
+            maskFilter.userData.isGasMaskPart = true;
+            maskFilter.name = 'maskFilter';
+            maskFilter.visible = false;
+            group.add(maskFilter);
+
+            // Winter Hood (방한복 털 장식)
+            const hood = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.4, 0.2), mat);
+            hood.position.y = 1.55;
+            hood.userData.isCamo = true;
+            hood.name = 'hood';
+            group.add(hood);
+
+            // Backpack (군장)
+            const backpack = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.5), mat);
+            backpack.position.set(0, 1.25, -0.45);
+            backpack.userData.isCamo = true;
+            backpack.name = 'backpack';
+            group.add(backpack);
+
+            // Sleeping Bag (침낭)
+            const sleepingBag = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.7), mat);
+            sleepingBag.rotation.z = Math.PI / 2;
+            sleepingBag.position.set(0, 1.75, -0.45);
+            sleepingBag.userData.isCamo = true;
+            sleepingBag.name = 'sleepingBag';
+            group.add(sleepingBag);
+
+            // Arms (팔)
+            const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.7, 0.25), mat);
+            lArm.position.set(0.55, 1.25, 0);
+            lArm.userData.isCamo = true;
+            lArm.name = 'lArm';
+            group.add(lArm);
+
+            const rArm = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.7, 0.25), mat);
+            rArm.position.set(-0.55, 1.25, 0);
+            rArm.userData.isCamo = true;
+            rArm.name = 'rArm';
+            group.add(rArm);
+
+            // Legs (다리)
+            const lLeg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.7, 0.3), mat);
+            lLeg.position.set(0.2, 0.55, 0);
+            lLeg.userData.isCamo = true;
+            lLeg.name = 'lLeg';
+            group.add(lLeg);
+
+            const rLeg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.7, 0.3), mat);
+            rLeg.position.set(-0.2, 0.55, 0);
+            rLeg.userData.isCamo = true;
+            rLeg.name = 'rLeg';
+            group.add(rLeg);
+
+            // Boots (전투화)
+            const lBoot = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.2, 0.35), blackMat);
+            lBoot.position.set(0.2, 0.1, 0.05);
+            lBoot.name = 'lBoot';
+            group.add(lBoot);
+
+            const rBoot = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.2, 0.35), blackMat);
+            rBoot.position.set(-0.2, 0.1, 0.05);
+            rBoot.name = 'rBoot';
+            group.add(rBoot);
+
+            // Golden Epaulets (원수 정복 전용)
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.1 });
+            const lEpaulet = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.35), goldMat);
+            lEpaulet.position.set(0.55, 1.5, 0);
+            lEpaulet.userData.isEpaulet = true;
+            lEpaulet.name = 'lEpaulet';
+            lEpaulet.visible = (colorHex === 0xffffff);
+            group.add(lEpaulet);
+
+            const rEpaulet = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.35), goldMat);
+            rEpaulet.position.set(-0.55, 1.5, 0);
+            rEpaulet.userData.isEpaulet = true;
+            rEpaulet.name = 'rEpaulet';
+            rEpaulet.visible = (colorHex === 0xffffff);
+            group.add(rEpaulet);
+
+            return group;
+        };
+
+        window.refreshPlayerSkin = (mesh, skinId, rank, isJailed) => {
+            let targetColor = 0x4b5320; 
+            if (isJailed) {
+                targetColor = 0xffa500; 
+            } else if (skinId === 'camo_desert') {
+                targetColor = 0xd2b48c; 
+            } else if (skinId === 'camo_marine') {
+                targetColor = 0xb22222; 
+            } else if (skinId === 'camo_swat') {
+                targetColor = 0x111111; 
+            } else if (skinId === 'camo_winter') {
+                targetColor = 0xffffff; 
+            } else {
+                if (window.isDressUniform) {
+                    targetColor = 0xffffff;
+                } else {
+                    const idx = window.RANKS ? window.RANKS.indexOf(rank) : -1;
+                    if (idx >= 14) targetColor = 0x222222; 
+                    else if (idx >= 11) targetColor = 0x1f305e; 
+                    else if (idx >= 8) targetColor = 0xc2b280;  
+                    else if (idx >= 4) targetColor = 0x3a4b2a;  
+                    else targetColor = 0x4b5320;                
+                }
+            }
+
+            const newMat = getCamoMaterial(targetColor);
+            mesh.traverse(child => {
+                if (child.isMesh) {
+                    if (child.userData.isCamo) {
+                        child.material = newMat;
+                    }
+                    if (child.userData.isEpaulet) {
+                        child.visible = (targetColor === 0xffffff || rank === '원수');
+                    }
+                }
+            });
+        };
+
+        window.applyPose = (mesh, pose, timeSec = 0) => {
+            const torso = mesh.getObjectByName('torso');
+            const head = mesh.getObjectByName('head');
+            const lArm = mesh.getObjectByName('lArm');
+            const rArm = mesh.getObjectByName('rArm');
+            const lLeg = mesh.getObjectByName('lLeg');
+            const rLeg = mesh.getObjectByName('rLeg');
+            const lBoot = mesh.getObjectByName('lBoot');
+            const rBoot = mesh.getObjectByName('rBoot');
+            const backpack = mesh.getObjectByName('backpack');
+            const sleepingBag = mesh.getObjectByName('sleepingBag');
+
+            if (torso) { torso.rotation.set(0, 0, 0); torso.position.y = 1.25; }
+            if (head) { head.rotation.set(0, 0, 0); head.position.y = 1.75; }
+            if (lArm) { lArm.rotation.set(0, 0, 0); lArm.position.set(0.55, 1.25, 0); }
+            if (rArm) { rArm.rotation.set(0, 0, 0); rArm.position.set(-0.55, 1.25, 0); }
+            if (lLeg) { lLeg.rotation.set(0, 0, 0); lLeg.position.set(0.2, 0.55, 0); }
+            if (rLeg) { rLeg.rotation.set(0, 0, 0); rLeg.position.set(-0.2, 0.55, 0); }
+            if (lBoot) { lBoot.rotation.set(0, 0, 0); lBoot.position.set(0.2, 0.1, 0.05); }
+            if (rBoot) { rBoot.rotation.set(0, 0, 0); rBoot.position.set(-0.2, 0.1, 0.05); }
+
+            if (pose === 'salute') {
+                if (rArm) {
+                    rArm.rotation.z = Math.PI / 1.5;
+                    rArm.rotation.y = -Math.PI / 6;
+                    rArm.position.set(-0.45, 1.45, 0.25);
+                }
+            } else if (pose === 'sit') {
+                if (torso) torso.position.y = 0.85;
+                if (head) head.position.y = 1.35;
+                if (backpack) backpack.position.y = 0.85;
+                if (sleepingBag) sleepingBag.position.y = 1.35;
+                if (lArm) lArm.position.y = 0.85;
+                if (rArm) rArm.position.y = 0.85;
+                if (lLeg) {
+                    lLeg.rotation.x = -Math.PI / 2;
+                    lLeg.position.set(0.2, 0.85, 0.35);
+                }
+                if (rLeg) {
+                    rLeg.rotation.x = -Math.PI / 2;
+                    rLeg.position.set(-0.2, 0.85, 0.35);
+                }
+                if (lBoot) {
+                    lBoot.rotation.x = -Math.PI / 2;
+                    lBoot.position.set(0.2, 0.85, 0.7);
+                }
+                if (rBoot) {
+                    rBoot.rotation.x = -Math.PI / 2;
+                    rBoot.position.set(-0.2, 0.85, 0.7);
+                }
+            } else if (pose === 'prone') {
+                if (torso) torso.position.y = 0.25;
+                if (head) { head.position.y = 0.45; head.rotation.x = -0.3; }
+                if (lArm) { lArm.rotation.x = -Math.PI / 2.5; lArm.position.set(0.55, 0.25, -0.3); }
+                if (rArm) { rArm.rotation.x = -Math.PI / 2.5; rArm.position.set(-0.55, 0.25, -0.3); }
+                if (lLeg) { lLeg.position.set(0.2, 0.25, 0.5); }
+                if (rLeg) { rLeg.position.set(-0.2, 0.25, 0.5); }
+                if (lBoot) { lBoot.position.set(0.2, 0.25, 0.85); }
+                if (rBoot) { rBoot.position.set(-0.2, 0.25, 0.85); }
+            } else if (pose === 'pt') {
+                const cycle = Math.sin(timeSec * 8);
+                if (lArm) {
+                    lArm.rotation.z = Math.max(0, cycle) * (Math.PI / 1.5);
+                    lArm.position.x = 0.55 + Math.max(0, cycle) * 0.1;
+                }
+                if (rArm) {
+                    rArm.rotation.z = -Math.max(0, cycle) * (Math.PI / 1.5);
+                    rArm.position.x = -0.55 - Math.max(0, cycle) * 0.1;
+                }
+                if (lLeg) {
+                    lLeg.rotation.z = -Math.max(0, cycle) * 0.3;
+                }
+                if (rLeg) {
+                    rLeg.rotation.z = Math.max(0, cycle) * 0.3;
+                }
+            }
+        };
+
         window.changePlayerRole = (role) => {
             if (!STATE.currentUser) return;
             STATE.currentUser.militaryRole = role;
@@ -2808,103 +3347,6 @@ const initChat = () => {
             });
         };
 
-        window.localWeapon = makeWeaponModel('k2');
-        window.localWeapon.visible = false;
-        camera.add(window.localWeapon);
-
-        // --- Third Person Camera Setup ---
-        window.isThirdPerson = false;
-        window.thirdPersonCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        window.thirdPersonCamera.position.set(0, 1.5, 5); // Behind and slightly up
-        window.thirdPersonCamera.rotation.x = -0.1; // Slight downward tilt
-        camera.add(window.thirdPersonCamera);
-
-        // --- Camouflage Materials defined at top of init3D ---
-
-        const createPlayerModel = (colorHex) => {
-            const group = new THREE.Group();
-            const mat = getCamoMaterial(colorHex);
-            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.6 });
-            const blackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
-
-            // Torso (몸통)
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.7, 0.4), mat);
-            torso.position.y = 1.25;
-            torso.userData.isCamo = true;
-            group.add(torso);
-
-            // Head (머리)
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.35), skinMat);
-            head.position.y = 1.75;
-            group.add(head);
-
-            // Winter Hood (방한복 털 장식)
-            const hood = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.4, 0.2), mat);
-            hood.position.y = 1.55;
-            hood.userData.isCamo = true;
-            group.add(hood);
-
-            // Backpack (군장)
-            const backpack = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.5), mat);
-            backpack.position.set(0, 1.25, -0.45);
-            backpack.userData.isCamo = true;
-            group.add(backpack);
-
-            // Sleeping Bag (침낭)
-            const sleepingBag = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.7), mat);
-            sleepingBag.rotation.z = Math.PI / 2;
-            sleepingBag.position.set(0, 1.75, -0.45);
-            sleepingBag.userData.isCamo = true;
-            group.add(sleepingBag);
-
-            // Arms (팔)
-            const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.7, 0.25), mat);
-            lArm.position.set(0.55, 1.25, 0);
-            lArm.userData.isCamo = true;
-            group.add(lArm);
-
-            const rArm = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.7, 0.25), mat);
-            rArm.position.set(-0.55, 1.25, 0);
-            rArm.userData.isCamo = true;
-            group.add(rArm);
-
-            // Legs (다리)
-            const lLeg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.7, 0.3), mat);
-            lLeg.position.set(0.2, 0.55, 0);
-            lLeg.userData.isCamo = true;
-            group.add(lLeg);
-
-            const rLeg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.7, 0.3), mat);
-            rLeg.position.set(-0.2, 0.55, 0);
-            rLeg.userData.isCamo = true;
-            group.add(rLeg);
-
-            // Boots (전투화)
-            const lBoot = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.2, 0.35), blackMat);
-            lBoot.position.set(0.2, 0.1, 0.05);
-            group.add(lBoot);
-
-            const rBoot = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.2, 0.35), blackMat);
-            rBoot.position.set(-0.2, 0.1, 0.05);
-            group.add(rBoot);
-
-            // Golden Epaulets (원수 정복 전용)
-            const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.1 });
-            const lEpaulet = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.35), goldMat);
-            lEpaulet.position.set(0.55, 1.5, 0);
-            lEpaulet.userData.isEpaulet = true;
-            lEpaulet.visible = (colorHex === 0xffffff);
-            group.add(lEpaulet);
-
-            const rEpaulet = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.35), goldMat);
-            rEpaulet.position.set(-0.55, 1.5, 0);
-            rEpaulet.userData.isEpaulet = true;
-            rEpaulet.visible = (colorHex === 0xffffff);
-            group.add(rEpaulet);
-
-            return group;
-        };
-
         // Local Player Body (Visible only in 3rd person)
         window.localPlayerBody = createPlayerModel(0x4b5320);
         window.localPlayerBody.position.y = -1.6; // Offset relative to camera
@@ -2912,6 +3354,10 @@ const initChat = () => {
         
         window.localPlayerBody.visible = false; 
         camera.add(window.localPlayerBody);
+
+        window.localWeapon = makeWeaponModel('k2');
+        window.localWeapon.visible = false;
+        camera.add(window.localWeapon);
 
         scene.add(camera);
 
@@ -3149,9 +3595,16 @@ const initChat = () => {
             { id: 'silencer', name: '소음기', desc: 'K2 소총 격발음과 총구 화염을 대폭 감소시킴', price: 1500, emoji: '🤫' },
             { id: 'laser_sight', name: '레이저 조준경', desc: 'K2 소총 하단에 적색 조준 가이드 선을 비춤', price: 2000, emoji: '🔴' },
             { id: 'advanced_scope', name: '고배율 스코프', desc: 'K2 소총 장착 시 우클릭으로 극대화된 줌 사용 가능', price: 2500, emoji: '🔭' },
+            { id: 'gas_mask', name: '방독면', desc: '화생방실 유독 가스로부터 체력을 보호해주는 특수 마스크', price: 1000, emoji: '😷' },
+            { id: 'nvg', name: '야간 투시경 (NVG)', desc: 'N 키로 작동하며, 야간이나 어두운 곳에서 전방을 밝게 비춰주는 특수 광학장비', price: 1500, emoji: '👓' },
             { id: 'px_truck', name: '황금마차 호출권', desc: '이동식 PX를 내 위치로 호출', price: 7000, emoji: '🚚' },
             { id: 'heli', name: '공격 헬기 호출권', desc: '일회용 헬기 지원', price: 10000, emoji: '🚁' },
-            { id: 'artillery', name: 'K9 자주포 포격 요청', desc: '지정된 위치에 막강한 화력 지원', price: 15000, emoji: '💥' }
+            { id: 'artillery', name: 'K9 자주포 포격 요청', desc: '지정된 위치에 막강한 화력 지원', price: 15000, emoji: '💥' },
+            { id: 'gas_canister', name: '화생방 정화통', desc: '방독면 정화 성능을 100%로 재충전하는 소모품', price: 300, emoji: '🧪' },
+            { id: 'camo_desert', name: '사막 위장복', desc: '👕 모래빛 사막 디지털 전투복 스킨', price: 1500, emoji: '🏜️' },
+            { id: 'camo_marine', name: '해병대 위장복', desc: '👕 해병대 특유의 붉은 디지털 전투복 스킨', price: 2000, emoji: '🟥' },
+            { id: 'camo_swat', name: '블랙 대테러복', desc: '👕 특수부대 스타일의 흑복/대테러복 스킨', price: 2500, emoji: '🐈‍⬛' },
+            { id: 'camo_winter', name: '동계 위장복', desc: '👕 눈 덮인 전장용 백색 전투복 스킨', price: 1800, emoji: '❄️' }
         ];
 
         document.getElementById('btn-shop').onclick = () => {
@@ -3246,11 +3699,43 @@ const initChat = () => {
         window.hasSilencer = false;
         window.hasLaserSight = false;
         window.hasAdvancedScope = false;
+        window.hasGasMask = false;
+        window.hasNVG = false;
 
         window.useItem = (key, itemId, name) => {
             if (!STATE.currentUser) return;
+
+            if (itemId.startsWith('camo_')) {
+                if (window.activeSkin === itemId) {
+                    window.activeSkin = null;
+                    showToast("👕 기본 전투복으로 환복했습니다.", "#22c55e");
+                } else {
+                    window.activeSkin = itemId;
+                    showToast(`👕 [환복] ${name}(으)로 갈아입었습니다!`, "#22c55e");
+                }
+                if (window.localPlayerBody) {
+                    window.refreshPlayerSkin(window.localPlayerBody, window.activeSkin, STATE.currentUser.rank, false);
+                }
+                db.ref('users/' + STATE.currentUser.uid).update({ activeSkin: window.activeSkin || 'normal' });
+                
+                const invModal = document.getElementById('inventory-modal');
+                if (invModal && invModal.style.display === 'flex') {
+                    const btnInv = document.getElementById('btn-inventory');
+                    if (btnInv) btnInv.click();
+                }
+                return;
+            }
+
+            if (itemId === 'gas_canister') {
+                if (!window.hasGasMask) {
+                    showToast("⚠️ 먼저 방독면을 장착해야 합니다!", "#ff3333");
+                    return;
+                }
+                window.startCanisterReplacementMinigame(key);
+                return;
+            }
             
-            if (itemId === 'silencer' || itemId === 'laser_sight' || itemId === 'advanced_scope') {
+            if (itemId === 'silencer' || itemId === 'laser_sight' || itemId === 'advanced_scope' || itemId === 'gas_mask' || itemId === 'nvg') {
                 if (itemId === 'silencer') {
                     window.hasSilencer = !window.hasSilencer;
                     showToast(window.hasSilencer ? "🤫 소음기를 장착했습니다." : "소음기를 해제했습니다.", "#22c55e");
@@ -3260,6 +3745,18 @@ const initChat = () => {
                 } else if (itemId === 'advanced_scope') {
                     window.hasAdvancedScope = !window.hasAdvancedScope;
                     showToast(window.hasAdvancedScope ? "🔭 고배율 스코프를 장착했습니다." : "고배율 스코프를 해제했습니다.", "#22c55e");
+                } else if (itemId === 'gas_mask') {
+                    window.hasGasMask = !window.hasGasMask;
+                    showToast(window.hasGasMask ? "😷 방독면을 장착했습니다." : "방독면을 해제했습니다.", "#22c55e");
+                    if (window.hasGasMask) {
+                        window.gasMaskFilter = 100; // Reset filter to 100% on equip
+                    }
+                } else if (itemId === 'nvg') {
+                    window.hasNVG = !window.hasNVG;
+                    showToast(window.hasNVG ? "🟢 야간 투시경을 장착했습니다. (N 키로 작동)" : "야간 투시경을 해제했습니다.", "#22c55e");
+                    if (!window.hasNVG && window.nvgActive) {
+                        window.toggleNVG(); 
+                    }
                 }
                 
                 if (window.activeWeaponId) {
@@ -3343,6 +3840,253 @@ const initChat = () => {
                     const btnInv = document.getElementById('btn-inventory');
                     if (btnInv) btnInv.click();
                 }
+            });
+        };
+
+        window.nvgActive = false;
+        window.toggleNVG = () => {
+            if (!window.hasNVG) {
+                showToast("⚠️ 야간 투시경(NVG) 장비가 없습니다. PX 상점에서 구매해 주십시오.", "#ef4444");
+                return;
+            }
+            window.nvgActive = !window.nvgActive;
+            const overlay = document.getElementById('nvg-overlay');
+            if (overlay) overlay.style.display = window.nvgActive ? 'block' : 'none';
+            if (typeof scene !== 'undefined') {
+                const ambient = scene.children.find(c => c.isAmbientLight);
+                if (ambient) {
+                    ambient.intensity = window.nvgActive ? 2.5 : 0.4;
+                }
+            }
+            showToast(window.nvgActive ? "👓 야간 투시경 전원을 켰습니다." : "👓 야간 투시경 전원을 껐습니다.", "#22c55e");
+        };
+
+        window.currentAmmo = {};
+        window.isReloading = false;
+        
+        const playGunshotDryClick = () => {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, ctx.currentTime);
+                gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+            } catch(e){}
+        };
+
+        window.reloadActiveWeapon = () => {
+            if (!window.activeWeaponId || window.activeWeaponId === 'marshal_card') return;
+            const max = WEAPONS_CONFIG[window.activeWeaponId].maxAmmo;
+            if (window.currentAmmo[window.activeWeaponId] === max) return;
+            if (window.isReloading) return;
+            window.isReloading = true;
+            showToast("🔄 재장전 중...", "#deb887");
+            
+            const progress = document.getElementById('hud-reload-progress');
+            const fill = document.getElementById('hud-reload-fill');
+            if (progress && fill) {
+                progress.style.display = 'block';
+                fill.style.width = '0%';
+                let start = Date.now();
+                const duration = 1500;
+                const interval = setInterval(() => {
+                    let elapsed = Date.now() - start;
+                    let pct = Math.min(100, (elapsed / duration) * 100);
+                    fill.style.width = pct + '%';
+                    if (elapsed >= duration) {
+                        clearInterval(interval);
+                        progress.style.display = 'none';
+                        window.currentAmmo[window.activeWeaponId] = max;
+                        const ammoDisp = document.getElementById('hud-ammo-display');
+                        if (ammoDisp) ammoDisp.textContent = `${max} / ${max}`;
+                        window.isReloading = false;
+                        showToast("✅ 재장전 완료", "#22c55e");
+                    }
+                }, 30);
+            } else {
+                setTimeout(() => {
+                    window.currentAmmo[window.activeWeaponId] = max;
+                    const ammoDisp = document.getElementById('hud-ammo-display');
+                    if (ammoDisp) ammoDisp.textContent = `${max} / ${max}`;
+                    window.isReloading = false;
+                    showToast("✅ 재장전 완료", "#22c55e");
+                }, 1500);
+            }
+        };
+
+        window.updateScoreboard = () => {
+            const tbody = document.getElementById('scoreboard-table-body');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            const players = [];
+            if (STATE.currentUser) {
+                players.push({
+                    name: STATE.currentUser.name || "신병",
+                    rank: STATE.currentUser.rank || "이등병",
+                    kills: STATE.currentUser.kills || 0,
+                    deaths: STATE.currentUser.deaths || 0,
+                    isDead: Boolean(window.isLocalPlayerDead),
+                    isLocal: true
+                });
+            }
+            
+            Object.keys(window.allPlayersData).forEach(uid => {
+                const p = window.allPlayersData[uid];
+                players.push({
+                    name: p.name || "신병",
+                    rank: p.rank || "이등병",
+                    kills: p.kills || 0,
+                    deaths: p.deaths || 0,
+                    isDead: Boolean(p.isDead),
+                    isLocal: false
+                });
+            });
+            
+            players.sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
+            
+            players.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
+                tr.style.background = p.isLocal ? 'rgba(163, 230, 53, 0.15)' : 'transparent';
+                tr.innerHTML = `
+                    <td style="padding: 8px; color: #deb887;">[${p.rank}]</td>
+                    <td style="padding: 8px; font-weight: bold; color: ${p.isLocal ? '#a3e635' : '#fff'};">${p.name} ${p.isLocal ? ' (나)' : ''}</td>
+                    <td style="padding: 8px; text-align: center; color: #a3e635; font-weight: bold;">${p.kills}</td>
+                    <td style="padding: 8px; text-align: center; color: #ef4444;">${p.deaths}</td>
+                    <td style="padding: 8px; text-align: center; color: ${p.isDead ? '#ef4444' : '#22c55e'};">${p.isDead ? '💀 전사' : '🟢 작전중'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        window.spawnBloodParticles = (x, y, z) => {
+            if (typeof scene === 'undefined' || !scene) return;
+            const particleCount = 12;
+            const particles = [];
+            const geom = new THREE.SphereGeometry(0.08, 4, 4);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xaa0000 });
+            
+            for (let i = 0; i < particleCount; i++) {
+                const mesh = new THREE.Mesh(geom, mat);
+                mesh.position.set(
+                    x + (Math.random() - 0.5) * 0.3,
+                    y + (Math.random() - 0.5) * 0.3,
+                    z + (Math.random() - 0.5) * 0.3
+                );
+                scene.add(mesh);
+                particles.push({
+                    mesh: mesh,
+                    vel: new THREE.Vector3(
+                        (Math.random() - 0.5) * 4,
+                        Math.random() * 3 + 1,
+                        (Math.random() - 0.5) * 4
+                    ),
+                    createdAt: Date.now()
+                });
+            }
+            
+            const pInterval = setInterval(() => {
+                let allDone = true;
+                const deltaSec = 0.03;
+                particles.forEach(p => {
+                    if (Date.now() - p.createdAt < 700) {
+                        allDone = false;
+                        p.vel.y -= 9.8 * deltaSec;
+                        p.mesh.position.addScaledVector(p.vel, deltaSec);
+                    } else {
+                        scene.remove(p.mesh);
+                    }
+                });
+                if (allDone) clearInterval(pInterval);
+            }, 30);
+        };
+
+        window.triggerDamageIndicator = (shooterUid) => {
+            let shooterPos = null;
+            if (shooterUid === 'master_ree') {
+                shooterPos = window.helicopterMesh ? window.helicopterMesh.position : new THREE.Vector3(0, 0, 0);
+            } else if (window.allPlayersData[shooterUid]) {
+                const p = window.allPlayersData[shooterUid];
+                shooterPos = new THREE.Vector3(p.x, p.y, p.z);
+            } else {
+                const flash = document.getElementById('damage-flash-indicator');
+                if (flash) {
+                    flash.style.borderColor = 'rgba(239, 68, 68, 0.8)';
+                    flash.style.boxShadow = 'inset 0 0 80px rgba(239, 68, 68, 0.8)';
+                    const ind = document.getElementById('damage-indicator');
+                    if (ind) {
+                        ind.style.display = 'block';
+                        ind.style.opacity = '1';
+                        setTimeout(() => {
+                            ind.style.opacity = '0';
+                            setTimeout(() => { ind.style.display = 'none'; }, 250);
+                        }, 600);
+                    }
+                }
+                return;
+            }
+            
+            const cameraDir = new THREE.Vector3();
+            camera.getWorldDirection(cameraDir);
+            cameraDir.y = 0; cameraDir.normalize();
+            
+            const toShooter = shooterPos.clone().sub(camera.position);
+            toShooter.y = 0; toShooter.normalize();
+            
+            const dot = cameraDir.dot(toShooter);
+            const cross = cameraDir.x * toShooter.z - cameraDir.z * toShooter.x;
+            const angle = Math.atan2(cross, dot);
+            
+            const flash = document.getElementById('damage-flash-indicator');
+            const ind = document.getElementById('damage-indicator');
+            if (flash && ind) {
+                const xOffset = Math.sin(angle) * 35;
+                const yOffset = -Math.cos(angle) * 35;
+                flash.style.boxShadow = `inset ${xOffset}px ${yOffset}px 80px rgba(239, 68, 68, 0.95)`;
+                flash.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                
+                ind.style.display = 'block';
+                ind.style.opacity = '1';
+                setTimeout(() => {
+                    ind.style.opacity = '0';
+                    setTimeout(() => { ind.style.display = 'none'; }, 250);
+                }, 800);
+            }
+        };
+
+        const playGruntSound = () => {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(140, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(70, ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.25, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+            } catch(e){}
+        };
+
+        window.pushKillFeed = (attacker, victim, weaponName) => {
+            if (!db) return;
+            db.ref('system/kill_feed').push({
+                attacker: attacker,
+                victim: victim,
+                weapon: weaponName || "전투",
+                timestamp: Date.now()
             });
         };
 
@@ -3430,6 +4174,28 @@ const initChat = () => {
                 window.STATS.hunger = Math.max(0, window.STATS.hunger - 0.3);
                 if (window.STATS.hunger === 0) window.STATS.hp = Math.max(0, window.STATS.hp - 0.5);
                 if (window.STATS.hp === 0) { window.STATS.hp = 30; window.STATS.hunger = 50; alert('⚠️ 체력이 바닥났습니다! 응급처치로 회복했습니다. 빨리 식사하세요!'); }
+                
+                // CBRN Gas Room damage check
+                const inCbrnRoom = Math.abs(camera.position.x - (-120)) < 9.0 && Math.abs(camera.position.z - (-100)) < 9.0 && camera.position.y > 0;
+                if (inCbrnRoom) {
+                    if (!window.hasGasMask) {
+                        window.STATS.hp = Math.max(0, window.STATS.hp - 6);
+                        showToast("🤢 쿨럭! 컥! 유독 가스실(화생방)에 방독면 없이 노출되었습니다! (-6 HP)", "#ef4444");
+                        
+                        const flash = document.createElement('div');
+                        flash.style.cssText = 'position:fixed; inset:0; background:rgba(0,255,0,0.18); z-index:999999; pointer-events:none;';
+                        document.body.appendChild(flash);
+                        setTimeout(() => flash.remove(), 250);
+
+                        if (window.STATS.hp <= 0) {
+                            triggerLocalPlayerDeath("화생방 가스 질식");
+                        }
+                    } else {
+                        if (Math.random() < 0.2) {
+                            showToast("😷 방독면 정화 통이 가스를 안전하게 걸러내고 있습니다.", "#22c55e");
+                        }
+                    }
+                }
             }
             updateStatBars();
         }, 1000);
@@ -3513,6 +4279,237 @@ const initChat = () => {
             });
         }
 
+        // ====================================================
+        // NEW SIMULATOR SYSTEMS: COGNITIVE & COMBAT ADDITIONS
+        // ====================================================
+
+        // --- 1. Patrol Mission System ---
+        window.startPatrolMission = () => {
+            if (window.patrolActive) {
+                showToast("⚠️ 이미 당직 순찰 근무가 진행 중입니다!", "#ffaa00");
+                return;
+            }
+            window.patrolActive = true;
+            window.patrolStep = 1;
+            const pHud = document.getElementById('patrol-hud');
+            if (pHud) pHud.style.display = 'block';
+            window.updatePatrolHud();
+            showToast("📋 당직 순찰 근무가 시작되었습니다! 1단계: 위병소로 이동하십시오.", "#4f46e5");
+        };
+
+        window.updatePatrolHud = () => {
+            const stepText = document.getElementById('patrol-step-text');
+            if (!stepText) return;
+            if (window.patrolStep === 1) {
+                stepText.textContent = "1단계: 위병소 순찰 (이동 중...)";
+            } else if (window.patrolStep === 2) {
+                stepText.textContent = "2단계: 탄약고 순찰 (이동 중...)";
+            } else if (window.patrolStep === 3) {
+                stepText.textContent = "3단계: 본청 보고 (이동 중...)";
+            }
+        };
+
+        // --- 2. Canister Minigame System ---
+        window.startCanisterReplacementMinigame = (inventoryKey) => {
+            const overlay = document.getElementById('punishment-overlay');
+            const desc = document.getElementById('punishment-desc');
+            const cont = document.getElementById('punishment-interactive-container');
+            
+            if (!overlay || !desc || !cont) return;
+            
+            overlay.style.display = 'flex';
+            desc.innerHTML = "🚨 <strong>정화통 교체 실시!</strong> 🚨<br>정밀 타이밍 교체가 필요합니다. 바가 <strong>초록색 영역(중앙)</strong>에 도달했을 때 [스페이스바]나 버튼을 클릭하세요!";
+            cont.innerHTML = `
+                <div style="position: relative; width: 300px; height: 30px; background: #222; border: 2px solid #555; border-radius: 15px; margin: 20px auto; overflow: hidden;">
+                    <div style="position: absolute; left: 120px; width: 60px; height: 100%; background: #22c55e;"></div>
+                    <div id="canister-slider" style="position: absolute; left: 0px; width: 10px; height: 100%; background: #fff;"></div>
+                </div>
+                <button id="btn-press-canister" style="width: 150px; background: #3b82f6; border-radius: 8px; font-weight: bold; padding: 10px; cursor: pointer; color: white; border: none;">교체!</button>
+            `;
+            
+            let pos = 0;
+            let dir = 1;
+            let gameInterval = setInterval(() => {
+                pos += dir * 10;
+                if (pos >= 290) dir = -1;
+                if (pos <= 0) dir = 1;
+                const slider = document.getElementById('canister-slider');
+                if (slider) slider.style.left = pos + 'px';
+            }, 30);
+            
+            const attemptReplace = () => {
+                clearInterval(gameInterval);
+                overlay.style.display = 'none';
+                
+                if (pos >= 110 && pos <= 190) {
+                    window.gasMaskFilter = 100;
+                    showToast("✅ 정화통 교체 성공! 필터 성능이 100%로 회복되었습니다.", "#22c55e");
+                    db.ref('users/' + STATE.currentUser.uid + '/inventory/' + inventoryKey).remove();
+                    const invModal = document.getElementById('inventory-modal');
+                    if (invModal && invModal.style.display === 'flex') {
+                        document.getElementById('btn-inventory').click();
+                    }
+                } else {
+                    showToast("❌ 정화통 교체 실패! 독가스를 들이마셨습니다! (-25 HP)", "#ef4444");
+                    window.STATS.hp = Math.max(0, window.STATS.hp - 25);
+                    if (typeof updateStatBars === 'function') updateStatBars();
+                    if (window.STATS.hp <= 0) {
+                        triggerLocalPlayerDeath("화생방 오염 가스 흡입");
+                    }
+                }
+            };
+            
+            document.getElementById('btn-press-canister').onclick = attemptReplace;
+            const handleKey = (e) => {
+                if (e.code === 'Space' || e.key === ' ') {
+                    e.preventDefault();
+                    attemptReplace();
+                    window.removeEventListener('keydown', handleKey);
+                }
+            };
+            window.addEventListener('keydown', handleKey);
+        };
+
+        // --- 3. AI Target Bots System ---
+        function spawnAITargetBots() {
+            window.aiTargetBots.forEach(bot => scene.remove(bot));
+            window.aiTargetBots = [];
+
+            for (let i = 0; i < 3; i++) {
+                const bot = createPlayerModel(0x3a4b2a); 
+                bot.position.set(85 + i * 15, 0, -125);
+                bot.userData.isAIBot = true;
+                bot.userData.baseX = 85 + i * 15;
+                bot.userData.speed = 1.0 + i * 0.4;
+                bot.userData.hit = false;
+                scene.add(bot);
+                window.aiTargetBots.push(bot);
+            }
+        }
+        window.spawnAITargetBots = spawnAITargetBots;
+
+        // --- 4. Obstacle Course System ---
+        function initObstacleCourseModels() {
+            const courseGroup = new THREE.Group();
+            
+            const wall = new THREE.Mesh(new THREE.BoxGeometry(10, 1.2, 0.4), new THREE.MeshStandardMaterial({ color: 0x8b4513 }));
+            wall.position.set(-100, 0.6, 30);
+            courseGroup.add(wall);
+
+            const tunnelMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.2 });
+            for (let zOffset = 45; zOffset <= 55; zOffset += 2) {
+                const arch = new THREE.Mesh(new THREE.BoxGeometry(8, 0.8, 0.2), tunnelMat); 
+                arch.position.set(-100, 0.8, zOffset);
+                courseGroup.add(arch);
+            }
+
+            const beam = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 8), new THREE.MeshStandardMaterial({ color: 0xcd853f }));
+            beam.position.set(-100, 0.2, 65);
+            courseGroup.add(beam);
+
+            scene.add(courseGroup);
+        }
+
+        window.startObstacleCourse = () => {
+            window.obstacleCourseActive = true;
+            window.obstacleCourseTime = 0;
+            window.obstacleCourseCheckpoint = 1;
+            const oHud = document.getElementById('obstacle-hud');
+            if (oHud) oHud.style.display = 'block';
+            document.getElementById('obstacle-status').textContent = "진행 상태: 허들(낮은 장벽)을 넘으십시오!";
+            showToast("🏃 유격 장애물 코스 돌파 챌린지 시작! 허들을 점프하여 넘어가세요!", "#10b981");
+        };
+
+        // --- 5. Grenade Throwing System ---
+        function initGrenadeTargetModel() {
+            const targetGroup = new THREE.Group();
+            const ringColors = [0xff0000, 0xffffff, 0x0000ff];
+            const ringSizes = [6, 4, 2];
+            for (let i = 0; i < 3; i++) {
+                const ring = new THREE.Mesh(
+                    new THREE.RingGeometry(0, ringSizes[i], 32),
+                    new THREE.MeshBasicMaterial({ color: ringColors[i], side: THREE.DoubleSide })
+                );
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.set(70, 0.05 + i * 0.01, -130);
+                targetGroup.add(ring);
+            }
+            scene.add(targetGroup);
+        }
+
+        window.startGrenadeThrowMode = () => {
+            window.grenadeThrowingMode = true;
+            window.grenadePower = 0;
+            window.grenadeCharging = false;
+            const gHud = document.getElementById('grenade-hud');
+            if (gHud) gHud.style.display = 'block';
+            showToast("☄️ 수류탄 투척 모드 활성화! 사격장 좌측 투척선으로 이동하십시오.", "#deb887");
+        };
+
+        window.throwGrenade = (power) => {
+            const grenade = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.08, 0.25, 8),
+                new THREE.MeshStandardMaterial({ color: 0x224422, roughness: 0.8 })
+            );
+            grenade.position.copy(camera.position).add(new THREE.Vector3(0, -0.3, 0));
+            scene.add(grenade);
+
+            const forward = new THREE.Vector3();
+            camera.getWorldDirection(forward);
+            
+            const launchVelocity = forward.clone().multiplyScalar(power * 35).add(new THREE.Vector3(0, power * 12, 0));
+            const gravityAcc = -9.8;
+            
+            let gTime = 0;
+            const grenadeInterval = setInterval(() => {
+                gTime += 0.03;
+                grenade.position.addScaledVector(launchVelocity, 0.03);
+                launchVelocity.y += gravityAcc * 0.03;
+
+                if (grenade.position.y <= 0.1) {
+                    clearInterval(grenadeInterval);
+                    
+                    const expGeo = new THREE.SphereGeometry(2.5, 16, 16);
+                    const expMat = new THREE.MeshBasicMaterial({ color: 0xff4500, transparent: true, opacity: 0.8 });
+                    const explosion = new THREE.Mesh(expGeo, expMat);
+                    explosion.position.copy(grenade.position);
+                    explosion.position.y = 1.0;
+                    scene.add(explosion);
+                    
+                    playGunshotSound('k6'); 
+                    
+                    setTimeout(() => {
+                        scene.remove(explosion);
+                        scene.remove(grenade);
+                    }, 400);
+
+                    const targetPos = { x: 70, z: -130 };
+                    const dist = Math.sqrt(Math.pow(grenade.position.x - targetPos.x, 2) + Math.pow(grenade.position.z - targetPos.z, 2));
+                    
+                    if (dist < 2.0) {
+                        gainEXP(100, "수류탄 정밀 투척");
+                        STATE.currentUser.money = (STATE.currentUser.money || 0) + 500;
+                        db.ref('users/' + STATE.currentUser.uid).update({ money: STATE.currentUser.money });
+                        showToast("🎯 대성공! 수류탄이 과녁 중심에 명중했습니다! (+500G, +100 EXP)", "#10b981");
+                    } else if (dist < 5.0) {
+                        gainEXP(50, "수류탄 우수 투척");
+                        STATE.currentUser.money = (STATE.currentUser.money || 0) + 200;
+                        db.ref('users/' + STATE.currentUser.uid).update({ money: STATE.currentUser.money });
+                        showToast("👍 성공! 수류탄이 과녁 유효 반경에 안착했습니다! (+200G, +50 EXP)", "#22c55e");
+                    } else if (dist < 8.0) {
+                        gainEXP(20, "수류탄 기본 투척");
+                        showToast("👌 과녁 주변에 투척 완료! 다음엔 중앙을 노려보세요! (+20 EXP)", "#f59e0b");
+                    } else {
+                        showToast("💨 수류탄이 과녁에서 너무 멀리 벗어났습니다!", "#ef4444");
+                    }
+                    
+                    window.grenadeThrowingMode = false;
+                    const gHud = document.getElementById('grenade-hud');
+                    if (gHud) gHud.style.display = 'none';
+                }
+            }, 30);
+        };
+
         // Automatic Day/Night cycle disabled - Always daytime
         // ====================================================
         // SYSTEM 3: SHOOTING RANGE (사격장)
@@ -3555,6 +4552,16 @@ const initChat = () => {
             if (!window.hasK2) document.getElementById('crosshair').style.display = 'none';
             window.shootingTargets.forEach(t => scene.remove(t));
             window.shootingTargets = [];
+            
+            // Clean up bullet marks
+            if (window.shootingBulletMarks) {
+                window.shootingBulletMarks.forEach(m => {
+                    if (m.parent) m.parent.remove(m);
+                    else scene.remove(m);
+                });
+                window.shootingBulletMarks = [];
+            }
+            
             const reward = window.shootingScore * 200;
             if (reward > 0) {
                 STATE.currentUser.money = (STATE.currentUser.money || 0) + reward;
@@ -3614,12 +4621,29 @@ const initChat = () => {
             
             const isGolden = window.activeWeaponId === 'golden_k2';
             const flashColor = isGolden ? 0xffcc00 : 0xffdd66;
-            const flashIntensity = isGolden ? 20 : 12;
-            const flash = new THREE.PointLight(flashColor, flashIntensity, isGolden ? 8 : 6);
+            let flashIntensity = isGolden ? 20 : 12;
+            let flashRadius = isGolden ? 8 : 6;
+            let meshSize = 0.08;
+            if (window.hasSilencer && window.activeWeaponId !== 'marshal_card') {
+                flashIntensity *= 0.1;
+                flashRadius *= 0.5;
+                meshSize *= 0.2;
+            }
+            
+            const flash = new THREE.PointLight(flashColor, flashIntensity, flashRadius);
             flash.position.set(0.15, -0.1, -0.6);
             camera.add(flash);
             setTimeout(() => {
                 camera.remove(flash);
+            }, 60);
+
+            const flashGeo = new THREE.SphereGeometry(meshSize, 8, 8);
+            const flashMat = new THREE.MeshBasicMaterial({ color: flashColor });
+            const flashMesh = new THREE.Mesh(flashGeo, flashMat);
+            flashMesh.position.set(0.15, -0.1, -0.6);
+            camera.add(flashMesh);
+            setTimeout(() => {
+                camera.remove(flashMesh);
             }, 60);
             
             const recoilZ = -0.22;
@@ -3648,7 +4672,8 @@ const initChat = () => {
             
             const hits = raycaster.intersectObjects(targets, true);
             if (hits.length > 0) {
-                let hitObj = hits[0].object;
+                const closestPlayerHit = hits[0];
+                let hitObj = closestPlayerHit.object;
                 let hitUid = null;
                 
                 while (hitObj && hitObj !== scene) {
@@ -3660,6 +4685,25 @@ const initChat = () => {
                 }
                 
                 if (hitUid) {
+                    const solids = [];
+                    scene.traverse(child => {
+                        if (child.isMesh && child.visible && !child.userData.isTarget && child.parent !== window.localPlayerBody && !child.userData.isGasMaskPart && !child.userData.isCamo) {
+                            let isOtherPlayer = false;
+                            Object.values(otherPlayers).forEach(op => {
+                                op.mesh.traverse(oc => { if (oc === child) isOtherPlayer = true; });
+                            });
+                            if (!isOtherPlayer) {
+                                solids.push(child);
+                            }
+                        }
+                    });
+                    
+                    const obstacleHits = raycaster.intersectObjects(solids, true);
+                    if (obstacleHits.length > 0 && obstacleHits[0].distance < closestPlayerHit.distance) {
+                        showToast("🧱 장애물에 막혀 격발이 전달되지 않았습니다.", "#ffcc00");
+                        return;
+                    }
+
                     const hitPlayerName = otherPlayers[hitUid].lastName || hitUid;
                     const damage = (window.WEAPONS_CONFIG && window.WEAPONS_CONFIG[weaponId]) ? window.WEAPONS_CONFIG[weaponId].damage : 25;
                     showToast(`🎯 ${hitPlayerName}을(를) 맞췄습니다! (피해량: ${damage})`, "#ff0000");
@@ -3667,7 +4711,15 @@ const initChat = () => {
                     if (db) {
                         db.ref('users/' + hitUid + '/hit').set({
                             shooter: STATE.currentUser.name || STATE.currentUser.username,
+                            shooterUid: STATE.currentUser.uid,
                             damage: damage,
+                            time: Date.now()
+                        });
+
+                        db.ref('system/blood_particles_trigger').set({
+                            x: closestPlayerHit.point.x,
+                            y: closestPlayerHit.point.y,
+                            z: closestPlayerHit.point.z,
                             time: Date.now()
                         });
                     }
@@ -3709,7 +4761,6 @@ const initChat = () => {
         };
 
         document.getElementById('game-canvas').addEventListener('click', () => {
-            // Raycast check for CCTV monitors in Marshal's Office
             if (window.cctvMeshes && window.cctvMeshes.length > 0) {
                 const raycaster = new THREE.Raycaster();
                 raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -3724,7 +4775,6 @@ const initChat = () => {
                 }
             }
 
-            // Raycast check for Marshal's Office special interactive objects
             if (window.interactiveTargets && window.interactiveTargets.length > 0) {
                 const raycaster = new THREE.Raycaster();
                 raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -3769,43 +4819,127 @@ const initChat = () => {
                     const delay = (WEAPONS_CONFIG[window.activeWeaponId] && WEAPONS_CONFIG[window.activeWeaponId].fireRate) ? WEAPONS_CONFIG[window.activeWeaponId].fireRate : 150;
                     window.lastFireTime = now + delay;
                     
+                    if (window.activeWeaponId !== 'marshal_card') {
+                        if (window.currentAmmo[window.activeWeaponId] === undefined) {
+                            window.currentAmmo[window.activeWeaponId] = WEAPONS_CONFIG[window.activeWeaponId].maxAmmo;
+                        }
+                        if (window.currentAmmo[window.activeWeaponId] <= 0) {
+                            playGunshotDryClick();
+                            showToast("⚠️ 탄약 없음! 재장전(R)이 필요합니다.", "#ffcc00");
+                            return;
+                        }
+                        window.currentAmmo[window.activeWeaponId]--;
+                        const ammoDisp = document.getElementById('hud-ammo-display');
+                        if (ammoDisp) {
+                            ammoDisp.textContent = `${window.currentAmmo[window.activeWeaponId]} / ${WEAPONS_CONFIG[window.activeWeaponId].maxAmmo}`;
+                        }
+                    }
+                    
                     triggerMuzzleFlashAndRecoil();
                     playGunshotSound(window.activeWeaponId);
                     shootPlayerRaycast(window.activeWeaponId);
                 }
                 return;
             }
+            
             if (window.shootingAmmo <= 0) return;
             window.shootingAmmo--;
             document.getElementById('shooting-ammo').textContent = window.shootingAmmo;
 
-            // Raycast to targets
             const raycaster = new THREE.Raycaster();
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            const hits = raycaster.intersectObjects(window.shootingTargets);
-            if (hits.length > 0) {
-                const target = hits[0].object;
-                if (!target.userData.hit) {
-                    target.userData.hit = true;
-                    target.material.color.setHex(0x888888);
-                    target.rotation.x = Math.PI / 2;
-                    window.shootingScore++;
-                    document.getElementById('shooting-score').textContent = window.shootingScore;
-                    if (window.promoExamActive) {
-                        window.promoShootHits = (window.promoShootHits || 0) + 1;
-                        if (typeof updatePromoHUD === 'function') updatePromoHUD();
-                    }
-                    // EXP + missions + achievements
-                    if (typeof gainEXP === 'function') gainEXP(10, '명중');
-                    if (typeof trackMission === 'function') trackMission('shootHits', 1);
-                    if (typeof unlockAchievement === 'function') {
-                        unlockAchievement('first_shot');
-                        if (window.shootingScore >= 5) unlockAchievement('sharpshooter');
-                    }
+            
+            const allSceneMeshes = [];
+            scene.traverse(child => {
+                if (child.isMesh && child.visible) {
+                    allSceneMeshes.push(child);
                 }
+            });
+            const allHits = raycaster.intersectObjects(allSceneMeshes);
+            
+            if (allHits.length > 0) {
+                const hitObj = allHits[0].object;
+                const hitPoint = allHits[0].point;
+                
+                const bulletMark = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.08, 8, 8),
+                    new THREE.MeshBasicMaterial({ color: 0xffffff })
+                );
+                
+                let hitBot = null;
+                let parentObj = hitObj;
+                while (parentObj && parentObj !== scene) {
+                    if (parentObj.userData && parentObj.userData.isAIBot) {
+                        hitBot = parentObj;
+                        break;
+                    }
+                    parentObj = parentObj.parent;
+                }
+
+                const isTarget = window.shootingTargets.includes(hitObj);
+                if (isTarget) {
+                    const localHit = hitObj.worldToLocal(hitPoint.clone());
+                    bulletMark.position.copy(localHit);
+                    hitObj.add(bulletMark);
+                    
+                    if (!hitObj.userData.hit) {
+                        hitObj.userData.hit = true;
+                        hitObj.material.color.setHex(0x888888);
+                        hitObj.rotation.x = Math.PI / 2;
+                        window.shootingScore++;
+                        document.getElementById('shooting-score').textContent = window.shootingScore;
+                        
+                        if (window.promoExamActive) {
+                            window.promoShootHits = (window.promoShootHits || 0) + 1;
+                            if (typeof updatePromoHUD === 'function') updatePromoHUD();
+                        }
+                        if (typeof gainEXP === 'function') gainEXP(10, '명중');
+                        if (typeof trackMission === 'function') trackMission('shootHits', 1);
+                        if (typeof unlockAchievement === 'function') {
+                            unlockAchievement('first_shot');
+                            if (window.shootingScore >= 5) unlockAchievement('sharpshooter');
+                        }
+                    }
+                } else if (hitBot && !hitBot.userData.hit) {
+                    hitBot.userData.hit = true;
+                    if (typeof gainEXP === 'function') gainEXP(25, 'AI 표적 제거');
+                    
+                    const reward = 150;
+                    STATE.currentUser.money = (STATE.currentUser.money || 0) + reward;
+                    db.ref('users/' + STATE.currentUser.uid).update({ money: STATE.currentUser.money });
+                    
+                    showToast(`🤖 AI 사격 훈련용 표적 처치 성공! (+${reward}G, +25 EXP)`, "#10b981");
+
+                    setTimeout(() => {
+                        scene.remove(hitBot);
+                        setTimeout(() => {
+                            if (typeof spawnAITargetBots === 'function') {
+                                const index = window.aiTargetBots.indexOf(hitBot);
+                                if (index !== -1) {
+                                    const bot = createPlayerModel(0x3a4b2a);
+                                    bot.position.set(85 + index * 15, 0, -125);
+                                    bot.userData.isAIBot = true;
+                                    bot.userData.baseX = 85 + index * 15;
+                                    bot.userData.speed = 1.0 + index * 0.4;
+                                    bot.userData.hit = false;
+                                    scene.add(bot);
+                                    window.aiTargetBots[index] = bot;
+                                }
+                            }
+                        }, 5000);
+                    }, 2000);
+                } else {
+                    bulletMark.position.copy(hitPoint);
+                    scene.add(bulletMark);
+                }
+                
+                if (!window.shootingBulletMarks) window.shootingBulletMarks = [];
+                window.shootingBulletMarks.push(bulletMark);
             }
             if (window.shootingAmmo <= 0) setTimeout(endShootingRange, 1500);
         });
+
+
 
         // ====================================================
         // SYSTEM 4: GROUND VEHICLES
@@ -4032,24 +5166,13 @@ const initChat = () => {
             }
             if (reason) showToast(`🏅 군기 ${delta > 0 ? '+' : ''}${delta} (${reason})`);
             
-            if (window.DISCIPLINE <= 0 && !window.ptActive && !window.godModeActive && !window.isLocalPlayerDead) {
-                window.ptActive = true;
-                showToast("🚨 군기 0! 강제 얼차려(PT체조)를 실시합니다!", "#ef4444");
-                window.lightningStunActive = true; // Freeze controls
-                
-                let jumps = 0;
-                const ptInterval = setInterval(() => {
-                    if (camera && camera.position.y <= 1.7) {
-                        if (typeof velocity !== 'undefined' && velocity) velocity.y = 8.0;
-                    }
-                    jumps++;
-                    if (jumps >= 6) {
-                        clearInterval(ptInterval);
-                        window.ptActive = false;
-                        window.lightningStunActive = false;
-                        window.changeDiscipline(40, "얼차려 완료");
-                    }
-                }, 800);
+            if (window.DISCIPLINE <= 0 && !window.currentPunishment && !window.godModeActive && !window.isLocalPlayerDead) {
+                const punishTypes = ['pushups', 'squats', 'meditation', 'digging'];
+                const randType = punishTypes[Math.floor(Math.random() * punishTypes.length)];
+                showToast("🚨 군기 0! 강제 군기훈련이 집행됩니다!", "#ef4444");
+                if (typeof window.triggerPunishment === 'function') {
+                    window.triggerPunishment(randType);
+                }
             }
         };
 
@@ -4277,6 +5400,7 @@ const initChat = () => {
             }
         }, 1000);
 
+        if (typeof spawnAITargetBots === 'function') spawnAITargetBots();
         animate();
     };
 
@@ -4480,6 +5604,18 @@ const initChat = () => {
                                     return;
                                 }
                             }
+                            if (name === "준장실 (한우주)") {
+                                const isFriend = STATE.currentUser && (STATE.currentUser.username === '한Space' || STATE.currentUser.username === 'ree1203');
+                                if (!isFriend) {
+                                    // Block & push outside
+                                    pos.z = maxZ + r;
+                                    if (!window.lastFriendDenyTime || Date.now() - window.lastFriendDenyTime > 3000) {
+                                        window.lastFriendDenyTime = Date.now();
+                                        showToast("🔒 이 방은 준장 한우주(한Space) 대원의 전용 집무실입니다.", "#ff3333");
+                                    }
+                                    return;
+                                }
+                            }
                             // Pass through door
                         } else {
                             // Block & push outside to closest wall
@@ -4502,7 +5638,19 @@ const initChat = () => {
 
     const animate = () => {
         requestAnimationFrame(animate);
-        const time = performance.now(), delta = Math.min((time - prevTime) / 1000, 0.1);
+        const time = performance.now();
+        if (isNaN(prevTime) || !prevTime) {
+            prevTime = time - 16;
+        }
+        let delta = Math.min((time - prevTime) / 1000, 0.1);
+        if (isNaN(delta) || delta <= 0) {
+            delta = 0.016;
+        }
+        
+        if (camera && (isNaN(camera.position.x) || isNaN(camera.position.y) || isNaN(camera.position.z))) {
+            camera.position.set(0, 1.6, 0);
+            if (velocity) velocity.set(0, 0, 0);
+        }
         
         // Rotate searchlights
         if (window.searchlights) {
@@ -4522,6 +5670,178 @@ const initChat = () => {
                     target.position.x = baseX + Math.sin(timeSec * speed) * 2.5;
                 }
             });
+        }
+
+        // Slide AI target bots
+        if (window.aiTargetBots) {
+            const timeSec = time / 1000;
+            window.aiTargetBots.forEach(bot => {
+                if (!bot.userData.hit) {
+                    const speed = bot.userData.speed || 1.5;
+                    const baseX = bot.userData.baseX || bot.position.x;
+                    bot.position.x = baseX + Math.sin(timeSec * speed) * 3.5;
+                } else {
+                    bot.rotation.x += (Math.PI / 2 - bot.rotation.x) * 10 * delta;
+                }
+            });
+        }
+
+        // Apply Local Player Pose (Emotes)
+        if (window.localPlayerBody) {
+            window.applyPose(window.localPlayerBody, window.localPlayerPose || 'normal', time / 1000);
+        }
+
+        // Smooth weapon repositioning and camera FOV for ADS
+        if (window.localWeapon && window.activeWeaponId) {
+            const WEAPONS_POSITIONS = {
+                'k2': { hip: [0.15, -0.15, -0.3], ads: [0, -0.08, -0.22] },
+                'golden_k2': { hip: [0.15, -0.15, -0.3], ads: [0, -0.08, -0.22] },
+                'k5': { hip: [0.12, -0.15, -0.2], ads: [0, -0.06, -0.15] },
+                'k3': { hip: [0.15, -0.18, -0.35], ads: [0, -0.09, -0.25] },
+                'k1a': { hip: [0.14, -0.14, -0.25], ads: [0, -0.07, -0.2] },
+                'k14': { hip: [0.15, -0.13, -0.32], ads: [0, -0.065, -0.24] },
+                'k6': { hip: [0.15, -0.2, -0.4], ads: [0, -0.1, -0.3] },
+                'marshal_card': { hip: [0.15, -0.15, -0.3], ads: [0, -0.1, -0.25] }
+            };
+            const config = WEAPONS_POSITIONS[window.activeWeaponId] || { hip: [0.15, -0.15, -0.3], ads: [0, -0.08, -0.22] };
+            const targetPos = window.isAdsMode ? config.ads : config.hip;
+            
+            window.localWeapon.position.x += (targetPos[0] - window.localWeapon.position.x) * 15 * delta;
+            window.localWeapon.position.y += (targetPos[1] - window.localWeapon.position.y) * 15 * delta;
+            window.localWeapon.position.z += (targetPos[2] - window.localWeapon.position.z) * 15 * delta;
+            if (isNaN(window.localWeapon.position.x) || isNaN(window.localWeapon.position.y) || isNaN(window.localWeapon.position.z)) {
+                window.localWeapon.position.set(targetPos[0], targetPos[1], targetPos[2]);
+            }
+
+            const targetFov = window.isAdsMode ? (window.activeWeaponId === 'k14' ? 20 : (window.hasAdvancedScope ? 12 : 45)) : 75;
+            camera.fov += (targetFov - camera.fov) * 15 * delta;
+            if (isNaN(camera.fov) || camera.fov <= 0 || camera.fov > 180) {
+                camera.fov = 75;
+            }
+            camera.updateProjectionMatrix();
+        }
+
+        // Grenade power charging
+        if (window.grenadeThrowingMode && window.grenadeCharging) {
+            window.grenadePower = Math.min(1.0, window.grenadePower + delta * 1.5);
+            const pFill = document.getElementById('grenade-power-fill');
+            if (pFill) pFill.style.width = (window.grenadePower * 100) + '%';
+        }
+
+        // CBRN Gas Room Logic
+        const inCbrnRoom = Math.abs(camera.position.x - (-120)) < 9.0 && Math.abs(camera.position.z - (-100)) < 9.0 && camera.position.y > 0;
+        const cbrnHud = document.getElementById('cbrn-hud');
+        if (cbrnHud) {
+            cbrnHud.style.display = inCbrnRoom ? 'block' : 'none';
+        }
+        if (inCbrnRoom) {
+            if (window.hasGasMask) {
+                window.gasMaskFilter = Math.max(0, window.gasMaskFilter - delta * 2.0);
+                const filterPercent = document.getElementById('cbrn-filter-percent');
+                const filterFill = document.getElementById('cbrn-filter-fill');
+                if (filterPercent) filterPercent.textContent = Math.floor(window.gasMaskFilter);
+                if (filterFill) filterFill.style.width = window.gasMaskFilter + '%';
+                
+                const actionPrompt = document.getElementById('cbrn-action-prompt');
+                if (actionPrompt) {
+                    actionPrompt.style.display = window.gasMaskFilter < 25 ? 'block' : 'none';
+                }
+
+                if (window.gasMaskFilter <= 0) {
+                    window.STATS.hp = Math.max(0, window.STATS.hp - delta * 10);
+                    if (typeof updateStatBars === 'function') updateStatBars();
+                    if (window.STATS.hp <= 0) triggerLocalPlayerDeath("화생방 오염 가스 질식");
+                }
+            } else {
+                window.STATS.hp = Math.max(0, window.STATS.hp - delta * 20);
+                if (typeof updateStatBars === 'function') updateStatBars();
+                if (window.STATS.hp <= 0) triggerLocalPlayerDeath("화생방 유독 가스 노출");
+            }
+        }
+
+        // Patrol Mission Logic
+        if (window.patrolActive) {
+            let targetLoc = null;
+            let targetName = "";
+            if (window.patrolStep === 1) { targetLoc = {x: 0, z: 200}; targetName = "위병소"; }
+            else if (window.patrolStep === 2) { targetLoc = {x: 120, z: 50}; targetName = "탄약고"; }
+            else if (window.patrolStep === 3) { targetLoc = {x: 0, z: -100}; targetName = "본청"; }
+
+            if (targetLoc) {
+                const dist = Math.sqrt(Math.pow(camera.position.x - targetLoc.x, 2) + Math.pow(camera.position.z - targetLoc.z, 2));
+                if (dist < 8.0) {
+                    if (window.patrolStep === 3) {
+                        window.patrolActive = false;
+                        window.patrolStep = 0;
+                        const rewardG = 1000;
+                        const rewardExp = 150;
+                        STATE.currentUser.money = (STATE.currentUser.money || 0) + rewardG;
+                        db.ref('users/' + STATE.currentUser.uid).update({ money: STATE.currentUser.money });
+                        gainEXP(rewardExp, "당직 순찰 완료");
+                        showToast(`🏆 당직 순찰 완료! 포상금 ${rewardG}G 및 ${rewardExp} EXP 획득!`, "#10b981");
+                        const pHud = document.getElementById('patrol-hud');
+                        if (pHud) pHud.style.display = 'none';
+                    } else {
+                        window.patrolStep++;
+                        let nextName = window.patrolStep === 2 ? "탄약고" : "본청";
+                        showToast(`📍 ${targetName} 확인 완료! 다음 목적지: ${nextName}로 순찰을 계속하십시오.`, "#10b981");
+                        window.updatePatrolHud();
+                    }
+                }
+            }
+        }
+
+        // Obstacle Course Trigger
+        if (!window.obstacleCourseActive && window.obstacleCourseCheckpoint === 0) {
+            const distToStart = Math.sqrt(Math.pow(camera.position.x - (-100), 2) + Math.pow(camera.position.z - 30, 2));
+            if (distToStart < 4.0) {
+                window.startObstacleCourse();
+            }
+        }
+
+        // Obstacle Course Logic
+        if (window.obstacleCourseActive) {
+            window.obstacleCourseTime += delta;
+            const oTimeText = document.getElementById('obstacle-time');
+            if (oTimeText) oTimeText.textContent = window.obstacleCourseTime.toFixed(2) + '초';
+            
+            if (window.obstacleCourseCheckpoint === 1) {
+                const distToWall = Math.sqrt(Math.pow(camera.position.x - (-100), 2) + Math.pow(camera.position.z - 30, 2));
+                if (distToWall < 4.0 && camera.position.y > 1.2) {
+                    window.obstacleCourseCheckpoint = 2;
+                    document.getElementById('obstacle-status').textContent = "진행 상태: 철조망 터널을 통과하십시오! (포복 필수)";
+                    showToast("🧱 허들 격파 완료! 다음은 철조망 터널입니다. [/포복]으로 기어가세요!", "#10b981");
+                }
+            }
+            else if (window.obstacleCourseCheckpoint === 2) {
+                const inTunnel = Math.abs(camera.position.x - (-100)) < 4.0 && camera.position.z >= 45 && camera.position.z <= 55;
+                if (inTunnel && window.localPlayerPose !== 'prone') {
+                    camera.position.set(-100, camera.position.y, 42);
+                    showToast("⚠️ 몸을 웅크리십시오! (철조망 통과 시 포복 필수)", "#ff3333");
+                } else if (camera.position.z > 56 && Math.abs(camera.position.x - (-100)) < 5.0) {
+                    window.obstacleCourseCheckpoint = 3;
+                    document.getElementById('obstacle-status').textContent = "진행 상태: 징검다리를 신속히 건너십시오!";
+                    showToast("🕸️ 철조망 터널 통과 완료! 마지막 징검다리 코스로 가십시오!", "#10b981");
+                }
+            }
+            else if (window.obstacleCourseCheckpoint === 3) {
+                const distToFinish = Math.sqrt(Math.pow(camera.position.x - (-100), 2) + Math.pow(camera.position.z - 72, 2));
+                if (distToFinish < 4.0) {
+                    window.obstacleCourseActive = false;
+                    window.obstacleCourseCheckpoint = 0;
+                    
+                    const rewardG = 800;
+                    const rewardExp = 200;
+                    STATE.currentUser.money = (STATE.currentUser.money || 0) + rewardG;
+                    db.ref('users/' + STATE.currentUser.uid).update({ money: STATE.currentUser.money });
+                    gainEXP(rewardExp, "유격 장애물 코스 완주");
+                    
+                    showToast(`🏆 장애물 코스 완주! 기록: ${window.obstacleCourseTime.toFixed(2)}초! (+${rewardG}G, +${rewardExp} EXP)`, "#10b981");
+                    
+                    const oHud = document.getElementById('obstacle-hud');
+                    if (oHud) oHud.style.display = 'none';
+                }
+            }
         }
         
         if (window.isCctvActive) {
@@ -4576,10 +5896,14 @@ const initChat = () => {
                 if (keys['KeyQ'] || keys['q'] || keys['Q']) camera.position.y += 20 * delta;
                 if (keys['KeyE'] || keys['e'] || keys['E']) camera.position.y -= 20 * delta;
             } else {
-                if (keys['KeyW'] || keys['w'] || keys['W'] || keys['ArrowUp']) velocity.z -= 400.0 * delta;
-                if (keys['KeyS'] || keys['s'] || keys['S'] || keys['ArrowDown']) velocity.z += 400.0 * delta;
-                if (keys['KeyA'] || keys['a'] || keys['A'] || keys['ArrowLeft']) velocity.x -= 400.0 * delta;
-                if (keys['KeyD'] || keys['d'] || keys['D'] || keys['ArrowRight']) velocity.x += 400.0 * delta;
+                let speedScale = 1.0;
+                if (window.localPlayerPose === 'prone') speedScale = 0.25;
+                if (window.localPlayerPose === 'sit') speedScale = 0.0;
+                
+                if (keys['KeyW'] || keys['w'] || keys['W'] || keys['ArrowUp']) velocity.z -= 400.0 * delta * speedScale;
+                if (keys['KeyS'] || keys['s'] || keys['S'] || keys['ArrowDown']) velocity.z += 400.0 * delta * speedScale;
+                if (keys['KeyA'] || keys['a'] || keys['A'] || keys['ArrowLeft']) velocity.x -= 400.0 * delta * speedScale;
+                if (keys['KeyD'] || keys['d'] || keys['D'] || keys['ArrowRight']) velocity.x += 400.0 * delta * speedScale;
             }
         }
 
@@ -4588,12 +5912,12 @@ const initChat = () => {
         forward.y = 0; forward.normalize();
 
         // Jail Logic
-        const isJailed = STATE.currentUser.jailTime && STATE.currentUser.jailTime > Date.now();
+        const dx = camera.position.x - JAIL_CONFIG.pos.x;
+        const dz = camera.position.z - JAIL_CONFIG.pos.z;
+        const isJailed = STATE.currentUser && STATE.currentUser.jailTime && STATE.currentUser.jailTime > Date.now();
 
         if (isJailed) {
             // Enforce Jail Boundaries
-            const dx = camera.position.x - JAIL_CONFIG.pos.x;
-            const dz = camera.position.z - JAIL_CONFIG.pos.z;
             const limit = (JAIL_CONFIG.size / 2) - 0.5;
 
             if (Math.abs(dx) > limit || Math.abs(dz) > limit || camera.position.y > JAIL_CONFIG.pos.y + 4) {
@@ -4616,8 +5940,6 @@ const initChat = () => {
             camera.position.addScaledVector(right, velocity.x * delta);
 
             // Prevent normal users from entering the jail cell (Collision)
-            const dx = camera.position.x - JAIL_CONFIG.pos.x;
-            const dz = camera.position.z - JAIL_CONFIG.pos.z;
             const distFromJailCenter = Math.max(Math.abs(dx), Math.abs(dz));
 
             if (camera.position.y < JAIL_CONFIG.pos.y + 4 && camera.position.y > JAIL_CONFIG.pos.y - 1) {
@@ -4639,17 +5961,22 @@ const initChat = () => {
             const nearLadder = Math.abs(camera.position.x) < 2.0 && Math.abs(camera.position.z - (-162.4)) < 2.0;
 
             // Gravity/Floor Check
-            let floorY = 1.6;
+            let floorHeight = 0;
 
             // Staircase collision check
             if (Math.abs(dx) < 5 && dz > 0 && dz < 40) {
-                floorY = (-dz * 0.5) + 1.6;
+                floorHeight = (-dz * 0.5);
             } else if (camera.position.y < -30 && Math.abs(camera.position.x) < 20 && Math.abs(camera.position.z + 150) < 20) {
                 // Underground bunker floor level
-                floorY = -40 + 1.6;
+                floorHeight = -40;
             } else if (camera.position.y < -10 || (Math.abs(dx) < 20 && Math.abs(dz) < 20 && camera.position.y < 0)) {
-                floorY = JAIL_CONFIG.pos.y + 1.6;
+                floorHeight = JAIL_CONFIG.pos.y;
             }
+
+            let eyeHeight = 1.6;
+            if (window.localPlayerPose === 'prone') eyeHeight = 0.4;
+            else if (window.localPlayerPose === 'sit') eyeHeight = 0.9;
+            let floorY = floorHeight + eyeHeight;
 
             // Spacebar jump trigger (only if on ground and not in a vehicle)
             if ((keys[' '] || keys['Space']) && !window.inVehicle) {
@@ -4688,11 +6015,39 @@ const initChat = () => {
                         velocity.y -= 25.0 * delta; // Smooth gravity deceleration
                     } else {
                         // Fall damage / death check when landing with high velocity
-                        if (velocity.y < -15.0 && !window.godModeActive && !window.isLocalPlayerDead) {
+                        if (velocity.y < -10.0 && !window.godModeActive && !window.isLocalPlayerDead) {
                             camera.position.y = floorY;
+                            const fallSpeed = -velocity.y;
                             velocity.y = 0;
-                            triggerLocalPlayerDeath("낙하 및 추락");
-                            showToast("💀 낙하 충격으로 인해 전사하셨습니다!", "#ff0000");
+                            
+                            if (fallSpeed >= 18.0) {
+                                triggerLocalPlayerDeath("낙하 및 추락");
+                                showToast("💀 낙하 충격으로 인해 전사하셨습니다!", "#ff0000");
+                            } else {
+                                const fallDamage = Math.round((fallSpeed - 10) * 12);
+                                window.STATS.hp = Math.max(0, window.STATS.hp - fallDamage);
+                                if (typeof updateStatBars === 'function') updateStatBars();
+                                
+                                if (typeof playGruntSound === 'function') playGruntSound();
+                                showToast(`🦴 높은 곳에서 떨어져 다리가 골절되었습니다! (-${fallDamage} HP)`, "#ff3333");
+                                
+                                if (window.STATS.hp <= 0) {
+                                    triggerLocalPlayerDeath("추락 부상 악화");
+                                } else {
+                                    const ind = document.getElementById('damage-indicator');
+                                    const flash = document.getElementById('damage-flash-indicator');
+                                    if (ind && flash) {
+                                        flash.style.boxShadow = `inset 0 -35px 80px rgba(239, 68, 68, 0.95)`;
+                                        flash.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                                        ind.style.display = 'block';
+                                        ind.style.opacity = '1';
+                                        setTimeout(() => {
+                                            ind.style.opacity = '0';
+                                            setTimeout(() => { ind.style.display = 'none'; }, 250);
+                                        }, 800);
+                                    }
+                                }
+                            }
                         } else {
                             camera.position.y = floorY;
                             velocity.y = 0; // Landed
@@ -4743,6 +6098,7 @@ const initChat = () => {
             camera.lookAt(new THREE.Vector3(targetPos.x, targetPos.y + 1.0, targetPos.z));
         }
 
+
         prevTime = time;
 
         // Multiplayer Sync - Throttled to 200ms intervals to reduce Firebase writes
@@ -4763,36 +6119,22 @@ const initChat = () => {
                     isDead: Boolean(window.isLocalPlayerDead),
                     isStealth: Boolean(window.activeBuffs && window.activeBuffs.invisibleName > Date.now()),
                     isDressUniform: Boolean(window.isDressUniform),
+                    isGasMask: Boolean(window.hasGasMask),
+                    pose: window.localPlayerPose || 'normal',
+                    activeSkin: window.activeSkin || 'normal',
                     lastSeen: Date.now()
                 });
 
                 // Update Local Player Body Color for 3rd Person View
                 if (window.localPlayerBody) {
-                    const getRankColor = (rank, isJailed) => {
-                        if (window.isDressUniform) return 0xffffff; // White dress uniform!
-                        if (isJailed) return 0xffa500; // 영창: 주황색
-                        const idx = window.RANKS ? window.RANKS.indexOf(rank) : -1;
-                        if (idx >= 14) return 0x222222; // 장성급: 흑복(검정)
-                        if (idx >= 11) return 0x1f305e; // 영관급: 네이비(청색)
-                        if (idx >= 8) return 0xc2b280;  // 위관급: 사막색(베이지)
-                        if (idx >= 4) return 0x3a4b2a;  // 부사관: 진녹색
-                        return 0x4b5320;                // 병사: 일반 국방색
-                    };
-                    const targetColor = getRankColor(STATE.currentUser.rank, localIsJailed);
-                    if (window.localPlayerLastColor !== targetColor) {
-                        window.localPlayerLastColor = targetColor;
-                        const newMat = getCamoMaterial(targetColor);
-                        window.localPlayerBody.traverse(child => {
-                            if (child.isMesh) {
-                                if (child.userData.isCamo) {
-                                    child.material = newMat;
-                                }
-                                if (child.userData.isEpaulet) {
-                                    child.visible = (targetColor === 0xffffff);
-                                }
-                            }
-                        });
-                    }
+                    window.refreshPlayerSkin(window.localPlayerBody, window.activeSkin, STATE.currentUser.rank, localIsJailed);
+                    
+                    // Update local gas mask visibility
+                    window.localPlayerBody.traverse(child => {
+                        if (child.userData.isGasMaskPart) {
+                            child.visible = Boolean(window.hasGasMask);
+                        }
+                    });
                 }
             }
         }
@@ -4890,6 +6232,26 @@ const initChat = () => {
         window.STATS.hp = 0;
         if (typeof updateStatBars === 'function') updateStatBars();
 
+        if (typeof window.pushKillFeed === 'function') {
+            const wepName = window.activeWeaponId ? (WEAPONS_CONFIG[window.activeWeaponId] ? WEAPONS_CONFIG[window.activeWeaponId].name : "전투") : "전투";
+            window.pushKillFeed(shooterName || "자연", STATE.currentUser.name || "신병", wepName);
+        }
+
+        if (db && STATE.currentUser && STATE.currentUser.uid) {
+            db.ref('users/' + STATE.currentUser.uid + '/deaths').transaction(current => (current || 0) + 1);
+            if (shooterName && shooterName !== "낙하 및 추락" && shooterName !== "한파 및 동사" && shooterName !== "추락 부상 악화") {
+                let shooterUid = null;
+                Object.keys(window.allPlayersData).forEach(uid => {
+                    if (window.allPlayersData[uid].name === shooterName) {
+                        shooterUid = uid;
+                    }
+                });
+                if (shooterUid) {
+                    db.ref('users/' + shooterUid + '/kills').transaction(current => (current || 0) + 1);
+                }
+            }
+        }
+
         // Exit vehicle if driving
         if (window.inVehicle) {
             window.inVehicle = false;
@@ -4975,6 +6337,7 @@ const initChat = () => {
         // Respawn position: parade ground (0, 1.6, 0)
         camera.position.set(0, 1.6, 0);
         camera.rotation.set(0, 0, 0);
+        if (velocity) velocity.set(0, 0, 0);
 
         window.isLocalPlayerDead = false;
 
@@ -5063,7 +6426,17 @@ const initChat = () => {
             const targetX = p.x;
             const targetY = p.y - 1.6;
             const targetZ = p.z;
-            playerObj.targetPos = { x: targetX, y: targetY, z: targetZ, ry: p.ry, isDead: p.isDead };
+            playerObj.targetPos = { 
+                x: targetX, 
+                y: targetY, 
+                z: targetZ, 
+                ry: p.ry, 
+                isDead: p.isDead,
+                pose: p.pose || 'normal',
+                activeSkin: p.activeSkin || 'normal',
+                rank: p.rank || '이등병',
+                isJailed: Boolean(p.isJailed)
+            };
 
             // Update Label (ID & Rank)
             if (!playerObj.label || playerObj.lastRank !== p.rank || playerObj.lastName !== p.name) {
@@ -5092,6 +6465,13 @@ const initChat = () => {
             if (playerObj.label) {
                 playerObj.label.visible = !p.isStealth;
             }
+
+            // Update other player's gas mask mesh
+            playerObj.mesh.traverse(child => {
+                if (child.userData.isGasMaskPart) {
+                    child.visible = Boolean(p.isGasMask);
+                }
+            });
 
             const getRankColor = (rank, isJailed) => {
                 if (p.isDressUniform) return 0xffffff; // White dress uniform!
@@ -5137,13 +6517,19 @@ const initChat = () => {
                 playerObj.mesh.position.y += (0.15 - playerObj.mesh.position.y) * lerpFactor;
                 if (playerObj.label) playerObj.label.visible = false;
             } else {
-                playerObj.mesh.rotation.x += (0 - playerObj.mesh.rotation.x) * lerpFactor;
+                // If prone pose, tilt main model rotation around x axis
+                const targetRotX = t.pose === 'prone' ? -Math.PI / 2.2 : 0;
+                playerObj.mesh.rotation.x += (targetRotX - playerObj.mesh.rotation.x) * lerpFactor;
                 playerObj.mesh.position.y += (t.y - playerObj.mesh.position.y) * lerpFactor;
                 if (playerObj.label) playerObj.label.visible = true;
             }
             let diffRot = t.ry - playerObj.mesh.rotation.y;
             diffRot = Math.atan2(Math.sin(diffRot), Math.cos(diffRot));
             playerObj.mesh.rotation.y += diffRot * lerpFactor;
+
+            // Apply custom skins & emotes poses
+            window.refreshPlayerSkin(playerObj.mesh, t.activeSkin, t.rank, t.isJailed);
+            window.applyPose(playerObj.mesh, t.pose, performance.now() / 1000);
         });
     };
     // 다른 플레이어 업데이트를 window에 노출해 startGame에서도 호출 가능하게 함
@@ -5243,19 +6629,26 @@ window.onload = () => {
     
     window.addEventListener('mousedown', (e) => {
         if (e.button === 2) {
-            if (window.activeWeaponId === 'k14') {
-                camera.fov = camera.fov === 75 ? 20 : 75;
-                camera.updateProjectionMatrix();
-                showToast(camera.fov === 20 ? "🎯 저격 스코프 조준" : "조준 해제", "#3b82f6");
-            } else if (window.hasAdvancedScope && (window.activeWeaponId === 'k2' || window.activeWeaponId === 'golden_k2')) {
-                camera.fov = camera.fov === 75 ? 12 : 75;
-                camera.updateProjectionMatrix();
-                showToast(camera.fov === 12 ? "🎯 고배율 조준경 조준" : "조준 해제", "#3b82f6");
+            e.preventDefault();
+            if (window.activeWeaponId) {
+                window.isAdsMode = !window.isAdsMode;
+                showToast(window.isAdsMode ? "🎯 정밀 조준 사격 개시" : "조준 해제", "#3b82f6");
+            }
+        } else if (e.button === 0) {
+            if (window.grenadeThrowingMode) {
+                window.grenadeCharging = true;
+                window.grenadePower = 0;
             }
         }
     });
+    window.addEventListener('mouseup', (e) => {
+        if (e.button === 0 && window.grenadeThrowingMode && window.grenadeCharging) {
+            window.grenadeCharging = false;
+            window.throwGrenade(window.grenadePower);
+        }
+    });
     window.addEventListener('contextmenu', (e) => {
-        if (window.activeWeaponId === 'k14') {
+        if (window.activeWeaponId) {
             e.preventDefault();
         }
     });
@@ -5294,11 +6687,27 @@ window.onload = () => {
             e.preventDefault();
         }
         
-        // Perspective Toggle (1st/3rd Person)
-        if (e.key === 'r' || e.key === 'R') {
+        if (e.key === 'Tab' || e.code === 'Tab') {
+            e.preventDefault();
+            const sb = document.getElementById('scoreboard-overlay');
+            if (sb) {
+                sb.style.display = 'flex';
+                if (typeof window.updateScoreboard === 'function') window.updateScoreboard();
+            }
+        }
+        
+        if (e.key === 'c' || e.key === 'C') {
             window.isThirdPerson = !window.isThirdPerson;
             if (window.localPlayerBody) window.localPlayerBody.visible = window.isThirdPerson;
             if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson && window.hasK2;
+        }
+
+        if (e.key === 'r' || e.key === 'R') {
+            if (typeof window.reloadActiveWeapon === 'function') window.reloadActiveWeapon();
+        }
+
+        if (e.key === 'n' || e.key === 'N') {
+            if (typeof window.toggleNVG === 'function') window.toggleNVG();
         }
         
         // G key: Enter/Exit ground vehicles
@@ -5356,6 +6765,12 @@ window.onload = () => {
         if (e.target.tagName === 'INPUT') return;
         keys[e.code] = false;
         keys[e.key] = false;
+
+        if (e.key === 'Tab' || e.code === 'Tab') {
+            e.preventDefault();
+            const sb = document.getElementById('scoreboard-overlay');
+            if (sb) sb.style.display = 'none';
+        }
 
         // Stop Voice Chat Broadcast
         if ((e.key === 'p' || e.key === 'P') && window.localAudioStream) {
@@ -5544,6 +6959,11 @@ window.redeemGameCoupon = () => {
         return alert("서버 연결 확인 중입니다. 잠시 후 다시 시도하세요.");
     }
 
+    const usedCoupons = STATE.currentUser.used_coupons || {};
+    if (usedCoupons[code]) {
+        return alert("이미 사용한 쿠폰입니다.");
+    }
+
     db.ref(`server/coupons/${code}`).once('value').then(snap => {
         let coupon = snap.val();
         if (!coupon) {
@@ -5578,19 +6998,8 @@ window.redeemGameCoupon = () => {
         updates[`users/${STATE.currentUser.uid}/diamonds`] = currentDia + rewardDia;
         updates[`users/${STATE.currentUser.uid}/used_coupons/${code}`] = true;
 
-        // Deactivate the coupon globally (one-time use)
-        updates[`server/coupons/${code}/active`] = false;
-        updates[`server/coupons/${code}/usedBy`] = STATE.currentUser.uid;
-        updates[`server/coupons/${code}/usedAt`] = Date.now();
-        updates[`server/coupons/${code}/rewardAmount`] = rewardG;
-
-        updates[`coupons/${code}/active`] = false;
-        updates[`coupons/${code}/usedBy`] = STATE.currentUser.uid;
-        updates[`coupons/${code}/usedAt`] = Date.now();
-        updates[`coupons/${code}/rewardAmount`] = rewardG;
-
         db.ref().update(updates).then(() => {
-            alert(`🧧 쿠폰 적용 성공!\n🎉 축하합니다! 랜덤 포상금 +${rewardG.toLocaleString()}G (다이아 +${rewardDia}) 지급되었습니다!\n(이 쿠폰은 사용 완료 처리되어 재사용이 불가능합니다.)`);
+            alert(`🧧 쿠폰 적용 성공!\n🎉 축하합니다! 랜덤 포상금 +${rewardG.toLocaleString()}G (다이아 +${rewardDia}) 지급되었습니다!\n(이 쿠폰은 기간 및 사용 제한이 없는 무제한 쿠폰입니다.)`);
             input.value = '';
         }).catch(err => {
             alert("쿠폰 적용 실패: " + err.message);
@@ -5704,6 +7113,16 @@ window.banUserAdmin = () => {
             showToast(`💀 대상 유저를 영구 밴 처리했습니다.`);
         });
     }
+};
+
+window.punishUserAdmin = () => {
+    const targetUid = document.getElementById('admin-target-user').value;
+    if (!targetUid) return alert("대상을 지정하세요!");
+    const pType = document.getElementById('admin-punishment-type').value;
+    db.ref(`users/${targetUid}/punishment`).set(pType);
+    db.ref(`presence/${targetUid}/punishment`).set(pType).then(() => {
+        showToast(`🚨 대상 유저에게 군기훈련(${pType})을 부여했습니다.`);
+    });
 };
 
 window.changeWeatherAdmin = (val) => {
@@ -6225,6 +7644,11 @@ window.triggerRollCall = () => {
     });
 };
 
+window.openGuideModal = () => {
+    const gm = document.getElementById('guide-modal');
+    if (gm) gm.style.display = 'flex';
+};
+
 window.openCabinetModal = () => {
     const modal = document.getElementById('cabinet-modal');
     const slotsDiv = document.getElementById('cabinet-slots');
@@ -6477,3 +7901,365 @@ setTimeout(() => {
         });
     }
 }, 3000);
+
+// ====================================================
+// NEW MILITARY DISCIPLINE (얼차려) SYSTEM
+// ====================================================
+window.currentPunishment = null;
+window.punishmentProgress = 0;
+window.punishmentTarget = 0;
+
+window.triggerPunishment = (type, isSelfTriggered = false) => {
+    if (!STATE.currentUser) return;
+    
+    // ree1203 immunity and reflection (skipped if self-triggered for testing)
+    if (STATE.currentUser.username === 'ree1203' && !isSelfTriggered) {
+        showToast("🛡️ 마스터(ree1203)에게는 얼차려를 부여할 수 없습니다! 징계가 반사되었습니다.", "#ff0000");
+        db.ref('users/' + STATE.currentUser.uid + '/punishment').remove();
+        
+        // Reverse punish: Find other online users and punish them!
+        db.ref('presence').once('value', presenceSnap => {
+            const players = presenceSnap.val() || {};
+            Object.keys(players).forEach(pUid => {
+                if (pUid !== STATE.currentUser.uid) {
+                    db.ref('users/' + pUid).update({
+                        punishment: type,
+                        punishmentTime: Date.now() + 60000,
+                        punishedBy: 'ree1203'
+                    });
+                }
+            });
+        });
+        return;
+    }
+    
+    const isSenior = !["훈련병", "이등병", "일등병"].includes(STATE.currentUser.rank);
+    window.currentPunishment = type;
+    
+    const overlay = document.getElementById('punishment-overlay');
+    const desc = document.getElementById('punishment-desc');
+    const interactive = document.getElementById('punishment-interactive-container');
+    const counter = document.getElementById('punishment-counter');
+    const progContainer = document.getElementById('punishment-progress-bar-container');
+    const progBar = document.getElementById('punishment-progress-bar');
+    
+    if (!overlay) return;
+    
+    overlay.style.display = 'flex';
+    progContainer.style.display = 'none';
+    interactive.innerHTML = '';
+    counter.textContent = '';
+    
+    window.lightningStunActive = true; // Freeze movement
+    
+    let label = "";
+    switch(type) {
+        case 'pushups':
+            window.punishmentTarget = isSenior ? 100 : 80;
+            window.punishmentProgress = 0;
+            label = `💪 팔굽혀펴기 훈련 (${isSenior ? '상·병장: 100회' : '일·이병: 80회'})`;
+            desc.textContent = `${label}\n아래 마우스 클릭 또는 [Space] 키를 눌러 팔굽혀펴기를 실시하십시오.`;
+            
+            interactive.innerHTML = `<button onclick="doPushupClick()" style="padding:15px 30px; background:#e11d48; border:none; border-radius:8px; font-weight:bold; font-size:1.2rem; cursor:pointer; color:#fff;">팔굽혀펴기 (Push-up)</button>`;
+            
+            window.doPushupClick = () => {
+                window.punishmentProgress++;
+                counter.textContent = `${window.punishmentProgress} / ${window.punishmentTarget} 회 완료`;
+                
+                // Camera dip animation
+                if (typeof camera !== 'undefined') {
+                    new TWEEN.Tween(camera.position)
+                        .to({ y: 0.5 }, 200)
+                        .chain(
+                            new TWEEN.Tween(camera.position).to({ y: 1.6 }, 200)
+                        )
+                        .start();
+                }
+                
+                if (window.punishmentProgress >= window.punishmentTarget) {
+                    window.finishPunishment();
+                }
+            };
+            
+            // Allow space key as well
+            window._punishKeyHandler = (e) => {
+                if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                    window.doPushupClick();
+                }
+            };
+            window.addEventListener('keydown', window._punishKeyHandler);
+            break;
+            
+        case 'squats':
+            window.punishmentTarget = isSenior ? 100 : 80;
+            window.punishmentProgress = 0;
+            label = `🏋️ 앉았다 일어서기 훈련 (${isSenior ? '상·병장: 100회' : '일·이병: 80회'})`;
+            desc.textContent = `${label}\n아래 마우스 클릭 또는 [Space] 키를 눌러 앉았다 일어서기를 실시하십시오.`;
+            
+            interactive.innerHTML = `<button onclick="doSquatClick()" style="padding:15px 30px; background:#ea580c; border:none; border-radius:8px; font-weight:bold; font-size:1.2rem; cursor:pointer; color:#fff;">앉았다 일어서기 (Squat)</button>`;
+            
+            window.doSquatClick = () => {
+                window.punishmentProgress++;
+                counter.textContent = `${window.punishmentProgress} / ${window.punishmentTarget} 회 완료`;
+                
+                // Camera dip animation
+                if (typeof camera !== 'undefined') {
+                    new TWEEN.Tween(camera.position)
+                        .to({ y: 0.8 }, 200)
+                        .chain(
+                            new TWEEN.Tween(camera.position).to({ y: 1.6 }, 200)
+                        )
+                        .start();
+                }
+                
+                if (window.punishmentProgress >= window.punishmentTarget) {
+                    window.finishPunishment();
+                }
+            };
+            
+            window._punishKeyHandler = (e) => {
+                if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                    window.doSquatClick();
+                }
+            };
+            window.addEventListener('keydown', window._punishKeyHandler);
+            break;
+            
+        case 'walking':
+        case 'running':
+            window.lightningStunActive = false; // Allow movement
+            window.punishmentTarget = isSenior ? 250 : 180;
+            window.punishmentProgress = 0;
+            
+            label = type === 'walking' ? `🚶 단독군장 보행 (${isSenior ? '상·병장: 4km -> 게임내 250m' : '일·이병: 3km -> 게임내 180m'})` : `🏃 뜀걸음 (${isSenior ? '상·병장: 4km -> 게임내 250m' : '일·이병: 2km -> 게임내 180m'})`;
+            desc.textContent = `${label}\n작전 구역을 돌아다니며 규정 거리를 이동하십시오. (다른 행동 금지)`;
+            
+            progContainer.style.display = 'block';
+            progBar.style.width = '0%';
+            
+            let lastPos = camera.position.clone();
+            window._punishInterval = setInterval(() => {
+                const dist = camera.position.distanceTo(lastPos);
+                if (dist > 0.05) {
+                    window.punishmentProgress += dist;
+                    const pct = Math.min(100, (window.punishmentProgress / window.punishmentTarget) * 100);
+                    progBar.style.width = `${pct}%`;
+                    counter.textContent = `${Math.floor(window.punishmentProgress)}m / ${window.punishmentTarget}m 이동 완료`;
+                    lastPos = camera.position.clone();
+                    
+                    if (window.punishmentProgress >= window.punishmentTarget) {
+                        clearInterval(window._punishInterval);
+                        window.finishPunishment();
+                    }
+                }
+            }, 200);
+            break;
+            
+        case 'circuit':
+            window.punishmentTarget = isSenior ? 40 : 30; // seconds
+            window.punishmentProgress = window.punishmentTarget;
+            label = `🔄 순환식 체력단련 (${isSenior ? '상·병장: 40분 -> 40초' : '일·이병: 30분 -> 30초'})`;
+            desc.textContent = `${label}\n체력 증진을 위해 명시된 시간 동안 자리를 지키며 단련하십시오.`;
+            
+            progContainer.style.display = 'block';
+            progBar.style.width = '100%';
+            
+            window._punishInterval = setInterval(() => {
+                window.punishmentProgress--;
+                const pct = (window.punishmentProgress / window.punishmentTarget) * 100;
+                progBar.style.width = `${pct}%`;
+                counter.textContent = `남은 시간: ${window.punishmentProgress}초`;
+                
+                if (window.punishmentProgress <= 0) {
+                    clearInterval(window._punishInterval);
+                    window.finishPunishment();
+                }
+            }, 1000);
+            break;
+            
+        case 'cleaning':
+            window.punishmentTarget = 15;
+            window.punishmentProgress = 0;
+            label = `🧹 특정지역 청소 (15개 구역)`;
+            desc.textContent = `${label}\n막사 주변을 청소하십시오. 아래 버튼을 연속으로 눌러 빗자루질을 완료하십시오.`;
+            
+            interactive.innerHTML = `<button onclick="doCleanClick()" style="padding:15px 30px; background:#10b981; border:none; border-radius:8px; font-weight:bold; font-size:1.2rem; cursor:pointer; color:#fff;">🧹 빗자루질 (Sweep)</button>`;
+            
+            window.doCleanClick = () => {
+                window.punishmentProgress++;
+                counter.textContent = `${window.punishmentProgress} / ${window.punishmentTarget} 회 완료`;
+                
+                if (window.punishmentProgress >= window.punishmentTarget) {
+                    window.finishPunishment();
+                }
+            };
+            break;
+            
+        case 'meditation':
+            window.punishmentTarget = isSenior ? 40 : 20;
+            window.punishmentProgress = window.punishmentTarget;
+            label = `🧘 참선 훈련 (${isSenior ? '상·병장: 40분 -> 40초' : '일·이병: 20분 -> 20초'})`;
+            desc.textContent = `${label}\n정신 수양을 위해 움직이지 않고 마음을 가다듬으십시오. (움직이면 시간 리셋)`;
+            
+            progContainer.style.display = 'block';
+            progBar.style.width = '100%';
+            
+            let startPos = camera.position.clone();
+            window._punishInterval = setInterval(() => {
+                const moved = camera.position.distanceTo(startPos) > 0.5;
+                if (moved) {
+                    window.punishmentProgress = window.punishmentTarget; // Reset timer
+                    startPos = camera.position.clone();
+                    showToast("⚠️ 참선 중에 움직였습니다! 시간이 초기화됩니다.", "#ef4444");
+                } else {
+                    window.punishmentProgress--;
+                }
+                const pct = (window.punishmentProgress / window.punishmentTarget) * 100;
+                progBar.style.width = `${pct}%`;
+                counter.textContent = `남은 참선 시간: ${window.punishmentProgress}초`;
+                
+                if (window.punishmentProgress <= 0) {
+                    clearInterval(window._punishInterval);
+                    window.finishPunishment();
+                }
+            }, 1000);
+            break;
+            
+        case 'reflection':
+            overlay.style.display = 'none';
+            window.lightningStunActive = true;
+            
+            const refModal = document.getElementById('reflection-modal');
+            const refText = document.getElementById('reflection-textarea');
+            const refCount = document.getElementById('reflection-char-count');
+            const refReq = document.getElementById('reflection-required-count');
+            const refRankInfo = document.getElementById('reflection-rank-info');
+            const refBtn = document.getElementById('btn-submit-reflection');
+            
+            if (refModal && refText && refCount && refReq && refRankInfo && refBtn) {
+                refRankInfo.textContent = `${STATE.currentUser.name} (${STATE.currentUser.rank})`;
+                const required = isSenior ? 1000 : 500;
+                refReq.textContent = required;
+                refText.value = '';
+                refCount.textContent = '0';
+                refCount.style.color = '#ef4444';
+                refBtn.disabled = true;
+                refBtn.style.opacity = '0.5';
+                refBtn.style.cursor = 'not-allowed';
+                
+                refModal.style.display = 'flex';
+                
+                refText.oninput = () => {
+                    const len = refText.value.length;
+                    refCount.textContent = len;
+                    if (len >= required) {
+                        refCount.style.color = '#22c55e';
+                        refBtn.disabled = false;
+                        refBtn.style.opacity = '1.0';
+                        refBtn.style.cursor = 'pointer';
+                    } else {
+                        refCount.style.color = '#ef4444';
+                        refBtn.disabled = true;
+                        refBtn.style.opacity = '0.5';
+                        refBtn.style.cursor = 'not-allowed';
+                    }
+                };
+            }
+            break;
+            
+        case 'digging':
+            window.punishmentTarget = isSenior ? 60 : 40;
+            window.punishmentProgress = 0;
+            label = `⛏️ 개인호 파고 되메우기 (${isSenior ? '상·병장: 60분 -> 60회' : '일·이병: 40분 -> 40회'})`;
+            desc.textContent = `${label}\n개인 참호를 파고 흙으로 다시 메우십시오. 마우스를 광클하십시오!`;
+            
+            interactive.innerHTML = `<button onclick="doDigClick()" style="padding:15px 30px; background:#b45309; border:none; border-radius:8px; font-weight:bold; font-size:1.2rem; cursor:pointer; color:#fff;">⛏️ 삽질 (Dig)</button>`;
+            
+            window.doDigClick = () => {
+                window.punishmentProgress++;
+                counter.textContent = `${window.punishmentProgress} / ${window.punishmentTarget} 회 삽질 완료`;
+                
+                if (typeof camera !== 'undefined') {
+                    new TWEEN.Tween(camera.position)
+                        .to({ y: 1.0 }, 150)
+                        .chain(
+                            new TWEEN.Tween(camera.position).to({ y: 1.6 }, 150)
+                        )
+                        .start();
+                }
+                
+                if (window.punishmentProgress >= window.punishmentTarget) {
+                    window.finishPunishment();
+                }
+            };
+            break;
+            
+        default:
+            window.punishmentTarget = 6;
+            window.punishmentProgress = 0;
+            label = "🚨 군기 훈련 (PT 체조)";
+            desc.textContent = `${label}\n자동 PT체조가 집행 중입니다. 자리를 지켜 주십시오.`;
+            
+            window._punishInterval = setInterval(() => {
+                if (camera && camera.position.y <= 1.7) {
+                    if (typeof velocity !== 'undefined' && velocity) velocity.y = 8.0;
+                }
+                window.punishmentProgress++;
+                counter.textContent = `${window.punishmentProgress} / 6회 완료`;
+                if (window.punishmentProgress >= 6) {
+                    clearInterval(window._punishInterval);
+                    window.finishPunishment();
+                }
+            }, 800);
+            break;
+    }
+};
+
+window.finishPunishment = () => {
+    if (window._punishKeyHandler) {
+        window.removeEventListener('keydown', window._punishKeyHandler);
+        window._punishKeyHandler = null;
+    }
+    if (window._punishInterval) {
+        clearInterval(window._punishInterval);
+        window._punishInterval = null;
+    }
+    
+    const overlay = document.getElementById('punishment-overlay');
+    if (overlay) overlay.style.display = 'none';
+    
+    window.lightningStunActive = false;
+    window.currentPunishment = null;
+    
+    if (STATE.currentUser && STATE.currentUser.uid && db) {
+        db.ref('users/' + STATE.currentUser.uid + '/punishment').remove();
+        db.ref('presence/' + STATE.currentUser.uid + '/punishment').remove();
+    }
+    
+    window.changeDiscipline(60, "얼차려 규정 이수 완료");
+    if (typeof showToast === 'function') showToast("🫡 군기 훈련을 우수하게 마쳐 부대로 복귀 조치되었습니다!", "#22c55e");
+};
+
+window.submitReflectionLetter = () => {
+    const text = document.getElementById('reflection-textarea').value;
+    const isSenior = !["훈련병", "이등병", "일등병"].includes(STATE.currentUser.rank);
+    const required = isSenior ? 1000 : 500;
+    
+    if (text.length < required) return alert("글자 수가 아직 부족합니다!");
+    
+    if (db && STATE.currentUser) {
+        db.ref('system/reflection_letters').push({
+            writer: STATE.currentUser.name,
+            rank: STATE.currentUser.rank,
+            content: text,
+            timestamp: Date.now()
+        });
+    }
+    
+    const refModal = document.getElementById('reflection-modal');
+    if (refModal) refModal.style.display = 'none';
+    
+    window.finishPunishment();
+};
