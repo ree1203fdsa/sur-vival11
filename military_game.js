@@ -9177,8 +9177,8 @@ const mockAds = [
 ];
 
 window.showRewardedAd = (rewardType, callback) => {
-    // If Google H5 Ads SDK is loaded and available
-    if (typeof adBreak === 'function') {
+    // If Google H5 Ads SDK is loaded, ready, and not the placeholder function
+    if (window.adsenseLoaded && typeof adBreak === 'function' && adBreak !== window.adConfig) {
         adBreak({
             type: 'reward',
             name: rewardType,
@@ -9205,6 +9205,7 @@ window.showRewardedAd = (rewardType, callback) => {
         });
     } else {
         // Fallback to Mock Ad directly
+        console.log("Google Ads SDK not loaded/ready or blocked. Showing Mock Ad...");
         showMockAd(rewardType, callback);
     }
 };
