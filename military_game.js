@@ -3966,16 +3966,22 @@ const initChat = () => {
             }
             
             const priceText = isMaster ? "무료(마스터 권한)로" : `${price.toLocaleString()}G에`;
-            if (confirm(`${name}을(를) ${priceText} 구매하시겠습니까?`)) {
-                if (!isMaster) {
-                    const newMoney = currentMoney - price;
-                    STATE.currentUser.money = newMoney;
-                    document.getElementById('shop-money').textContent = newMoney.toLocaleString();
-                    db.ref('users/' + STATE.currentUser.uid).update({ money: newMoney });
-                }
-                
-                db.ref('users/' + STATE.currentUser.uid + '/inventory').push(id);
-                alert(`${name} 구매 완료!`);
+            if (confirm(`${name}을(를) ${priceText} 구매하시겠습니까?\n(구매 시 확인 광고가 1회 재생됩니다.)`)) {
+                window.showRewardedAd('shop_purchase', (success) => {
+                    if (success) {
+                        if (!isMaster) {
+                            const newMoney = currentMoney - price;
+                            STATE.currentUser.money = newMoney;
+                            document.getElementById('shop-money').textContent = newMoney.toLocaleString();
+                            db.ref('users/' + STATE.currentUser.uid).update({ money: newMoney });
+                        }
+                        
+                        db.ref('users/' + STATE.currentUser.uid + '/inventory').push(id);
+                        alert(`${name} 구매 완료!`);
+                    } else {
+                        alert("⚠️ 광고 시청이 완료되지 않아 구매가 중단되었습니다.");
+                    }
+                });
             }
         };
 
