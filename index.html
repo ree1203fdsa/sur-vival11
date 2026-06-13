@@ -2164,6 +2164,15 @@
             <div style="font-size: 0.75rem; color: #aaa; margin-top: 4px;">순찰 완료 시 포상금 및 대량 경험치 지급</div>
         </div>
 
+        <!-- March Mission HUD -->
+        <div id="march-hud"
+            style="display: none; position: absolute; top: 30px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px); padding: 12px 24px; border-radius: 16px; border: 1px solid #a16207; pointer-events: none; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; min-width: 250px;">
+            <div style="font-weight: 900; color: #fbbf24; font-size: 1.1rem; margin-bottom: 4px; letter-spacing: 1px;">
+                🥾 전술 행군 훈련 진행 중</div>
+            <div id="march-step-text" style="font-size: 0.9rem; color: #fff; font-weight: bold;">1단계: 산 기슭 대기소로 이동</div>
+            <div style="font-size: 0.75rem; color: #aaa; margin-top: 4px;">산을 따라 올라가며 정상을 정복하십시오!</div>
+        </div>
+
         <!-- Obstacle Course HUD -->
         <div id="obstacle-hud"
             style="display: none; position: absolute; top: 30px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px); padding: 12px 24px; border-radius: 16px; border: 1px solid #10b981; pointer-events: none; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; min-width: 250px;">
@@ -2346,7 +2355,73 @@
 
         <!-- Vehicle HUD -->
         <div id="vehicle-hud">
-            🚟 탈것 탑승중 | [WASD: 조향] [Q/E: 속도] [G: 내리기]
+            🚟 탈것 탑승중 | [WASD: 조향] [Q/E: 속도] [F: 내리기]
+        </div>
+
+        <!-- Flight Dashboard Panel -->
+        <style>
+        .switch-toggle input:checked + span {
+            background-color: #00ffcc !important;
+            border-color: #00ffcc !important;
+        }
+        .switch-toggle span:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        .switch-toggle input:checked + span:before {
+            transform: translateX(22px);
+        }
+        </style>
+        <div id="flight-dashboard" style="display: none; position: absolute; bottom: 85px; right: 20px; background: rgba(15, 23, 42, 0.9); border: 2px solid #00ffcc; border-radius: 12px; padding: 15px; width: 280px; box-shadow: 0 0 20px rgba(0, 255, 204, 0.25); color: #00ffcc; font-family: 'Orbitron', monospace; z-index: 100;">
+            <div style="text-align: center; font-size: 0.85rem; font-weight: bold; border-bottom: 1px solid rgba(0, 255, 204, 0.4); padding-bottom: 8px; margin-bottom: 12px; letter-spacing: 1px;">
+                ✈️ TACTICAL FLIGHT DECK
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.8rem;">
+                <!-- Engine Switch -->
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>⚡ ENGINE IGNITION:</span>
+                    <label class="switch-toggle" style="position: relative; display: inline-block; width: 44px; height: 22px;">
+                        <input type="checkbox" id="btn-engine-switch" style="opacity: 0; width: 0; height: 0;" onchange="window.toggleFlightEngine(this.checked)">
+                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 22px; border: 1px solid #64748b;"></span>
+                    </label>
+                </div>
+                <!-- Landing Lights Switch -->
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>💡 LANDING LIGHTS:</span>
+                    <label class="switch-toggle" style="position: relative; display: inline-block; width: 44px; height: 22px;">
+                        <input type="checkbox" id="btn-lights-switch" style="opacity: 0; width: 0; height: 0;" onchange="window.toggleFlightLights(this.checked)">
+                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 22px; border: 1px solid #64748b;"></span>
+                    </label>
+                </div>
+                <!-- Landing Gear Switch -->
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>⚙️ LANDING GEAR:</span>
+                    <label class="switch-toggle" style="position: relative; display: inline-block; width: 44px; height: 22px;">
+                        <input type="checkbox" id="btn-gear-switch" checked style="opacity: 0; width: 0; height: 0;" onchange="window.toggleFlightGear(this.checked)">
+                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 22px; border: 1px solid #64748b;"></span>
+                    </label>
+                </div>
+                <!-- Flaps Level -->
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>📐 FLAPS LEVEL:</span>
+                    <select id="select-flaps" onchange="window.changeFlaps(this.value)" style="background: #1e293b; color: #00ffcc; border: 1px solid #00ffcc; border-radius: 4px; padding: 2px 4px; font-size: 0.75rem;">
+                        <option value="0">0° (UP)</option>
+                        <option value="15">15° (TAKEOFF)</option>
+                        <option value="30">30° (LANDING)</option>
+                    </select>
+                </div>
+                <!-- 20mm Vulcan Button -->
+                <button onclick="window.fireFlightVulcan()" style="background: #ef4444; border: 1px solid #dc2626; color: white; border-radius: 6px; padding: 8px; font-weight: bold; cursor: pointer; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 5px; box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
+                    💥 FIRE 20MM VULCAN
+                </button>
+            </div>
         </div>
 
         <!-- Shooting Range HUD -->
@@ -2389,9 +2464,49 @@
             <button id="btn-voice" class="action-btn" style="background: #ef4444; display: none;">🎙️<br>무전</button>
             <button id="btn-view" class="action-btn" style="background: #6b7280; display: none;">🎥<br>시점</button>
             <button id="btn-patrol" class="action-btn" style="background: #4f46e5;">당직<br>순찰</button>
+            <button id="btn-march" class="action-btn" style="background: #a16207;">전술<br>행군</button>
         </div>
 
-        <!-- ===== MODALS ===== -->
+        <!-- VIP Dress Room Modal -->
+        <div id="vip-dress-modal" class="big-modal">
+            <div class="big-modal-box" style="max-width: 550px; background: rgba(15, 23, 42, 0.98); border: 2px solid #a855f7; box-shadow: 0 0 40px rgba(168, 85, 247, 0.3);">
+                <button class="close-btn" onclick="document.getElementById('vip-dress-modal').style.display='none'">✕</button>
+                <h2 style="font-family: 'Orbitron', sans-serif; letter-spacing: 2px; text-shadow: 0 0 10px rgba(168, 85, 247, 0.4); border-bottom: 2px solid #a855f7; padding-bottom: 10px; margin-bottom: 20px; color: #c084fc;">👗 VIP 전용 탈의 의상실</h2>
+                <p style="font-size: 0.9rem; color: #cbd5e1; margin-bottom: 20px;">원하시는 특수 군장/피복을 선택하여 즉시 즉각 교체하십시오.</p>
+                
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <button onclick="changeVipSkin('camo_army', '육군 베레모전투복')" style="background: rgba(75, 83, 32, 0.2); border: 1px solid #4b5320; color: #a3e635; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+                        <span>🪖 1. 대한민국 육군 전투복 (Green Beret)</span>
+                        <span style="font-size: 0.8rem; background: #4b5320; color: white; padding: 2px 6px; border-radius: 4px;">기본 지급</span>
+                    </button>
+                    
+                    <button onclick="changeVipSkin('camo_udt', 'UDT 해군 특전단전투복')" style="background: rgba(30, 41, 59, 0.2); border: 1px solid #1e293b; color: #38bdf8; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+                        <span>⚓ 2. UDT/SEAL 특수전투복 (Grey Beret)</span>
+                        <span style="font-size: 0.8rem; background: #1e293b; color: white; padding: 2px 6px; border-radius: 4px;">특수대원</span>
+                    </button>
+                    
+                    <button onclick="changeVipSkin('camo_navy', '해군 파란색 디지털전투복')" style="background: rgba(29, 78, 216, 0.1); border: 1px solid #1d4ed8; color: #60a5fa; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+                        <span>🌊 3. 해군 전투복 (Blue Digital Camo)</span>
+                        <span style="font-size: 0.8rem; background: #1d4ed8; color: white; padding: 2px 6px; border-radius: 4px;">해군대원</span>
+                    </button>
+                    
+                    <button onclick="changeVipSkin('camo_swat', '대테러 특임대흑복')" style="background: rgba(17, 24, 39, 0.2); border: 1px solid #111827; color: #e2e8f0; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+                        <span>🖤 4. 대테러 특임대 흑복 (SWAT Black)</span>
+                        <span style="font-size: 0.8rem; background: #111827; color: white; padding: 2px 6px; border-radius: 4px;">특임대원</span>
+                    </button>
+                    
+                    <button onclick="changeVipSkin('camo_jail', '영창 죄수 주황복')" style="background: rgba(234, 88, 12, 0.1); border: 1px solid #ea580c; color: #fb923c; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+                        <span>⛓️ 5. 영창 주황 수감복 (Jail Orange)</span>
+                        <span style="font-size: 0.8rem; background: #ea580c; color: white; padding: 2px 6px; border-radius: 4px;">징벌복장</span>
+                    </button>
+                    
+                    <button onclick="changeVipSkin('dress_uniform', '하얀색 장교 정복')" style="background: rgba(255, 255, 255, 0.05); border: 1px solid #e2e8f0; color: #ffffff; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+                        <span>👔 6. 대한민국 장교 정복 (Dress White)</span>
+                        <span style="font-size: 0.8rem; background: #cbd5e1; color: black; padding: 2px 6px; border-radius: 4px;">장교행사</span>
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- Guide / Tutorial Modal -->
         <div id="guide-modal" class="big-modal">

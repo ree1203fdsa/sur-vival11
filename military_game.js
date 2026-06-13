@@ -50,7 +50,10 @@ const LOCATIONS = {
     "심사장": { x: -100, z: -160, color: 0x1e2e1e, size: [35, 12, 25] },
     "원수실": { x: 0, z: -150, color: 0x11111a, size: [25, 12, 25] },
     "화생방실": { x: -120, z: -100, color: 0x3d352e, size: [20, 8, 20] },
-    "준장실 (한우주)": { x: -60, z: -150, color: 0x1e3a8a, size: [20, 10, 20] }
+    "준장실 (한우주)": { x: -60, z: -150, color: 0x1e3a8a, size: [20, 10, 20] },
+    "탈의실": { x: 60, z: -150, color: 0x8b5cf6, size: [15, 8, 15] },
+    "의무대": { x: -120, z: -20, color: 0xb91c1c, size: [20, 8, 20] },
+    "활주로": { x: 200, z: 0, color: 0x222222, size: [50, 0.1, 300] }
 };
 
 const JAIL_CONFIG = {
@@ -767,6 +770,15 @@ const initTrainingCommandListener = () => {
         patrolBtn.onclick = () => {
             if (typeof window.startPatrolMission === 'function') {
                 window.startPatrolMission();
+            }
+        };
+    }
+    
+    const marchBtn = document.getElementById('btn-march');
+    if (marchBtn) {
+        marchBtn.onclick = () => {
+            if (typeof window.startMarchMission === 'function') {
+                window.startMarchMission();
             }
         };
     }
@@ -1508,6 +1520,40 @@ const initChat = () => {
         ground.receiveShadow = true;
         scene.add(ground);
 
+        // Create Climbable Mountain
+        const mountSize = 300;
+        const mountSegments = 60;
+        const mountGeo = new THREE.PlaneGeometry(mountSize, mountSize, mountSegments, mountSegments);
+        
+        // Displace vertices to form a mountain
+        const posAttr = mountGeo.attributes.position;
+        for (let i = 0; i < posAttr.count; i++) {
+            const vx = posAttr.getX(i);
+            const vy = posAttr.getY(i); // Plane is on X-Y initially, then rotated
+            
+            // Calculate distance from center (0, 0)
+            const dist = Math.sqrt(vx * vx + vy * vy);
+            if (dist < 150) {
+                // Smooth dome height
+                const h = 60 * Math.cos((dist / 150) * (Math.PI / 2));
+                posAttr.setZ(i, h); // Height along Z before rotation
+            }
+        }
+        mountGeo.computeVertexNormals();
+        
+        const mountMat = new THREE.MeshStandardMaterial({
+            color: 0x4d5d36, // Dark rocky green
+            roughness: 0.95,
+            metalness: 0.05,
+            flatShading: true // Gives a nice low-poly rocky look
+        });
+        const mountainMesh = new THREE.Mesh(mountGeo, mountMat);
+        mountainMesh.rotation.x = -Math.PI / 2;
+        mountainMesh.position.set(-250, 0, -250);
+        mountainMesh.receiveShadow = true;
+        mountainMesh.castShadow = true;
+        scene.add(mountainMesh);
+
         // --- Digital Camo & Player Modeling ---
         const generateCamoTexture = (baseColorHex) => {
             const canvas = document.createElement('canvas');
@@ -1540,6 +1586,51 @@ const initChat = () => {
         const getCamoMaterial = (colorHex) => {
             if(!camoMaterials[colorHex]) camoMaterials[colorHex] = new THREE.MeshStandardMaterial({ map: generateCamoTexture(colorHex), roughness: 0.9 });
             return camoMaterials[colorHex];
+        };
+
+        const createHealingParticles = (pos) => {
+            const pGroup = new THREE.Group();
+            pGroup.position.copy(pos);
+            scene.add(pGroup);
+
+            const greenMat = new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.8 });
+            for (let i = 0; i < 6; i++) {
+                const cross = new THREE.Group();
+                const horiz = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.08), greenMat);
+                const vert = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.08), greenMat);
+                cross.add(horiz);
+                cross.add(vert);
+
+                cross.position.set(
+                    (Math.random() - 0.5) * 1.8,
+                    (Math.random() - 0.2) * 0.6,
+                    (Math.random() - 0.5) * 1.8
+                );
+                pGroup.add(cross);
+            }
+
+            let elapsed = 0;
+            const anim = () => {
+                elapsed += 0.016;
+                pGroup.position.y += 0.015;
+                pGroup.traverse(child => {
+                    if (child.isMesh && child.material) {
+                        child.material.opacity = Math.max(0, 0.8 - (elapsed / 1.2));
+                    }
+                });
+                if (elapsed < 1.2) {
+                    requestAnimationFrame(anim);
+                } else {
+                    scene.remove(pGroup);
+                    pGroup.traverse(child => {
+                        if (child.isMesh) {
+                            child.geometry.dispose();
+                            child.material.dispose();
+                        }
+                    });
+                }
+            };
+            anim();
         };
 
         // --- Custom Procedural Textures ---
@@ -1718,11 +1809,135 @@ const initChat = () => {
                     const sign = new THREE.Mesh(new THREE.BoxGeometry(14, 2, 0.2), new THREE.MeshStandardMaterial({ map: signTex }));
                     sign.position.set(0, h * 0.9 + 0.5, d/2 + 0.1);
                     group.add(sign);
+                    break;
+                }
 
-                    // Glass door
-                    const glassDoor = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 0.2), glassMat);
-                    glassDoor.position.set(0, 2.5, d/2 + 0.05);
-                    group.add(glassDoor);
+                case "탈의실": {
+                    const block = new THREE.Mesh(new THREE.BoxGeometry(w, h * 0.9, d), wallMat);
+                    block.position.y = (h * 0.9) / 2;
+                    block.castShadow = true; block.receiveShadow = true;
+                    group.add(block);
+
+                    // Torque Hanger / Circle Emblem
+                    const emblemGeo = new THREE.TorusGeometry(0.8, 0.2, 8, 24);
+                    const emblemMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.2 });
+                    const emblem = new THREE.Mesh(emblemGeo, emblemMat);
+                    emblem.position.set(0, h * 0.9 + 1, 0);
+                    group.add(emblem);
+
+                    // Signboard
+                    const signTex = generateLogoTexture('👚 VIP 탈의실 (DRESS ROOM)', '#5b21b6', '#ffd700', 18);
+                    const sign = new THREE.Mesh(new THREE.BoxGeometry(12, 1.8, 0.2), new THREE.MeshStandardMaterial({ map: signTex }));
+                    sign.position.set(0, h * 0.9 + 0.5, d/2 + 0.1);
+                    group.add(sign);
+                    break;
+                }
+
+                case "의무대": {
+                    const block = new THREE.Mesh(new THREE.BoxGeometry(w, h * 0.9, d), wallMat);
+                    block.position.y = (h * 0.9) / 2;
+                    block.castShadow = true; block.receiveShadow = true;
+                    group.add(block);
+                    
+                    // Medical Cross Sign (Red Cross) on top
+                    const crossGroup = new THREE.Group();
+                    crossGroup.position.set(0, h * 0.9 + 1.2, 0);
+                    
+                    const crossHorizontal = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.6, 0.6), new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.5 }));
+                    const crossVertical = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.5, 0.6), new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.5 }));
+                    crossGroup.add(crossHorizontal);
+                    crossGroup.add(crossVertical);
+                    group.add(crossGroup);
+
+                    // Signboard
+                    const signTex = generateLogoTexture('🏥 의 무 대 (MEDICAL CLINIC)', '#b91c1c', '#ffffff', 18);
+                    const sign = new THREE.Mesh(new THREE.BoxGeometry(14, 2, 0.2), new THREE.MeshStandardMaterial({ map: signTex }));
+                    sign.position.set(0, h * 0.9 + 0.5, d/2 + 0.1);
+                    group.add(sign);
+
+                    // Beds (침대 3개 배치)
+                    window.medicalBeds = [];
+                    for (let i = 0; i < 3; i++) {
+                        const bedGroup = new THREE.Group();
+                        const xOffset = -5 + i * 5;
+                        bedGroup.position.set(xOffset, 0, 0);
+
+                        const frame = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 3), new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.6, roughness: 0.2 }));
+                        frame.position.y = 0.2;
+                        bedGroup.add(frame);
+
+                        const mattress = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.2, 2.8), new THREE.MeshStandardMaterial({ color: 0x93c5fd })); // Light blue
+                        mattress.position.y = 0.45;
+                        bedGroup.add(mattress);
+
+                        const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.12, 0.45), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+                        pillow.position.set(0, 0.56, -1.1);
+                        bedGroup.add(pillow);
+
+                        // IV Stand (수액 거치대)
+                        const ivPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.0), new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9 }));
+                        ivPole.position.set(-0.75, 1.0, -1.2);
+                        bedGroup.add(ivPole);
+                        
+                        const ivBag = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.3, 0.15), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
+                        ivBag.position.set(-0.75, 1.8, -1.2);
+                        bedGroup.add(ivBag);
+
+                        group.add(bedGroup);
+
+                        // Save absolute world position of each bed
+                        window.medicalBeds.push({
+                            x: -120 + xOffset,
+                            z: -20,
+                            id: i + 1
+                        });
+                    }
+                    break;
+                }
+
+                case "활주로": {
+                    // Asphalt base
+                    const base = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, d), new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 }));
+                    base.position.y = 0.05;
+                    group.add(base);
+
+                    // Central dotted runway line
+                    const lineCount = Math.floor(d / 20);
+                    const lineMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 });
+                    for (let i = 0; i < lineCount; i++) {
+                        const dash = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.12, 10), lineMat);
+                        dash.position.set(0, 0.07, -d/2 + i * 20 + 10);
+                        group.add(dash);
+                    }
+
+                    // Side borders (Left and Right solid lines)
+                    const borderLeft = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.12, d), lineMat);
+                    borderLeft.position.set(-w/2 + 2, 0.07, 0);
+                    group.add(borderLeft);
+
+                    const borderRight = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.12, d), lineMat);
+                    borderRight.position.set(w/2 - 2, 0.07, 0);
+                    group.add(borderRight);
+
+                    // Add runway edge lights (glow blue & white)
+                    const blueLightMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x3b82f6, emissiveIntensity: 2.0 });
+                    const whiteLightMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 2.0 });
+                    
+                    const lightCount = Math.floor(d / 15);
+                    for (let i = 0; i < lightCount; i++) {
+                        const zPos = -d/2 + i * 15;
+                        const mat = (i % 2 === 0) ? blueLightMat : whiteLightMat;
+                        
+                        // Left lamp
+                        const bulbL = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), mat);
+                        bulbL.position.set(-w/2 + 1, 0.3, zPos);
+                        group.add(bulbL);
+                        
+                        // Right lamp
+                        const bulbR = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), mat);
+                        bulbR.position.set(w/2 - 1, 0.3, zPos);
+                        group.add(bulbR);
+                    }
                     break;
                 }
                 
@@ -3179,21 +3394,86 @@ const initChat = () => {
             rEpaulet.visible = (colorHex === 0xffffff);
             group.add(rEpaulet);
 
+            // 1. Beret (베레모)
+            const beretMat = new THREE.MeshStandardMaterial({ color: 0x14532d, roughness: 0.8 });
+            const beret = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.08, 8), beretMat);
+            beret.position.set(0.05, 1.94, 0);
+            beret.rotation.z = -0.15; // Slightly tilted to the right of the head
+            beret.name = 'beret';
+            beret.visible = false;
+            group.add(beret);
+
+            // 2. Tactical Helmet (SWAT 헬멧)
+            const helmet = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.22, 0.38), blackMat);
+            helmet.position.set(0, 1.93, 0);
+            helmet.name = 'helmet';
+            helmet.visible = false;
+            group.add(helmet);
+
+            // Goggles/Mask (고글)
+            const goggleMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.7, roughness: 0.2 });
+            const goggles = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.1, 0.1), goggleMat);
+            goggles.position.set(0, 1.8, 0.16);
+            goggles.name = 'goggles';
+            goggles.visible = false;
+            group.add(goggles);
+
+            // 3. Tactical Vest (방탄조끼)
+            const vestMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 });
+            const vest = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.68, 0.46), vestMat);
+            vest.position.y = 1.25;
+            vest.name = 'vest';
+            vest.visible = false;
+            group.add(vest);
+
+            // 4. Officer Cap (장교 정모)
+            const officerCap = new THREE.Group();
+            officerCap.name = 'officerCap';
+            officerCap.visible = false;
+            
+            const capTopMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+            const capTop = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.22, 0.1, 8), capTopMat);
+            capTop.position.set(0, 1.95, -0.02);
+            capTop.rotation.x = 0.05; // Slightly tilted forward
+            officerCap.add(capTop);
+
+            const capVisorMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
+            const capVisor = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.02, 0.12), capVisorMat);
+            capVisor.position.set(0, 1.9, 0.16);
+            capVisor.rotation.x = 0.2; // tilted down visor
+            officerCap.add(capVisor);
+
+            group.add(officerCap);
+
             return group;
         };
 
         window.refreshPlayerSkin = (mesh, skinId, rank, isJailed) => {
+            if (!mesh) return;
+
             let targetColor = 0x4b5320; 
-            if (isJailed) {
-                targetColor = 0xffa500; 
+            const isJailSkin = (isJailed || skinId === 'camo_jail');
+            const isSwatSkin = (skinId === 'camo_swat');
+            const isDressSkin = (skinId === 'dress_uniform');
+
+            if (isJailSkin) {
+                targetColor = 0xff7f00; // Orange 수감복
             } else if (skinId === 'camo_desert') {
                 targetColor = 0xd2b48c; 
             } else if (skinId === 'camo_marine') {
                 targetColor = 0xb22222; 
             } else if (skinId === 'camo_swat') {
-                targetColor = 0x111111; 
+                targetColor = 0x111111; // SWAT 흑복
             } else if (skinId === 'camo_winter') {
                 targetColor = 0xffffff; 
+            } else if (skinId === 'camo_army') {
+                targetColor = 0x3a4b2a; // 육군 베레모전투복
+            } else if (skinId === 'camo_udt') {
+                targetColor = 0x475569; // UDT 디지털전투복 (Grayish)
+            } else if (skinId === 'camo_navy') {
+                targetColor = 0x2b4c7e; // 해군 파란색 디지털전투복
+            } else if (isDressSkin) {
+                targetColor = 0xffffff; // 장교 정복
             } else {
                 if (window.isDressUniform) {
                     targetColor = 0xffffff;
@@ -3214,10 +3494,50 @@ const initChat = () => {
                         child.material = newMat;
                     }
                     if (child.userData.isEpaulet) {
-                        child.visible = (targetColor === 0xffffff || rank === '원수');
+                        child.visible = (isDressSkin || rank === '원수');
                     }
                 }
             });
+
+            // Set specific parts visibility
+            const hood = mesh.getObjectByName('hood');
+            const backpack = mesh.getObjectByName('backpack');
+            const sleepingBag = mesh.getObjectByName('sleepingBag');
+            const beret = mesh.getObjectByName('beret');
+            const helmet = mesh.getObjectByName('helmet');
+            const goggles = mesh.getObjectByName('goggles');
+            const vest = mesh.getObjectByName('vest');
+            const officerCap = mesh.getObjectByName('officerCap');
+
+            // Jail / SWAT / Dress Uniform don't carry heavy survival packs or wear winter hoods
+            const showSurvivalGear = !isJailSkin && !isSwatSkin && !isDressSkin;
+            if (hood) hood.visible = showSurvivalGear;
+            if (backpack) backpack.visible = showSurvivalGear;
+            if (sleepingBag) sleepingBag.visible = showSurvivalGear;
+
+            // Beret visibility and color mapping
+            if (beret) {
+                if (skinId === 'camo_army') {
+                    beret.visible = true;
+                    beret.material.color.setHex(0x14532d); // Dark Green
+                } else if (skinId === 'camo_udt') {
+                    beret.visible = true;
+                    beret.material.color.setHex(0x64748b); // Grey/Slate Beret for UDT/SEAL
+                } else if (skinId === 'camo_navy') {
+                    beret.visible = true;
+                    beret.material.color.setHex(0x1e3a8a); // Blue/Navy Beret
+                } else {
+                    beret.visible = false;
+                }
+            }
+
+            // Helmet & Goggles & Vest (SWAT exclusive)
+            if (helmet) helmet.visible = isSwatSkin;
+            if (goggles) goggles.visible = isSwatSkin;
+            if (vest) vest.visible = isSwatSkin;
+
+            // Officer Cap (Dress White exclusive)
+            if (officerCap) officerCap.visible = isDressSkin;
         };
 
         window.applyPose = (mesh, pose, timeSec = 0) => {
@@ -4283,6 +4603,86 @@ const initChat = () => {
         // NEW SIMULATOR SYSTEMS: COGNITIVE & COMBAT ADDITIONS
         // ====================================================
 
+        // --- 1.5. March Mission System ---
+        window.startMarchMission = () => {
+            if (window.marchActive) {
+                // Toggle cancel
+                window.marchActive = false;
+                window.marchStep = 0;
+                const mHud = document.getElementById('march-hud');
+                if (mHud) mHud.style.display = 'none';
+                
+                // Remove visual checkpoint markers
+                if (window.marchMarkers) {
+                    window.marchMarkers.forEach(m => scene.remove(m));
+                    window.marchMarkers = [];
+                }
+                showToast("⚠️ 전술 행군 훈련이 취소되었습니다.", "#ef4444");
+                return;
+            }
+            
+            window.marchActive = true;
+            window.marchStep = 1;
+            window.marchStartTime = Date.now();
+            
+            const mHud = document.getElementById('march-hud');
+            if (mHud) mHud.style.display = 'block';
+            window.updateMarchHud();
+            
+            // Spawn March Checkpoint Visual Beacons (Flags/Cylinders)
+            if (window.marchMarkers) {
+                window.marchMarkers.forEach(m => scene.remove(m));
+            }
+            window.marchMarkers = [];
+            
+            // Checkpoints list
+            const checkpoints = [
+                { x: -130, y: 0.1, z: -130, name: "1번 지점 (산 기슭)" },
+                { x: -170, y: 15, z: -170, name: "2번 지점 (중턱)" },
+                { x: -210, y: 35, z: -210, name: "3번 지점 (능선)" },
+                { x: -250, y: 60, z: -250, name: "4번 지점 (정상)" }
+            ];
+            
+            checkpoints.forEach((cp, idx) => {
+                const geom = new THREE.CylinderGeometry(2, 2, 8, 16);
+                const mat = new THREE.MeshBasicMaterial({
+                    color: 0xffa500, // Orange
+                    transparent: true,
+                    opacity: 0.4,
+                    side: THREE.DoubleSide
+                });
+                const marker = new THREE.Mesh(geom, mat);
+                // Adjust Y based on expected floor height
+                marker.position.set(cp.x, cp.y + 4, cp.z);
+                scene.add(marker);
+                window.marchMarkers.push(marker);
+                
+                // Add a small flag mesh
+                const flagGeom = new THREE.BoxGeometry(3, 2, 0.1);
+                const flagMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                const flag = new THREE.Mesh(flagGeom, flagMat);
+                flag.position.set(cp.x, cp.y + 7, cp.z);
+                scene.add(flag);
+                window.marchMarkers.push(flag);
+            });
+            
+            showToast("🥾 전술 행군 훈련이 개시되었습니다! 1번 지점(산 기슭)으로 신속히 이동하십시오.", "#d97706");
+        };
+
+        window.updateMarchHud = () => {
+            const stepText = document.getElementById('march-step-text');
+            if (!stepText) return;
+            if (window.marchStep === 1) {
+                stepText.textContent = "1단계: 산 기슭 대기소로 이동 (이동 중...)";
+            } else if (window.marchStep === 2) {
+                stepText.textContent = "2단계: 산 중턱 쉼터로 이동 (고도 상승 중...)";
+            } else if (window.marchStep === 3) {
+                stepText.textContent = "3단계: 산 능선 초소로 이동 (고도 상승 중...)";
+            } else if (window.marchStep === 4) {
+                stepText.textContent = "최종 단계: 산 정상 정복! (고지 점령 중...)";
+            }
+        };
+
         // --- 1. Patrol Mission System ---
         window.startPatrolMission = () => {
             if (window.patrolActive) {
@@ -4960,7 +5360,7 @@ const initChat = () => {
             }
             const lc = document.createElement('canvas'); lc.width=256; lc.height=64;
             const lx = lc.getContext('2d'); lx.fillStyle='rgba(0,0,0,0.7)'; lx.fillRect(0,0,256,64);
-            lx.fillStyle='#deb887'; lx.font='bold 24px sans-serif'; lx.textAlign='center'; lx.fillText('두돈반 트럭 [G탑승]',128,42);
+            lx.fillStyle='#deb887'; lx.font='bold 24px sans-serif'; lx.textAlign='center'; lx.fillText('두돈반 트럭 [F탑승]',128,42);
             const ls = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(lc)}));
             ls.position.set(0, 6, 0); ls.scale.set(10,2.5,1); g.add(ls);
             g.userData.type = 'truck'; g.userData.speed = 0; g.userData.label = ls;
@@ -4978,11 +5378,204 @@ const initChat = () => {
             barrel.rotation.x = Math.PI/2; barrel.position.set(0, 2.3, -3.5); g.add(barrel);
             const lc = document.createElement('canvas'); lc.width=256; lc.height=64;
             const lx = lc.getContext('2d'); lx.fillStyle='rgba(0,0,0,0.7)'; lx.fillRect(0,0,256,64);
-            lx.fillStyle='#ff9900'; lx.font='bold 24px sans-serif'; lx.textAlign='center'; lx.fillText('K2 전차 [G탑승]',128,42);
+            lx.fillStyle='#ff9900'; lx.font='bold 24px sans-serif'; lx.textAlign='center'; lx.fillText('K2 전차 [F탑승]',128,42);
             const ls = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(lc)}));
             ls.position.set(0, 5, 0); ls.scale.set(10,2.5,1); g.add(ls);
             g.userData.type = 'tank'; g.userData.speed = 0; g.userData.label = ls;
             return g;
+        };
+
+        const makeAirplane = () => {
+            const group = new THREE.Group();
+            
+            // Fuselage (몸체)
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2e3820, roughness: 0.5 }); // Dark olive camo color
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.8, 12, 16), bodyMat);
+            body.rotation.x = Math.PI / 2;
+            group.add(body);
+
+            // Cockpit (조종석)
+            const glassMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, roughness: 0.1, transparent: true, opacity: 0.6 });
+            const cockpit = new THREE.Mesh(new THREE.SphereGeometry(1.0, 16, 16), glassMat);
+            cockpit.position.set(0, 0.8, -2);
+            cockpit.scale.set(1, 0.8, 2);
+            group.add(cockpit);
+
+            // Wings (주날개)
+            const wingMat = new THREE.MeshStandardMaterial({ color: 0x3d4a2a, roughness: 0.6 });
+            const leftWing = new THREE.Mesh(new THREE.BoxGeometry(10, 0.15, 2.5), wingMat);
+            leftWing.position.set(5.5, 0, -1);
+            leftWing.rotation.y = -0.15;
+            group.add(leftWing);
+
+            const rightWing = new THREE.Mesh(new THREE.BoxGeometry(10, 0.15, 2.5), wingMat);
+            rightWing.position.set(-5.5, 0, -1);
+            rightWing.rotation.y = 0.15;
+            group.add(rightWing);
+
+            // Tail Fin (꼬리날개)
+            const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3, 2), wingMat);
+            tailFin.position.set(0, 1.8, 5);
+            tailFin.rotation.x = -0.2;
+            group.add(tailFin);
+
+            const tailFlaps = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 1.5), wingMat);
+            tailFlaps.position.set(0, 0.2, 5);
+            group.add(tailFlaps);
+
+            // Propeller Spinner
+            const spinnerMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.8 });
+            const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.5, 8), spinnerMat);
+            spinner.rotation.x = -Math.PI / 2;
+            spinner.position.set(0, 0, -6.5);
+            group.add(spinner);
+
+            // Propeller Blades
+            const bladeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+            const propGroup = new THREE.Group();
+            propGroup.position.set(0, 0, -6.6);
+            
+            const blade1 = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.3, 0.05), bladeMat);
+            propGroup.add(blade1);
+            
+            const blade2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.5, 0.05), bladeMat);
+            propGroup.add(blade2);
+            
+            group.add(propGroup);
+            group.userData.propeller = propGroup;
+
+            // Wheels (Landing Gear)
+            const blackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+            
+            const frontWheelL = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.3, 8), blackMat);
+            frontWheelL.rotation.z = Math.PI / 2;
+            frontWheelL.position.set(-2, -1.8, -2);
+            frontWheelL.name = 'frontWheelL';
+            group.add(frontWheelL);
+
+            const frontWheelR = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.3, 8), blackMat); frontWheelR.rotation.z = Math.PI / 2;
+            frontWheelR.position.set(2, -1.8, -2);
+            frontWheelR.name = 'frontWheelR';
+            group.add(frontWheelR);
+
+            const tailWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 8), blackMat);
+            tailWheel.rotation.z = Math.PI / 2;
+            tailWheel.position.set(0, -1.4, 5);
+            tailWheel.name = 'tailWheel';
+            group.add(tailWheel);
+
+            // Add label billboard
+            const labelCanvas = document.createElement('canvas');
+            labelCanvas.width = 256; labelCanvas.height = 64;
+            const ctx = labelCanvas.getContext('2d');
+            ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0,0,256,64);
+            ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 24px Pretendard'; ctx.textAlign = 'center';
+            ctx.fillText('전투 비행기 [F탑승]', 128, 40);
+            const labelTex = new THREE.CanvasTexture(labelCanvas);
+            const labelSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex }));
+            labelSprite.position.set(0, 5, 0);
+            labelSprite.scale.set(10, 2.5, 1);
+            group.add(labelSprite);
+            group.userData.label = labelSprite;
+            group.userData.type = 'airplane';
+
+            return group;
+        };
+
+        window.flightEngineOn = false;
+        window.flightLightsOn = false;
+        window.flightGearDown = true;
+        window.flightFlaps = 0;
+
+        window.toggleFlightEngine = (checked) => {
+            window.flightEngineOn = checked;
+            showToast(checked ? "⚡ 전투기 엔진 시동 ON! 비행 조작 대기." : "💤 전투기 엔진 시동 OFF.", checked ? "#00ffcc" : "#f59e0b");
+        };
+
+        window.toggleFlightLights = (checked) => {
+            window.flightLightsOn = checked;
+            if (window.airplaneMesh) {
+                // Remove existing lights
+                window.airplaneMesh.traverse(child => {
+                    if (child.isSpotLight || (child.name && child.name.includes('spotlight'))) {
+                        window.airplaneMesh.remove(child);
+                    }
+                });
+                if (checked) {
+                    const spotlight = new THREE.SpotLight(0xffffff, 5, 100, Math.PI / 5, 0.5, 1);
+                    spotlight.position.set(0, 0, -6.5);
+                    spotlight.name = 'spotlight';
+                    
+                    const targetObj = new THREE.Object3D();
+                    targetObj.position.set(0, -5, -80);
+                    targetObj.name = 'spotlightTarget';
+                    
+                    spotlight.target = targetObj;
+                    window.airplaneMesh.add(spotlight);
+                    window.airplaneMesh.add(targetObj);
+                    showToast("💡 랜딩 라이트 ON", "#00ffcc");
+                } else {
+                    showToast("💡 랜딩 라이트 OFF", "#f59e0b");
+                }
+            }
+        };
+
+        window.toggleFlightGear = (checked) => {
+            window.flightGearDown = checked;
+            if (window.airplaneMesh) {
+                window.airplaneMesh.traverse(child => {
+                    if (child.name && child.name.includes('Wheel')) {
+                        child.visible = checked;
+                    }
+                });
+                showToast(checked ? "⚙️ 랜딩 기어 전개 (Gear Down)" : "⚙️ 랜딩 기어 수납 (Gear Up)", "#00ffcc");
+            }
+        };
+
+        window.changeFlaps = (val) => {
+            window.flightFlaps = parseInt(val) || 0;
+            showToast(`📐 플랩 각도 변경: ${window.flightFlaps}°`, "#00ffcc");
+        };
+
+        window.fireFlightVulcan = () => {
+            if (!window.inVehicle || window.currentVehicle !== window.airplaneMesh) {
+                showToast("❌ 전투기 조종 중에만 발사할 수 있습니다.", "#ef4444");
+                return;
+            }
+            if (!window.flightEngineOn) {
+                showToast("❌ 엔진 시동을 먼저 켜십시오!", "#ef4444");
+                return;
+            }
+
+            const startPos = new THREE.Vector3().copy(camera.position);
+            const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+
+            // Spawn tracers
+            for (let i = 0; i < 2; i++) {
+                const tracer = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.08, 0.08, 6),
+                    new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.9 })
+                );
+                tracer.position.copy(startPos).addScaledVector(dir, 15);
+                tracer.lookAt(startPos.clone().addScaledVector(dir, 100));
+                tracer.rotation.x += Math.PI / 2;
+                scene.add(tracer);
+
+                let dist = 0;
+                const bulletAnim = () => {
+                    dist += 4;
+                    tracer.position.addScaledVector(dir, 4);
+                    if (dist < 300) {
+                        requestAnimationFrame(bulletAnim);
+                    } else {
+                        scene.remove(tracer);
+                        tracer.geometry.dispose();
+                        tracer.material.dispose();
+                    }
+                };
+                bulletAnim();
+            }
+            showToast("💥 20mm 기관포 사격 실시!", "#ef4444");
         };
 
         window.truckMesh = makeTruck();
@@ -4994,13 +5587,18 @@ const initChat = () => {
         window.tankMesh.position.set(-50, 0, 50);
         window.tankMesh.userData.id = 'tank';
         scene.add(window.tankMesh);
+
+        window.airplaneMesh = makeAirplane();
+        window.airplaneMesh.position.set(200, 1.8, 120);
+        window.airplaneMesh.userData.id = 'airplane';
+        scene.add(window.airplaneMesh);
         
         if (window.helicopterMesh) window.helicopterMesh.userData.id = 'helicopter';
 
         db.ref('vehicles').on('value', snap => {
             const data = snap.val();
             if (!data) return;
-            const vMap = { 'truck': window.truckMesh, 'tank': window.tankMesh, 'helicopter': window.helicopterMesh };
+            const vMap = { 'truck': window.truckMesh, 'tank': window.tankMesh, 'helicopter': window.helicopterMesh, 'airplane': window.airplaneMesh };
             Object.keys(data).forEach(id => {
                 const v = vMap[id];
                 if (v && (!window.inVehicle || window.currentVehicle !== v)) {
@@ -5019,23 +5617,50 @@ const initChat = () => {
                 window.currentVehicle.userData.label.visible = true;
                 window.currentVehicle = null;
                 document.getElementById('vehicle-hud').style.display = 'none';
+                
+                // Hide flight dashboard
+                const fd = document.getElementById('flight-dashboard');
+                if (fd) fd.style.display = 'none';
                 return;
             }
-            const vehicles = [window.truckMesh, window.tankMesh, window.helicopterMesh];
+            const vehicles = [window.truckMesh, window.tankMesh, window.helicopterMesh, window.airplaneMesh];
             for (const v of vehicles) {
                 if (!v) continue;
                 const d = camera.position.distanceTo(v.position);
-                if (d < 12) {
+                const maxDist = (v === window.airplaneMesh || v === window.helicopterMesh) ? 22 : 12;
+                if (d < maxDist) {
                     if (v === window.helicopterMesh && STATE.currentUser.username !== 'ree1203') {
                         alert('이 헬기는 대장 전용입니다!'); return;
                     }
                     window.inVehicle = true;
                     window.currentVehicle = v;
                     v.userData.label.visible = false;
-                    const vname = v === window.helicopterMesh ? '🚁 헬기' : v.userData.type === 'tank' ? '🪖 K2전차' : '🚚 두돈반';
-                    document.getElementById('vehicle-hud').textContent = `${vname} 탑승 중 | [WASD: 조향] [Q/E: ${v===window.helicopterMesh?'고도':'속도'}] [G: 하차]`;
+                    
+                    if (document.pointerLockElement) {
+                        document.exitPointerLock();
+                    }
+                    
+                    const isAir = (v === window.helicopterMesh || v === window.airplaneMesh);
+                    const vname = v === window.helicopterMesh ? '🚁 헬기' : v === window.airplaneMesh ? '✈️ 전투 비행기' : v.userData.type === 'tank' ? '🪖 K2전차' : '🚚 두돈반';
+                    document.getElementById('vehicle-hud').textContent = `${vname} 탑승 중 | [WASD: 조향] [Q/E: ${isAir ? '고도 조절' : '속도'}] [F: 하차]`;
                     document.getElementById('vehicle-hud').style.display = 'block';
                     camera.position.set(v.position.x, v.position.y + 3, v.position.z);
+                    
+                    // Show flight dashboard for flying vehicles
+                    if (isAir) {
+                        const fd = document.getElementById('flight-dashboard');
+                        if (fd) fd.style.display = 'block';
+                        
+                        // Sync dashboard checkboxes to global state
+                        const eb = document.getElementById('btn-engine-switch');
+                        if (eb) eb.checked = window.flightEngineOn;
+                        const lb = document.getElementById('btn-lights-switch');
+                        if (lb) lb.checked = window.flightLightsOn;
+                        const gb = document.getElementById('btn-gear-switch');
+                        if (gb) gb.checked = window.flightGearDown;
+                        const fs = document.getElementById('select-flaps');
+                        if (fs) fs.value = window.flightFlaps.toString();
+                    }
                     return;
                 }
             }
@@ -5393,9 +6018,14 @@ const initChat = () => {
                 document.getElementById('btn-voice').style.display = 'block';
                 
                 // Show vehicle button if near a vehicle
-                const vehicles = [window.truckMesh, window.tankMesh, window.helicopterMesh];
+                const vehicles = [window.truckMesh, window.tankMesh, window.helicopterMesh, window.airplaneMesh];
                 let nearAny = false;
-                for(const v of vehicles) { if(v && camera.position.distanceTo(v.position) < 15) nearAny = true; }
+                for(const v of vehicles) { 
+                    if(v) {
+                        const maxDist = (v === window.airplaneMesh || v === window.helicopterMesh) ? 22 : 15;
+                        if (camera.position.distanceTo(v.position) < maxDist) nearAny = true; 
+                    }
+                }
                 document.getElementById('btn-vehicle').style.display = (nearAny || window.inVehicle) ? 'block' : 'none';
             }
         }, 1000);
@@ -5409,7 +6039,16 @@ const initChat = () => {
         if (!canvas) return;
         canvas.addEventListener('click', () => {
             const isMobile = /Mobi|Android|iPhone|iPad|PlayBook/i.test(navigator.userAgent);
-            if (isMobile) return; // Skip pointer lock only on actual mobile/tablet browsers
+            if (isMobile) return; 
+
+            // Check if any modal is open
+            const activeModals = Array.from(document.querySelectorAll('.big-modal, #vip-dress-modal, #guide-modal, #cabinet-modal')).some(el => el.style.display === 'flex' || el.style.display === 'block');
+            
+            // Skip pointer lock if inside a vehicle (so they can click dashboard switches) or if a modal is visible
+            if (window.inVehicle || window.inHelicopter || activeModals) {
+                return;
+            }
+
             try {
                 if (canvas && typeof canvas.requestPointerLock === 'function') {
                     canvas.requestPointerLock();
@@ -5612,6 +6251,18 @@ const initChat = () => {
                                     if (!window.lastFriendDenyTime || Date.now() - window.lastFriendDenyTime > 3000) {
                                         window.lastFriendDenyTime = Date.now();
                                         showToast("🔒 이 방은 준장 한우주(한Space) 대원의 전용 집무실입니다.", "#ff3333");
+                                    }
+                                    return;
+                                }
+                            }
+                            if (name === "탈의실") {
+                                const isMaster = STATE.currentUser && STATE.currentUser.username === 'ree1203';
+                                if (!isMaster) {
+                                    // Block & push outside
+                                    pos.z = maxZ + r;
+                                    if (!window.lastLockerDenyTime || Date.now() - window.lastLockerDenyTime > 3000) {
+                                        window.lastLockerDenyTime = Date.now();
+                                        showToast("🔒 이 방은 대장(ree1203) 전용 VIP 탈의실입니다.", "#ff3333");
                                     }
                                     return;
                                 }
@@ -5888,13 +6539,24 @@ const initChat = () => {
             }
 
             // Keyboard Support & Flight Logic
-            if (window.inHelicopter) {
-                if (keys['KeyW'] || keys['w'] || keys['W'] || keys['ArrowUp']) velocity.z -= 800.0 * delta;
-                if (keys['KeyS'] || keys['s'] || keys['S'] || keys['ArrowDown']) velocity.z += 800.0 * delta;
-                if (keys['KeyA'] || keys['a'] || keys['A'] || keys['ArrowLeft']) camera.rotation.y += 1.5 * delta;
-                if (keys['KeyD'] || keys['d'] || keys['D'] || keys['ArrowRight']) camera.rotation.y -= 1.5 * delta;
-                if (keys['KeyQ'] || keys['q'] || keys['Q']) camera.position.y += 20 * delta;
-                if (keys['KeyE'] || keys['e'] || keys['E']) camera.position.y -= 20 * delta;
+            const drivingAirVehicle = window.inHelicopter || (window.inVehicle && (window.currentVehicle === window.airplaneMesh || window.currentVehicle === window.helicopterMesh));
+            if (drivingAirVehicle) {
+                if (window.flightEngineOn) {
+                    const flapsSpeedBonus = window.flightFlaps === 15 ? 1.25 : window.flightFlaps === 30 ? 0.75 : 1.0;
+                    if (keys['KeyW'] || keys['w'] || keys['W'] || keys['ArrowUp']) velocity.z -= 1000.0 * delta * flapsSpeedBonus;
+                    if (keys['KeyS'] || keys['s'] || keys['S'] || keys['ArrowDown']) velocity.z += 800.0 * delta;
+                    if (keys['KeyA'] || keys['a'] || keys['A'] || keys['ArrowLeft']) camera.rotation.y += 1.5 * delta;
+                    if (keys['KeyD'] || keys['d'] || keys['D'] || keys['ArrowRight']) camera.rotation.y -= 1.5 * delta;
+                    if (keys['KeyQ'] || keys['q'] || keys['Q']) camera.position.y += 20 * delta * flapsSpeedBonus;
+                    if (keys['KeyE'] || keys['e'] || keys['E']) camera.position.y -= 20 * delta;
+                } else {
+                    // Engine is OFF: fall down to ground level
+                    if (camera.position.y > 1.8) {
+                        camera.position.y = Math.max(1.8, camera.position.y - 15 * delta);
+                    }
+                    if (keys['KeyA'] || keys['a'] || keys['A'] || keys['ArrowLeft']) camera.rotation.y += 0.8 * delta;
+                    if (keys['KeyD'] || keys['d'] || keys['D'] || keys['ArrowRight']) camera.rotation.y -= 0.8 * delta;
+                }
             } else {
                 let speedScale = 1.0;
                 if (window.localPlayerPose === 'prone') speedScale = 0.25;
@@ -5952,8 +6614,8 @@ const initChat = () => {
                 }
             }
 
-            // Apply building collisions (unless flying in a helicopter)
-            if (!(window.inHelicopter || (window.inVehicle && window.currentVehicle === window.helicopterMesh))) {
+            // Apply building collisions (unless flying in a helicopter/airplane)
+            if (!(window.inHelicopter || (window.inVehicle && (window.currentVehicle === window.helicopterMesh || window.currentVehicle === window.airplaneMesh)))) {
                 handleWorldCollisions(camera.position, oldPos);
             }
 
@@ -5962,6 +6624,14 @@ const initChat = () => {
 
             // Gravity/Floor Check
             let floorHeight = 0;
+
+            // Calculate mountain height dynamically based on distance to (-250, -250)
+            const mx = camera.position.x - (-250);
+            const mz = camera.position.z - (-250);
+            const mDist = Math.sqrt(mx * mx + mz * mz);
+            if (mDist < 150) {
+                floorHeight = 60 * Math.cos((mDist / 150) * (Math.PI / 2));
+            }
 
             // Staircase collision check
             if (Math.abs(dx) < 5 && dz > 0 && dz < 40) {
@@ -6060,13 +6730,19 @@ const initChat = () => {
         // Sync Ground & Air Vehicle Mesh with Camera if driving
         if (window.inVehicle && window.currentVehicle) {
             const v = window.currentVehicle;
-            const isHeli = v === window.helicopterMesh;
-            v.position.set(camera.position.x, isHeli ? camera.position.y - 2 : 0, camera.position.z);
+            const isAir = (v === window.helicopterMesh || v === window.airplaneMesh);
+            v.position.set(camera.position.x, isAir ? camera.position.y - 2 : 0, camera.position.z);
             v.rotation.y = camera.rotation.y;
             
-            if (isHeli) {
-                if (window.heliRotor) window.heliRotor.rotation.y += 20 * delta;
-                if (window.heliTailRotor) window.heliTailRotor.rotation.x += 20 * delta;
+            if (v === window.helicopterMesh) {
+                if (window.flightEngineOn) {
+                    if (window.heliRotor) window.heliRotor.rotation.y += 20 * delta;
+                    if (window.heliTailRotor) window.heliTailRotor.rotation.x += 20 * delta;
+                }
+            } else if (v === window.airplaneMesh) {
+                if (window.flightEngineOn && v.userData.propeller) {
+                    v.userData.propeller.rotation.z += 30 * delta;
+                }
             }
 
             // Sync to Firebase
@@ -6083,6 +6759,9 @@ const initChat = () => {
             if (window.helicopterMesh && window.heliRotor) {
                 window.heliRotor.rotation.y += 0.5 * delta;
                 window.heliTailRotor.rotation.x += 0.5 * delta;
+            }
+            if (window.airplaneMesh && window.airplaneMesh.userData.propeller) {
+                window.airplaneMesh.userData.propeller.rotation.z += 0.5 * delta;
             }
         }
 
@@ -6135,6 +6814,177 @@ const initChat = () => {
                             child.visible = Boolean(window.hasGasMask);
                         }
                     });
+                }
+            }
+        }
+
+        // ====================================================
+        // VIP DRESSING ROOM UNIFORM CHANGE LOGIC
+        // ====================================================
+        const inDressingRoom = Math.abs(camera.position.x - 60) < 6.5 && Math.abs(camera.position.z - (-150)) < 6.5 && camera.position.y > 0;
+        if (inDressingRoom && STATE.currentUser && STATE.currentUser.username === 'ree1203') {
+            if (!window.inDressingRoomAlert) {
+                window.inDressingRoomAlert = true;
+                showToast("👚 VIP 탈의실에 입장했습니다. [E] 키를 눌러 피복 변경 메뉴를 여십시오!", "#8b5cf6");
+            }
+            if (keys['KeyE'] || keys['e'] || keys['E']) {
+                if (!window.lastDressChangeTime || Date.now() - window.lastDressChangeTime > 500) {
+                    window.lastDressChangeTime = Date.now();
+                    const vdm = document.getElementById('vip-dress-modal');
+                    if (vdm) vdm.style.display = 'flex';
+                    keys['KeyE'] = false; keys['e'] = false; keys['E'] = false;
+                }
+            }
+        } else {
+            window.inDressingRoomAlert = false;
+        }
+
+        // ====================================================
+        // MEDICAL BED HEALING LOGIC
+        // ====================================================
+        let nearBed = null;
+        if (window.medicalBeds) {
+            for (const bed of window.medicalBeds) {
+                const dist = Math.sqrt(Math.pow(camera.position.x - bed.x, 2) + Math.pow(camera.position.z - bed.z, 2));
+                if (dist < 2.0 && camera.position.y < 3.0) {
+                    nearBed = bed;
+                    break;
+                }
+            }
+        }
+
+        if (nearBed) {
+            if (!window.currentHealingBed) {
+                if (window.STATS.hp >= 100) {
+                    if (!window.lastHpFullAlert || Date.now() - window.lastHpFullAlert > 5000) {
+                        showToast("💚 이미 체력이 100%입니다. 치료할 필요가 없습니다.", "#10b981");
+                        window.lastHpFullAlert = Date.now();
+                    }
+                } else {
+                    if (!window.nearBedAlert) {
+                        window.nearBedAlert = true;
+                        showToast(`🏥 의무대 침대 ${nearBed.id}번 발견! [E] 키를 눌러 누워서 수액 치료를 받으십시오.`, "#ef4444");
+                    }
+                }
+            }
+            
+            if (keys['KeyE'] || keys['e'] || keys['E']) {
+                if (!window.lastBedUseTime || Date.now() - window.lastBedUseTime > 500) {
+                    window.lastBedUseTime = Date.now();
+                    keys['KeyE'] = false; keys['e'] = false; keys['E'] = false;
+                    
+                    if (window.currentHealingBed) {
+                        window.currentHealingBed = null;
+                        window.localPlayerPose = 'normal';
+                        camera.position.y = 1.75;
+                        showToast("🚶 수액 치료를 중단하고 침대에서 일어났습니다.", "#f59e0b");
+                    } else {
+                        if (window.STATS.hp >= 100) {
+                            showToast("💚 이미 체력이 100%입니다.", "#10b981");
+                        } else {
+                            window.currentHealingBed = nearBed;
+                            window.localPlayerPose = 'prone';
+                            camera.position.set(nearBed.x, 0.9, nearBed.z);
+                            showToast(`💉 침대 ${nearBed.id}번에 누워 수액 치료를 받기 시작합니다... (초당 +10 HP)`, "#10b981");
+                        }
+                    }
+                }
+            }
+        } else {
+            window.nearBedAlert = false;
+            if (window.currentHealingBed) {
+                window.currentHealingBed = null;
+                window.localPlayerPose = 'normal';
+            }
+        }
+
+        if (window.currentHealingBed) {
+            camera.position.set(window.currentHealingBed.x, 0.9, window.currentHealingBed.z);
+            
+            if (!window.lastHealTick || Date.now() - window.lastHealTick > 1000) {
+                window.lastHealTick = Date.now();
+                if (window.STATS.hp < 100) {
+                    window.STATS.hp = Math.min(100, window.STATS.hp + 10);
+                    showToast(`💉 수액 투여 중... 현재 체력: ${Math.floor(window.STATS.hp)}/100`, "#10b981");
+                    
+                    if (typeof createHealingParticles === 'function') {
+                        createHealingParticles(camera.position);
+                    }
+
+                    if (window.STATS.hp >= 100) {
+                        window.currentHealingBed = null;
+                        window.localPlayerPose = 'normal';
+                        camera.position.y = 1.75;
+                        showToast("💖 체력이 완전히 회복되었습니다! 수액 주사를 제거하고 퇴원합니다.", "#10b981");
+                    }
+                }
+            }
+        }
+
+        // ====================================================
+        // TACTICAL MARCH COURSE MISSION LOGIC
+        // ====================================================
+        if (window.marchActive) {
+            const checkpoints = [
+                { x: -130, z: -130 }, // Checkpoint 1
+                { x: -170, z: -170 }, // Checkpoint 2
+                { x: -210, z: -210 }, // Checkpoint 3
+                { x: -250, z: -250 }  // Checkpoint 4 (Peak)
+            ];
+            
+            // Highlight current target marker in green
+            if (window.marchMarkers && window.marchMarkers.length > 0) {
+                for (let i = 0; i < 4; i++) {
+                    const cylIdx = i * 2;
+                    const flagIdx = i * 2 + 1;
+                    const cyl = window.marchMarkers[cylIdx];
+                    const flag = window.marchMarkers[flagIdx];
+                    if (cyl && flag) {
+                        const isCurrent = (i + 1) === window.marchStep;
+                        cyl.material.color.setHex(isCurrent ? 0x00ff00 : 0xffa500);
+                        flag.material.color.setHex(isCurrent ? 0x00ff00 : 0xff0000);
+                    }
+                }
+            }
+            
+            // Check distance to current checkpoint
+            const currentCp = checkpoints[window.marchStep - 1];
+            if (currentCp) {
+                const distToCp = Math.sqrt(
+                    Math.pow(camera.position.x - currentCp.x, 2) +
+                    Math.pow(camera.position.z - currentCp.z, 2)
+                );
+                
+                if (distToCp < 12.0) {
+                    if (window.marchStep === 4) {
+                        // Success! Reached the mountain peak
+                        window.marchActive = false;
+                        window.marchStep = 0;
+                        
+                        const mHud = document.getElementById('march-hud');
+                        if (mHud) mHud.style.display = 'none';
+                        
+                        // Clean up markers
+                        if (window.marchMarkers) {
+                            window.marchMarkers.forEach(m => scene.remove(m));
+                            window.marchMarkers = [];
+                        }
+                        
+                        // Rewards
+                        const rewardG = 2500;
+                        const rewardExp = 500;
+                        STATE.currentUser.money = (STATE.currentUser.money || 0) + rewardG;
+                        db.ref('users/' + STATE.currentUser.uid).update({ money: STATE.currentUser.money });
+                        gainEXP(rewardExp, "전술 행군 완주");
+                        
+                        showToast(`🏆 산 정복 완료! 행군 완주 성공! (+${rewardG}G, +${rewardExp} EXP)`, "#22c55e");
+                        alert(`🥾 [전술 행군 완주 성공]\n\n고도 60m의 험준한 산악 고지를 완벽히 점령하셨습니다!\n지휘관 포상금: ${rewardG}G\n경험치: ${rewardExp} EXP`);
+                    } else {
+                        // Advance to next checkpoint
+                        window.marchStep++;
+                        showToast(`📍 행군 ${window.marchStep - 1}단계 지점 돌파! 계속 고도를 높이십시오.`, "#deb887");
+                        window.updateMarchHud();
+                    }
                 }
             }
         }
@@ -6710,25 +7560,9 @@ window.onload = () => {
             if (typeof window.toggleNVG === 'function') window.toggleNVG();
         }
         
-        // G key: Enter/Exit ground vehicles
-        if (e.key === 'g' || e.key === 'G') {
+        // F key: Enter/Exit all vehicles (helicopter, airplane, tank, truck)
+        if (e.key === 'f' || e.key === 'F') {
             if (typeof tryEnterVehicle === 'function') tryEnterVehicle();
-        }
-
-        // F key: Helicopter (legacy, kept for ree1203)
-        if ((e.key === 'f' || e.key === 'F') && window.helicopterMesh) {
-            const hPos = window.helicopterMesh.position;
-            const dist = Math.sqrt(Math.pow(camera.position.x - hPos.x, 2) + Math.pow(camera.position.z - hPos.z, 2));
-            if (dist < 15) {
-                if (STATE.currentUser.username !== 'ree1203') { alert("이 헬기는 원수(ree1203) 전용입니다!"); return; }
-                window.inHelicopter = !window.inHelicopter;
-                if (window.inHelicopter) {
-                    alert("🚁 대장 전용 헬기에 탑승했습니다!\n[W/S: 전진/후진] [A/D: 회전] [Q/E: 고도] [F: 내리기]");
-                    camera.position.set(hPos.x, hPos.y + 2, hPos.z);
-                } else {
-                    alert("헬기에서 내렸습니다."); camera.position.y = 1.6;
-                }
-            }
         }
 
         // ESC: Stop shooting mode
@@ -7647,6 +8481,24 @@ window.triggerRollCall = () => {
 window.openGuideModal = () => {
     const gm = document.getElementById('guide-modal');
     if (gm) gm.style.display = 'flex';
+};
+
+window.changeVipSkin = (skinId, skinName) => {
+    if (!STATE.currentUser || STATE.currentUser.username !== 'ree1203') return;
+    
+    window.activeSkin = skinId;
+    window.isDressUniform = (skinId === 'dress_uniform');
+    
+    window.refreshPlayerSkin(window.localPlayerBody, skinId, STATE.currentUser.rank, (skinId === 'camo_jail'));
+    
+    if (db) {
+        db.ref('users/' + STATE.currentUser.uid).update({ activeSkin: skinId });
+    }
+    
+    showToast(`👚 의상을 [${skinName}](으)로 변경했습니다!`, "#a855f7");
+    
+    const vdm = document.getElementById('vip-dress-modal');
+    if (vdm) vdm.style.display = 'none';
 };
 
 window.openCabinetModal = () => {
