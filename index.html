@@ -4,6 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Google AdSense Verification & H5 Game Ads SDK -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7383031215267248" crossorigin="anonymous"></script>
+    <script>
+        window.adsbygoogle = window.adsbygoogle || [];
+        window.adBreak = window.adConfig = function(o) { adsbygoogle.push(o); };
+        
+        adConfig({
+            preloadAdBreaks: 'on',
+            onReady: () => {
+                console.log("Google H5 Ads SDK is ready.");
+            }
+        });
+    </script>
     <script>
         window.errors = [];
         window.onerror = function (msg, url, line, col, error) {
@@ -2077,6 +2090,10 @@
                     <span>❓</span>
                     <span>조작 및 게임 가이드</span>
                 </button>
+                <button id="btn-lobby-free-ad" class="lobby-menu-btn" onclick="window.triggerFreeMoneyAd()" style="background: rgba(245, 158, 11, 0.05) !important; border: 1px solid rgba(245, 158, 11, 0.5) !important; color: #fbbf24 !important;">
+                    <span>📺</span>
+                    <span>무료 군자금 (+1000G)</span>
+                </button>
             </div>
 
             <!-- Deploy Button -->
@@ -3412,6 +3429,33 @@
                 }
             }, 500);
         </script>
+        <!-- 보상형 광고 시뮬레이터 모달 -->
+        <div id="ad-player-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 30000; align-items: center; justify-content: center; backdrop-filter: blur(15px); font-family: 'Pretendard', sans-serif;">
+            <div style="background: #111; border: 2px solid #deb887; border-radius: 20px; padding: 40px; width: 90%; max-width: 550px; text-align: center; box-shadow: 0 0 40px rgba(222, 184, 135, 0.4); position: relative;">
+                <div style="position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; color: #aaa; font-weight: bold; font-family: monospace;">
+                    ADVERTISEMENT
+                </div>
+                
+                <h2 style="color: #deb887; margin-top: 10px; margin-bottom: 25px; font-size: 1.6rem; font-weight: 900; letter-spacing: 1px;">📺 군인 공익 협찬 광고</h2>
+                
+                <!-- Ad Content Player Container -->
+                <div id="ad-content-box" style="background: #000; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 25px; padding: 20px; box-sizing: border-box;">
+                    <div id="ad-text-title" style="font-size: 1.4rem; font-weight: 900; color: #fff; margin-bottom: 10px;">군대리아 스페셜 에디션!</div>
+                    <div id="ad-text-desc" style="font-size: 0.95rem; color: #ccc; max-width: 400px; line-height: 1.5;">바삭한 치킨 패티 and 달콤한 딸기잼의 환상적인 하모니. 오늘 PX에서 만나보세요!</div>
+                    <div id="ad-text-sponsor" style="margin-top: 15px; font-size: 0.8rem; color: #deb887; border: 1px solid #deb887; padding: 4px 10px; border-radius: 4px; background: rgba(222, 184, 135, 0.1);">협찬: 육군 군수사령부 복지단</div>
+                </div>
+                
+                <!-- Countdown & Progress -->
+                <div style="margin-bottom: 15px;">
+                    <div id="ad-timer" style="font-size: 1.1rem; font-weight: 800; color: #ef4444; margin-bottom: 10px;">보상 지급까지 5초 남았습니다...</div>
+                    <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                        <div id="ad-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ef4444, #deb887); transition: width 5s linear;"></div>
+                    </div>
+                </div>
+                
+                <button id="ad-close-btn" style="width: 100%; padding: 14px; background: rgba(255,255,255,0.1); color: #888; border: none; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: not-allowed; transition: 0.3s;" disabled>광고 시청 완료 후 닫기</button>
+            </div>
+        </div>
 </body>
 
 </html>

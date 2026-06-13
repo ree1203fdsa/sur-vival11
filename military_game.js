@@ -7122,8 +7122,9 @@ const initChat = () => {
         deathOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(139,0,0,0.85); backdrop-filter:blur(10px); display:flex; flex-direction:column; align-items:center; justify-content:center; color:white; font-family:Pretendard, sans-serif; z-index:10000; transition: opacity 0.5s;';
         deathOverlay.innerHTML = `
             <h1 style="font-size:3.5rem; font-weight:900; margin-bottom:10px; text-shadow:0 0 20px rgba(0,0,0,0.8); animation: blink 1s infinite;">🚨 전사 (KILLED IN ACTION)</h1>
-            <p style="font-size:1.5rem; margin-bottom:30px; color:#ddd;">${shooterName}님의 총에 맞아 전사하였습니다.</p>
-            <div id="respawn-timer" style="font-size:2rem; font-weight:bold; color:#ffcc00; background:rgba(0,0,0,0.5); padding:10px 30px; border-radius:10px; border:1px solid rgba(255,255,255,0.2);">5초 후 부활합니다...</div>
+            <p style="font-size:1.5rem; margin-bottom:20px; color:#ddd;">${shooterName}님의 총에 맞아 전사하였습니다.</p>
+            <div id="respawn-timer" style="font-size:1.8rem; font-weight:bold; color:#ffcc00; background:rgba(0,0,0,0.5); padding:10px 30px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); margin-bottom:20px;">5초 후 부활합니다...</div>
+            <button id="ad-revive-btn" style="background:#f59e0b; color:black; font-weight:bold; border:none; padding:12px 24px; border-radius:8px; cursor:pointer; font-size:1.2rem; box-shadow:0 0 15px rgba(245,158,11,0.5); transition:0.2s; font-family:'Pretendard', sans-serif;">📺 광고 보고 제자리 즉시 부활</button>
         `;
         document.body.appendChild(deathOverlay);
 
@@ -7172,6 +7173,54 @@ const initChat = () => {
                 respawnPlayer();
             }
         }, 1000);
+
+        // Hook up Ad Revive Button
+        const adBtn = deathOverlay.querySelector('#ad-revive-btn');
+        if (adBtn) {
+            adBtn.onclick = () => {
+                clearInterval(interval); // Stop normal countdown
+                window.showRewardedAd('revive', (success) => {
+                    if (success) {
+                        respawnPlayerInPlace();
+                    } else {
+                        respawnPlayer();
+                    }
+                });
+            };
+        }
+    };
+
+    const respawnPlayerInPlace = () => {
+        if (typeof camera === 'undefined' || !camera) return;
+        const overlay = document.getElementById('death-overlay');
+        if (overlay) overlay.remove();
+
+        window.STATS.hp = 100;
+        window.STATS.hunger = 100;
+        window.STATS.stamina = 100;
+        if (typeof updateStatBars === 'function') updateStatBars();
+
+        if (velocity) velocity.set(0, 0, 0);
+        window.isLocalPlayerDead = false;
+
+        // Clear dead state in Firebase presence
+        if (db && STATE.currentUser && STATE.currentUser.uid) {
+            const localIsJailed = Boolean(STATE.currentUser.jailTime && STATE.currentUser.jailTime > Date.now());
+            db.ref('presence/' + STATE.currentUser.uid).set({
+                x: camera.position.x,
+                y: camera.position.y,
+                z: camera.position.z,
+                ry: camera.rotation.y,
+                name: STATE.currentUser.name || "신병",
+                rank: STATE.currentUser.rank || "이등병",
+                isJailed: localIsJailed,
+                isDead: false,
+                lastSeen: Date.now()
+            });
+            db.ref('users/' + STATE.currentUser.uid + '/hit').remove();
+        }
+
+        showToast("🏥 응급처치를 마치고 현장에서 즉시 부활하였습니다!", "#22c55e");
     };
 
     const respawnPlayer = () => {
@@ -9114,4 +9163,140 @@ window.submitReflectionLetter = () => {
     if (refModal) refModal.style.display = 'none';
     
     window.finishPunishment();
+};
+
+// ====================================================
+// SYSTEM R: REWARDED ADS (보상형 광고 시스템)
+// ====================================================
+const mockAds = [
+    { title: "🥪 군대리아 치킨버거 스페셜", desc: "바삭한 치킨 패티와 달콤한 딸기잼의 환상적인 하모니. 오늘 PX에서 만나보세요!", sponsor: "협찬: 육군 군수사령부 복지단" },
+    { title: "🌶️ 맛다시 고추장 볶음 소스", desc: "밥 한 공기 뚝딱! 전투식량과 최상의 궁합을 자랑하는 군인 필수 밥도둑 소스 PX 전격 판매 중.", sponsor: "협찬: 군인공제회 식품사업부" },
+    { title: "🧥 황금 깔깔이 패션웨어", desc: "겨울철 완벽한 보온성과 트렌디한 디지털 패턴의 조화. 행정반 승인을 받은 최고의 동계 방한복!", sponsor: "협찬: 국방기술품질원 인증 의류" },
+    { title: "🪖 정예 부사관/장교 모집 광고", desc: "대한민국 국방의 미래, 바로 당신입니다. 정예 강군 육군의 일원이 되어 조국 수호의 보람을 느껴보세요!", sponsor: "협찬: 대한민국 국방부 및 육군본부" },
+    { title: "🍪 건빵 1+1 특별 사은행사", desc: "오리지널 쌀건빵과 달콤한 별사탕의 완벽한 조합. 주람 마트(PX)에서 오늘 하루만 1+1 제공!", sponsor: "협찬: 주람복지재단 PX유통본부" }
+];
+
+window.showRewardedAd = (rewardType, callback) => {
+    // If Google H5 Ads SDK is loaded and available
+    if (typeof adBreak === 'function') {
+        adBreak({
+            type: 'reward',
+            name: rewardType,
+            beforeAd: () => {
+                console.log("AdSense H5 Ad starting...");
+            },
+            afterAd: () => {
+                console.log("AdSense H5 Ad finished.");
+            },
+            adDismissed: () => {
+                showToast("⚠️ 광고를 끝까지 시청하지 않아 보상이 지급되지 않았습니다.", "#ff3333");
+                callback(false);
+            },
+            adViewed: () => {
+                callback(true);
+            },
+            adBreakDone: (placementInfo) => {
+                // If real ad was not filled, was blocked, or timed out, fall back to our mock ad modal
+                if (placementInfo && (placementInfo.breakStatus === 'notReady' || placementInfo.breakStatus === 'timeout' || placementInfo.breakStatus === 'error')) {
+                    console.log("Real ad not filled. Falling back to Mock Ad...");
+                    showMockAd(rewardType, callback);
+                }
+            }
+        });
+    } else {
+        // Fallback to Mock Ad directly
+        showMockAd(rewardType, callback);
+    }
+};
+
+const showMockAd = (rewardType, callback) => {
+    const modal = document.getElementById('ad-player-modal');
+    if (!modal) {
+        console.error("Ad player modal element not found.");
+        return callback(false);
+    }
+
+    // Select random ad content
+    const randomAd = mockAds[Math.floor(Math.random() * mockAds.length)];
+    document.getElementById('ad-text-title').textContent = randomAd.title;
+    document.getElementById('ad-text-desc').textContent = randomAd.desc;
+    document.getElementById('ad-text-sponsor').textContent = randomAd.sponsor;
+
+    // Reset UI state
+    const timerText = document.getElementById('ad-timer');
+    const progressBar = document.getElementById('ad-progress-bar');
+    const closeBtn = document.getElementById('ad-close-btn');
+
+    timerText.textContent = "보상 지급까지 5초 남았습니다...";
+    timerText.style.color = "#ef4444";
+    
+    progressBar.style.transition = 'none';
+    progressBar.style.width = '0%';
+    // Force a reflow
+    void progressBar.offsetWidth;
+    progressBar.style.transition = 'width 5s linear';
+    progressBar.style.width = '100%';
+
+    closeBtn.disabled = true;
+    closeBtn.textContent = "광고 시청 완료 후 닫기";
+    closeBtn.style.background = "rgba(255,255,255,0.1)";
+    closeBtn.style.color = "#888";
+    closeBtn.style.cursor = "not-allowed";
+
+    // Show modal
+    modal.style.display = 'flex';
+
+    let countdown = 5;
+    const adTimerInterval = setInterval(() => {
+        countdown--;
+        if (countdown > 0) {
+            timerText.textContent = `보상 지급까지 ${countdown}초 남았습니다...`;
+        } else {
+            clearInterval(adTimerInterval);
+            timerText.textContent = "✅ 광고 시청 완료! 보상이 지급되었습니다.";
+            timerText.style.color = "#22c55e";
+
+            // Enable close button
+            closeBtn.disabled = false;
+            closeBtn.textContent = "닫기 및 보상 수령";
+            closeBtn.style.background = "linear-gradient(135deg, #4b5320, #556b2f)";
+            closeBtn.style.color = "white";
+            closeBtn.style.cursor = "pointer";
+            closeBtn.style.border = "1px solid #deb887";
+            closeBtn.style.boxShadow = "0 4px 15px rgba(75, 83, 32, 0.5)";
+        }
+    }, 1000);
+
+    closeBtn.onclick = () => {
+        if (countdown <= 0) {
+            modal.style.display = 'none';
+            callback(true);
+        }
+    };
+};
+
+window.triggerFreeMoneyAd = () => {
+    if (!STATE.currentUser || STATE.currentUser.dashboardOnly) return;
+    
+    window.showRewardedAd('free_money', (success) => {
+        if (success) {
+            const rewardG = 1000;
+            STATE.currentUser.money = (STATE.currentUser.money || 0) + rewardG;
+            if (db && STATE.currentUser.uid) {
+                db.ref('users/' + STATE.currentUser.uid).update({ money: STATE.currentUser.money });
+            }
+            
+            // Sync UI in Lobby if lobby stats are rendered
+            const lobbyMoney = document.getElementById('lobby-money');
+            if (lobbyMoney) {
+                lobbyMoney.textContent = STATE.currentUser.money.toLocaleString();
+            }
+            const hudMoney = document.getElementById('hud-money');
+            if (hudMoney) {
+                hudMoney.textContent = STATE.currentUser.money.toLocaleString();
+            }
+            
+            showToast(`💰 광고 시청 보상으로 군자금 1,000G가 입금되었습니다!`, "#fbbf24");
+        }
+    });
 };
