@@ -2114,13 +2114,13 @@
             <button class="secondary" onclick="location.reload()" style="width: 100%;">
                 ◀ 로그아웃 (처음 화면으로)
             </button>
+        </div>
 
-            <!-- AdSense Compliance Footer Links -->
-            <div style="margin-top: 15px; display: flex; justify-content: center; gap: 15px; font-size: 0.8rem; color: #888; font-family: 'Pretendard', sans-serif;">
-                <span style="cursor: pointer; text-decoration: underline; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#888'" onclick="document.getElementById('privacy-modal').style.display='flex'">개인정보처리방침 (Privacy Policy)</span>
-                <span>|</span>
-                <span style="cursor: pointer; text-decoration: underline; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#888'" onclick="document.getElementById('terms-modal').style.display='flex'">이용약관 (Terms of Service)</span>
-            </div>
+        <!-- AdSense Compliance Footer Links (Positioned cleanly at screen bottom) -->
+        <div style="position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; font-size: 0.75rem; color: rgba(255, 255, 255, 0.35); font-family: 'Pretendard', sans-serif; letter-spacing: 0.5px;">
+            <span style="cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='rgba(255, 255, 255, 0.35)'" onclick="document.getElementById('privacy-modal').style.display='flex'">개인정보처리방침 (Privacy Policy)</span>
+            <span style="opacity: 0.3;">|</span>
+            <span style="cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='rgba(255, 255, 255, 0.35)'" onclick="document.getElementById('terms-modal').style.display='flex'">이용약관 (Terms of Service)</span>
         </div>
     </div>
 
