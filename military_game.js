@@ -832,7 +832,8 @@ const startGame = () => {
                         
                         window.STATS.hp = Math.max(0, window.STATS.hp - finalDamage);
                         if (typeof updateStatBars === 'function') updateStatBars();
-                        
+                        if (typeof window.applyDamageEffects === 'function') window.applyDamageEffects(finalDamage);
+
                         showToast(`💥 ${val.shooter} 요원에게 피격당했습니다! (-${finalDamage} HP)`, "#ef4444");
                         if (typeof window.triggerDamageIndicator === 'function') {
                             window.triggerDamageIndicator(val.shooterUid);
@@ -938,7 +939,30 @@ const initTrainingCommandListener = () => {
             }
         };
     }
-    
+
+    const bandageBtn = document.getElementById('btn-bandage');
+    if (bandageBtn) {
+        bandageBtn.onclick = () => {
+            const now = Date.now();
+            if (now - (window.lastBandageTime || 0) < 15000) {
+                const remain = Math.ceil((15000 - (now - window.lastBandageTime)) / 1000);
+                if (typeof showToast === 'function') showToast(`🩹 붕대는 ${remain}초 후 다시 사용할 수 있습니다.`, "#ffaa00");
+                return;
+            }
+            if (!window.STATS.bleeding && window.STATS.hp >= 95) {
+                if (typeof showToast === 'function') showToast("🩹 지금은 붕대가 필요하지 않습니다.", "#888888");
+                return;
+            }
+            window.lastBandageTime = now;
+            window.STATS.bleeding = false;
+            const bEl = document.getElementById('hud-bleeding');
+            if (bEl) bEl.style.display = 'none';
+            window.STATS.hp = Math.min(100, window.STATS.hp + 15);
+            if (typeof updateStatBars === 'function') updateStatBars();
+            if (typeof showToast === 'function') showToast("🩹 붕대를 사용해 지혈하고 응급처치를 했습니다. (+15 HP)", "#22c55e");
+        };
+    }
+
     // Voice button (Touch Start/End for P-key behavior)
     const voiceBtn = document.getElementById('btn-voice');
     const startVoice = () => {
@@ -4223,6 +4247,9 @@ const initChat = () => {
 
             return group;
         };
+        // Exposed globally: other top-level functions (updateOtherPlayers, tutorial instructor, boss spawn)
+        // are declared outside this closure and need access to this builder.
+        window.createPlayerModel = createPlayerModel;
 
         window.refreshPlayerSkin = (mesh, skinId, rank, isJailed) => {
             if (!mesh) return;
@@ -5423,7 +5450,17 @@ const initChat = () => {
         // ====================================================
         // SYSTEM 1: STAMINA / HUNGER / HP
         // ====================================================
-        window.STATS = { hp: 100, hunger: 100, stamina: 100 };
+        window.STATS = { hp: 100, hunger: 100, stamina: 100, bleeding: false };
+        window.lastBandageTime = 0;
+
+        window.applyDamageEffects = (damage) => {
+            if (damage >= 15 && !window.STATS.bleeding && Math.random() < 0.5) {
+                window.STATS.bleeding = true;
+                const el = document.getElementById('hud-bleeding');
+                if (el) el.style.display = 'block';
+                if (typeof showToast === 'function') showToast("🩸 출혈이 시작되었습니다! 붕대로 지혈하세요.", "#ff3b3b");
+            }
+        };
 
         const updateStatBars = () => {
             const s = window.STATS;
@@ -5456,7 +5493,15 @@ const initChat = () => {
                 }
                 window.STATS.hunger = Math.max(0, window.STATS.hunger - 0.3);
                 if (window.STATS.hunger === 0) window.STATS.hp = Math.max(0, window.STATS.hp - 0.5);
-                if (window.STATS.hp === 0) { window.STATS.hp = 30; window.STATS.hunger = 50; alert('⚠️ 체력이 바닥났습니다! 응급처치로 회복했습니다. 빨리 식사하세요!'); }
+
+                if (window.STATS.bleeding) {
+                    window.STATS.hp = Math.max(0, window.STATS.hp - 3);
+                    if (window.STATS.hp <= 0) {
+                        triggerLocalPlayerDeath("출혈로 인한 사망");
+                    }
+                }
+
+                if (window.STATS.hp === 0) { window.STATS.hp = 30; window.STATS.hunger = 50; window.STATS.bleeding = false; const bEl = document.getElementById('hud-bleeding'); if (bEl) bEl.style.display = 'none'; alert('⚠️ 체력이 바닥났습니다! 응급처치로 회복했습니다. 빨리 식사하세요!'); }
                 
                 // CBRN Gas Room damage check
                 const inCbrnRoom = Math.abs(camera.position.x - (-120)) < 9.0 && Math.abs(camera.position.z - (-100)) < 9.0 && camera.position.y > 0;
@@ -5751,6 +5796,132 @@ const initChat = () => {
         }
         window.spawnAITargetBots = spawnAITargetBots;
 
+        // --- 3b. AI Enemy Soldiers (patrol / engage / die) ---
+        window.aiEnemies = [];
+        const AI_ENEMY_SPAWNS = [
+            { x: 60, z: -40, waypoints: [{x:60,z:-40},{x:90,z:-40},{x:90,z:-70},{x:60,z:-70}] },
+            { x: -60, z: 50, waypoints: [{x:-60,z:50},{x:-90,z:50},{x:-90,z:80},{x:-60,z:80}] },
+            { x: 20, z: 100, waypoints: [{x:20,z:100},{x:50,z:100},{x:50,z:130},{x:20,z:130}] },
+            { x: -30, z: -100, waypoints: [{x:-30,z:-100},{x:-30,z:-130},{x:0,z:-130},{x:0,z:-100}] }
+        ];
+
+        function spawnAIEnemies() {
+            window.aiEnemies.forEach(e => scene.remove(e.mesh));
+            window.aiEnemies = [];
+
+            AI_ENEMY_SPAWNS.forEach((spawn, i) => {
+                const mesh = createPlayerModel(0x6b1010);
+                mesh.position.set(spawn.x, 0, spawn.z);
+                scene.add(mesh);
+
+                window.aiEnemies.push({
+                    id: 'ai_enemy_' + i,
+                    mesh: mesh,
+                    hp: 100,
+                    maxHp: 100,
+                    state: 'patrol',
+                    waypoints: spawn.waypoints,
+                    wpIndex: 0,
+                    speed: 1.8,
+                    detectRange: 35,
+                    attackRange: 28,
+                    lastShotTime: 0,
+                    fireInterval: 1400,
+                    dead: false
+                });
+            });
+        }
+        window.spawnAIEnemies = spawnAIEnemies;
+
+        function updateAIEnemies(delta, timeMs) {
+            if (!window.aiEnemies || !camera) return;
+            const playerPos = camera.position;
+
+            window.aiEnemies.forEach(enemy => {
+                if (enemy.dead) return;
+                const mesh = enemy.mesh;
+                const distToPlayer = mesh.position.distanceTo(playerPos);
+
+                if (distToPlayer <= enemy.detectRange) {
+                    enemy.state = 'engage';
+                } else if (enemy.state === 'engage' && distToPlayer > enemy.detectRange * 1.4) {
+                    enemy.state = 'patrol';
+                }
+
+                if (enemy.state === 'patrol') {
+                    const target = enemy.waypoints[enemy.wpIndex];
+                    const dx = target.x - mesh.position.x;
+                    const dz = target.z - mesh.position.z;
+                    const dist = Math.sqrt(dx * dx + dz * dz);
+                    if (dist < 1.5) {
+                        enemy.wpIndex = (enemy.wpIndex + 1) % enemy.waypoints.length;
+                    } else {
+                        mesh.position.x += (dx / dist) * enemy.speed * delta;
+                        mesh.position.z += (dz / dist) * enemy.speed * delta;
+                        mesh.rotation.y = Math.atan2(dx, dz);
+                    }
+                } else if (enemy.state === 'engage') {
+                    const dx = playerPos.x - mesh.position.x;
+                    const dz = playerPos.z - mesh.position.z;
+                    const dist = Math.sqrt(dx * dx + dz * dz);
+                    mesh.rotation.y = Math.atan2(dx, dz);
+
+                    if (dist > enemy.attackRange) {
+                        mesh.position.x += (dx / dist) * enemy.speed * 1.3 * delta;
+                        mesh.position.z += (dz / dist) * enemy.speed * 1.3 * delta;
+                    } else if (timeMs - enemy.lastShotTime > enemy.fireInterval) {
+                        enemy.lastShotTime = timeMs;
+                        const hitChance = Math.max(0.15, 0.65 - dist / enemy.attackRange * 0.4);
+                        if (Math.random() < hitChance && !window.godModeActive) {
+                            const dmg = 6 + Math.floor(Math.random() * 8);
+                            const finalDamage = window.hasArmor ? Math.round(dmg * 0.5) : dmg;
+                            window.STATS.hp = Math.max(0, window.STATS.hp - finalDamage);
+                            if (typeof updateStatBars === 'function') updateStatBars();
+                            if (typeof window.applyDamageEffects === 'function') window.applyDamageEffects(finalDamage);
+                            if (typeof showToast === 'function') showToast(`💥 적군에게 피격당했습니다! (-${finalDamage} HP)`, "#ef4444");
+                            if (window.STATS.hp <= 0 && typeof triggerLocalPlayerDeath === 'function') {
+                                triggerLocalPlayerDeath("AI 적군");
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        window.updateAIEnemies = updateAIEnemies;
+
+        window.damageAIEnemy = (enemy, damage, hitPoint) => {
+            if (enemy.dead) return;
+            enemy.hp = Math.max(0, enemy.hp - damage);
+            if (typeof window.spawnBloodSplatMesh === 'function' && hitPoint) {
+                window.spawnBloodSplatMesh(hitPoint.x, 0.05, hitPoint.z);
+            }
+            if (enemy.hp <= 0) {
+                enemy.dead = true;
+                enemy.mesh.rotation.x = Math.PI / 2;
+                if (typeof gainEXP === 'function') gainEXP(30, 'AI 적군 제거');
+                const reward = 200;
+                STATE.currentUser.money = (STATE.currentUser.money || 0) + reward;
+                if (db) db.ref('users/' + STATE.currentUser.uid).update({ money: STATE.currentUser.money });
+                if (typeof showToast === 'function') showToast(`🎯 AI 적군을 제거했습니다! (+${reward}G, +30 EXP)`, "#10b981");
+                setTimeout(() => {
+                    scene.remove(enemy.mesh);
+                    const respawn = AI_ENEMY_SPAWNS[parseInt(enemy.id.split('_').pop())];
+                    setTimeout(() => {
+                        const newMesh = createPlayerModel(0x6b1010);
+                        newMesh.position.set(respawn.x, 0, respawn.z);
+                        scene.add(newMesh);
+                        enemy.mesh = newMesh;
+                        enemy.hp = enemy.maxHp;
+                        enemy.dead = false;
+                        enemy.state = 'patrol';
+                        enemy.wpIndex = 0;
+                    }, 15000);
+                }, 1200);
+            } else if (typeof showToast === 'function') {
+                showToast(`🎯 AI 적군 명중! (HP ${enemy.hp}/${enemy.maxHp})`, "#ff8800");
+            }
+        };
+
         // --- 4. Obstacle Course System ---
         function initObstacleCourseModels() {
             const courseGroup = new THREE.Group();
@@ -6026,27 +6197,48 @@ const initChat = () => {
             
             const targets = [];
             const playerMap = {};
-            
+            const enemyMap = {};
+
             Object.keys(otherPlayers).forEach(uid => {
                 const mesh = otherPlayers[uid].mesh;
                 targets.push(mesh);
                 playerMap[mesh.uuid] = uid;
             });
-            
+
+            if (window.aiEnemies) {
+                window.aiEnemies.forEach(enemy => {
+                    if (!enemy.dead) {
+                        targets.push(enemy.mesh);
+                        enemyMap[enemy.mesh.uuid] = enemy;
+                    }
+                });
+            }
+
             const hits = raycaster.intersectObjects(targets, true);
             if (hits.length > 0) {
                 const closestPlayerHit = hits[0];
                 let hitObj = closestPlayerHit.object;
                 let hitUid = null;
-                
+                let hitEnemy = null;
+
                 while (hitObj && hitObj !== scene) {
                     if (playerMap[hitObj.uuid]) {
                         hitUid = playerMap[hitObj.uuid];
                         break;
                     }
+                    if (enemyMap[hitObj.uuid]) {
+                        hitEnemy = enemyMap[hitObj.uuid];
+                        break;
+                    }
                     hitObj = hitObj.parent;
                 }
-                
+
+                if (hitEnemy) {
+                    const damage = (window.WEAPONS_CONFIG && window.WEAPONS_CONFIG[weaponId]) ? window.WEAPONS_CONFIG[weaponId].damage : 25;
+                    if (typeof window.damageAIEnemy === 'function') window.damageAIEnemy(hitEnemy, damage, closestPlayerHit.point);
+                    return;
+                }
+
                 if (hitUid) {
                     const solids = [];
                     scene.traverse(child => {
@@ -7139,6 +7331,7 @@ const initChat = () => {
         }, 1000);
 
         if (typeof spawnAITargetBots === 'function') spawnAITargetBots();
+        if (typeof spawnAIEnemies === 'function') spawnAIEnemies();
         animate();
     };
 
@@ -7494,6 +7687,9 @@ const initChat = () => {
                 }
             });
         }
+
+        // AI Enemy soldiers: patrol / engage / shoot
+        if (typeof updateAIEnemies === 'function') updateAIEnemies(delta, time);
 
         // Slide AI target bots
         if (window.aiTargetBots) {
@@ -8553,7 +8749,7 @@ const initChat = () => {
             const isCreator = (uid === 'master_ree' || p.name === '이주람' || p.username === 'ree1203');
             if (!otherPlayers[uid]) {
                 // Create new complex player mesh
-                const group = createPlayerModel(isCreator ? 0x000000 : 0x4b5320);
+                const group = window.createPlayerModel(isCreator ? 0x000000 : 0x4b5320);
                 if (isCreator) {
                     convertToCreatorModel(group, 5);
                 }
@@ -8722,7 +8918,7 @@ const initChat = () => {
         if (instructor) return alert("이미 교육이 진행 중이다!");
         
         // Create Instructor Model (Red Beret)
-        instructor = createPlayerModel(0x222222); // Black uniform
+        instructor = window.createPlayerModel(0x222222); // Black uniform
         const beret = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 12), new THREE.MeshStandardMaterial({color: 0x8b0000}));
         beret.position.y = 1.0; beret.rotation.x = 0.2;
         instructor.children[0].add(beret); // Add to head
@@ -10886,7 +11082,7 @@ window.summonCreatorBoss = (bossType = 'creator') => {
     }
     window.activeLootDrops = [];
 
-    const group = createPlayerModel(config.color);
+    const group = window.createPlayerModel(config.color);
     if (bossType === 'creator') {
         convertToCreatorModel(group, 1); // Start at stage 1
     }
