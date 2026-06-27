@@ -53,7 +53,9 @@ const LOCATIONS = {
     "준장실 (한우주)": { x: -60, z: -150, color: 0x1e3a8a, size: [20, 10, 20] },
     "탈의실": { x: 60, z: -150, color: 0x8b5cf6, size: [15, 8, 15] },
     "의무대": { x: -120, z: -20, color: 0xb91c1c, size: [20, 8, 20] },
-    "활주로": { x: 200, z: 0, color: 0x222222, size: [50, 0.1, 300] }
+    "활주로": { x: 200, z: 0, color: 0x222222, size: [50, 0.1, 300] },
+    "제작진 본부 (ree1203)": { x: -25, z: -40, color: 0xff0055, size: [10, 6, 10] },
+    "부제작진 본부 (한space)": { x: 25, z: -40, color: 0x3b82f6, size: [10, 6, 10] }
 };
 
 const JAIL_CONFIG = {
@@ -90,6 +92,40 @@ const showScreen = (id) => {
     document.getElementById(id).classList.add('active');
 };
 window.showScreen = showScreen;
+
+window.enterGameField = () => {
+    const lobby = document.getElementById('lobby-screen');
+    if (lobby) {
+        lobby.classList.remove('active');
+        lobby.style.display = 'none';
+        lobby.style.opacity = '0';
+        lobby.style.pointerEvents = 'none';
+        lobby.style.zIndex = '0';
+    }
+
+    const game = document.getElementById('game-screen');
+    if (game) {
+        game.classList.add('active');
+        game.style.display = 'flex';
+        game.style.opacity = '1';
+        game.style.zIndex = '20';
+    }
+
+    const canvas = document.getElementById('game-canvas');
+    if (canvas) {
+        canvas.style.display = 'block';
+        canvas.style.opacity = '1';
+    }
+};
+
+window.startCreatorBattleFromLobby = () => {
+    window.enterGameField();
+    setTimeout(() => {
+        if (typeof window.summonCreatorBoss === 'function') {
+            window.summonCreatorBoss('creator');
+        }
+    }, 700);
+};
 
 const initAuth = () => {
     document.getElementById('btn-login').onclick = () => {
@@ -195,7 +231,37 @@ const showLobby = () => {
     try {
         // Show lobby screen active overlay
         const lobbyScreen = document.getElementById('lobby-screen');
-        if (lobbyScreen) lobbyScreen.classList.add('active');
+        if (lobbyScreen) {
+            lobbyScreen.style.display = '';
+            lobbyScreen.style.opacity = '';
+            lobbyScreen.style.pointerEvents = '';
+            lobbyScreen.classList.add('active');
+        }
+
+        window.enterGameField = () => {
+            const ls = document.getElementById('lobby-screen');
+            if (ls) {
+                ls.classList.remove('active');
+                ls.style.display = 'none';
+                ls.style.opacity = '0';
+                ls.style.pointerEvents = 'none';
+                ls.style.zIndex = '0';
+            }
+
+            const gs = document.getElementById('game-screen');
+            if (gs) {
+                gs.classList.add('active');
+                gs.style.display = 'flex';
+                gs.style.opacity = '1';
+                gs.style.zIndex = '20';
+            }
+
+            const canvas = document.getElementById('game-canvas');
+            if (canvas) {
+                canvas.style.display = 'block';
+                canvas.style.opacity = '1';
+            }
+        };
 
         // Show controls guide modal once per session
         if (!sessionStorage.getItem('tacticalGuideShown')) {
@@ -222,6 +288,18 @@ const showLobby = () => {
             if (rSel) rSel.value = STATE.currentUser.militaryRole || '소총수';
 
             const isRee = STATE.currentUser.username === 'ree1203';
+            const avatarBox = document.querySelector('#lobby-screen .avatar-box');
+            if (avatarBox) {
+                if (isRee) {
+                    avatarBox.innerHTML = '<div style="font-size:1.65rem; line-height:1;">👑</div><div style="font-size:0.68rem; color:#f0abfc; font-weight:900; margin-top:3px;">BOSS</div>';
+                    avatarBox.style.borderColor = '#d946ef';
+                    avatarBox.style.boxShadow = '0 0 18px rgba(217,70,239,0.45)';
+                } else {
+                    avatarBox.innerHTML = '🎖️';
+                    avatarBox.style.borderColor = '';
+                    avatarBox.style.boxShadow = '';
+                }
+            }
             const rollcallBtn = document.getElementById('btn-lobby-rollcall');
             const cabinetBtn = document.getElementById('btn-lobby-cabinet');
             if (rollcallBtn) rollcallBtn.style.display = isRee ? '' : 'none';
@@ -253,6 +331,16 @@ const showLobby = () => {
                 promoPending.style.display = STATE.currentUser.promotionPending ? 'block' : 'none';
             }
         };
+        // Simulated live network ping updater
+        if (window.lobbyPingInterval) clearInterval(window.lobbyPingInterval);
+        window.lobbyPingInterval = setInterval(() => {
+            const pingEl = document.getElementById('lobby-ping');
+            if (pingEl) {
+                const randomPing = Math.floor(Math.random() * 15) + 18; // 18ms - 32ms
+                pingEl.textContent = `PING: ${randomPing}ms`;
+            }
+        }, 3000);
+
         updateLobbyStats();
 
         // Listen to real-time updates for Lobby stats
@@ -298,12 +386,27 @@ const showLobby = () => {
             };
         }
 
+        const creatorBattleBtn = document.getElementById('btn-lobby-creator-battle');
+        if (creatorBattleBtn) {
+            creatorBattleBtn.onclick = () => {
+                if (typeof window.enterGameField === 'function') window.enterGameField();
+                
+                const deployBtn = document.getElementById('btn-deploy-field');
+                if (deployBtn) deployBtn.click();
+                
+                setTimeout(() => {
+                    if (typeof window.summonCreatorBoss === 'function') {
+                        window.summonCreatorBoss();
+                    }
+                }, 1000);
+            };
+        }
+
         // Deploy Field Button
         const deployBtn = document.getElementById('btn-deploy-field');
         if (deployBtn) {
             deployBtn.onclick = () => {
-                const ls = document.getElementById('lobby-screen');
-                if (ls) ls.classList.remove('active');
+                if (typeof window.enterGameField === 'function') window.enterGameField();
                 showToast("⚔️ 작전 구역에 배치되었습니다. 대기선으로 이동하세요!", "#deb887");
                 
                 // Request pointer lock for PC mouse looking
@@ -1745,7 +1848,7 @@ const initChat = () => {
             const h = data.size[1];
             const d = data.size[2];
             
-            const wallMat = new THREE.MeshStandardMaterial({ color: data.color, roughness: 0.7 });
+            const wallMat = new THREE.MeshStandardMaterial({ color: data.color, roughness: 0.7, side: THREE.DoubleSide });
             const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.3 });
             const glassMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, roughness: 0.1, transparent: true, opacity: 0.6 });
             const roofRedMat = new THREE.MeshStandardMaterial({ color: 0x8b3a3a, roughness: 0.8 });
@@ -1808,6 +1911,34 @@ const initChat = () => {
                     const signTex = generateLogoTexture('⭐ 준 장 실 (H.W.J OFFICE)', '#1e3a8a', '#ffd700', 20);
                     const sign = new THREE.Mesh(new THREE.BoxGeometry(14, 2, 0.2), new THREE.MeshStandardMaterial({ map: signTex }));
                     sign.position.set(0, h * 0.9 + 0.5, d/2 + 0.1);
+                    group.add(sign);
+                    break;
+                }
+
+                case "제작진 본부 (ree1203)": {
+                    const block = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: 0xff0055, roughness: 0.5, metalness: 0.1 }));
+                    block.position.y = h / 2;
+                    block.castShadow = true; block.receiveShadow = true;
+                    group.add(block);
+
+                    // Signboard
+                    const signTex = generateLogoTexture('👑 제작진 (ree1203)', '#ff0055', '#ffffff', 20);
+                    const sign = new THREE.Mesh(new THREE.BoxGeometry(w - 1, 1.8, 0.2), new THREE.MeshStandardMaterial({ map: signTex }));
+                    sign.position.set(0, h + 0.5, d/2 + 0.1);
+                    group.add(sign);
+                    break;
+                }
+
+                case "부제작진 본부 (한space)": {
+                    const block = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.5, metalness: 0.1 }));
+                    block.position.y = h / 2;
+                    block.castShadow = true; block.receiveShadow = true;
+                    group.add(block);
+
+                    // Signboard
+                    const signTex = generateLogoTexture('⭐ 부제작진 (한space)', '#3b82f6', '#ffffff', 18);
+                    const sign = new THREE.Mesh(new THREE.BoxGeometry(w - 1, 1.8, 0.2), new THREE.MeshStandardMaterial({ map: signTex }));
+                    sign.position.set(0, h + 0.5, d/2 + 0.1);
                     group.add(sign);
                     break;
                 }
@@ -3291,6 +3422,598 @@ const initChat = () => {
 
         // --- Camouflage Materials defined at top of init3D ---
 
+        const generateRainbowMaterial = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            // Base dark carbon metal
+            ctx.fillStyle = '#0f0f12';
+            ctx.fillRect(0, 0, 256, 256);
+            
+            // Add high-quality brushed metal/scratch noise
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+            for (let i = 0; i < 80; i++) {
+                const y = Math.random() * 256;
+                const h = Math.random() * 2 + 1;
+                ctx.fillRect(0, y, 256, h);
+            }
+            
+            // Draw neon glowing border with ultra-saturated colors
+            const gradient = ctx.createLinearGradient(0, 0, 256, 256);
+            gradient.addColorStop(0, '#ff0066');    // Vibrant Pink-Red
+            gradient.addColorStop(0.2, '#ffff00');   // Pure Neon Yellow
+            gradient.addColorStop(0.4, '#00ff33');   // Pure Neon Green
+            gradient.addColorStop(0.6, '#00ffff');   // Pure Neon Cyan
+            gradient.addColorStop(0.8, '#a855f7');   // Bright Neon Purple
+            gradient.addColorStop(1, '#ff00ff');     // Vibrant Magenta
+            
+            // Glow Layer 1 (Outer Blur)
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 14;
+            ctx.shadowColor = '#a855f7';
+            ctx.shadowBlur = 18;
+            ctx.strokeRect(10, 10, 236, 236);
+            
+            // Glow Layer 2 (Inner Core)
+            ctx.lineWidth = 6;
+            ctx.shadowColor = '#ffffff';
+            ctx.shadowBlur = 6;
+            ctx.strokeRect(10, 10, 236, 236);
+            
+            // Reset shadow for inner panel lines
+            ctx.shadowBlur = 0;
+            
+            // Draw subtle inner panel lines to look techy
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(20, 20, 216, 216);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.magFilter = THREE.LinearFilter;
+            texture.minFilter = THREE.LinearMipmapLinearFilter;
+            
+            return new THREE.MeshStandardMaterial({
+                map: texture,
+                emissiveMap: texture,
+                emissive: new THREE.Color(0xffffff),
+                emissiveIntensity: 1.8, // moderate self-illumination/glow intensity
+                roughness: 0.15,
+                metalness: 0.85
+            });
+        };
+
+        const generateStageMaterial = (stage) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            // Base carbon metal
+            ctx.fillStyle = '#0f0f12';
+            ctx.fillRect(0, 0, 256, 256);
+            
+            // Subtle scratch noise
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+            for (let i = 0; i < 60; i++) {
+                const y = Math.random() * 256;
+                const h = Math.random() * 2 + 1;
+                ctx.fillRect(0, y, 256, h);
+            }
+            
+            // Outlines base
+            let borderGlow = '#a855f7';
+            let borderCore = '#ffffff';
+            let drawsStars = false;
+            
+            if (stage === 1) {
+                borderGlow = '#ffd700'; // Yellow glow
+                borderCore = '#ffffaa';
+            } else if (stage === 2) {
+                borderGlow = '#d946ef'; // Pink/Purple glow
+                borderCore = '#ffddff';
+            } else if (stage === 3) {
+                borderGlow = '#a855f7'; // Purple glow
+                borderCore = '#f3e8ff';
+            } else if (stage === 5) {
+                borderGlow = '#ec4899'; // Deep magenta/pink
+                borderCore = '#ffd700';  // Golden core outline!
+                drawsStars = true;
+            }
+            
+            // Glow layer 1
+            ctx.strokeStyle = borderGlow;
+            ctx.lineWidth = 14;
+            ctx.shadowColor = borderGlow;
+            ctx.shadowBlur = 18;
+            ctx.strokeRect(10, 10, 236, 236);
+            
+            // Glow layer 2
+            ctx.lineWidth = 6;
+            ctx.shadowColor = borderCore;
+            ctx.shadowBlur = 6;
+            ctx.strokeRect(10, 10, 236, 236);
+            
+            // Reset shadows
+            ctx.shadowBlur = 0;
+            
+            if (drawsStars) {
+                // Add constellations/stars for stage 5
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                for (let i = 0; i < 15; i++) {
+                    const x = Math.random() * 216 + 20;
+                    const y = Math.random() * 216 + 20;
+                    const r = Math.random() * 2 + 1;
+                    ctx.beginPath();
+                    ctx.arc(x, y, r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Draw some gold star cross lines
+                ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 3; i++) {
+                    const x = Math.random() * 156 + 50;
+                    const y = Math.random() * 156 + 50;
+                    ctx.beginPath();
+                    ctx.moveTo(x - 10, y);
+                    ctx.lineTo(x + 10, y);
+                    ctx.moveTo(x, y - 10);
+                    ctx.lineTo(x, y + 10);
+                    ctx.stroke();
+                }
+            } else {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(20, 20, 216, 216);
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.magFilter = THREE.LinearFilter;
+            texture.minFilter = THREE.LinearMipmapLinearFilter;
+            
+            return new THREE.MeshStandardMaterial({
+                map: texture,
+                emissiveMap: texture,
+                emissive: new THREE.Color(stage === 5 ? 0x6d28d9 : (stage === 1 ? 0xd97706 : 0x444444)),
+                emissiveIntensity: stage === 5 ? 2.5 : (stage === 1 ? 1.0 : 1.5),
+                roughness: 0.15,
+                metalness: 0.85
+            });
+        };
+
+        const convertToCreatorModel = (mesh, stage = 4) => {
+            if (!mesh) return;
+            mesh.userData.isCreator = true;
+            mesh.userData.creatorStage = stage;
+
+            if (!window.creatorStageMaterials) {
+                window.creatorStageMaterials = {};
+            }
+            if (!window.creatorStageMaterials[1]) window.creatorStageMaterials[1] = generateStageMaterial(1);
+            if (!window.creatorStageMaterials[2]) window.creatorStageMaterials[2] = generateStageMaterial(2);
+            if (!window.creatorStageMaterials[3]) window.creatorStageMaterials[3] = generateStageMaterial(3);
+            if (!window.creatorStageMaterials[4]) window.creatorStageMaterials[4] = generateRainbowMaterial();
+            if (!window.creatorStageMaterials[5]) window.creatorStageMaterials[5] = generateStageMaterial(5);
+
+            const stageMat = window.creatorStageMaterials[stage];
+
+            mesh.traverse(child => {
+                if (child.isMesh) {
+                    if (['torso', 'head', 'lArm', 'rArm', 'lLeg', 'rLeg', 'lBoot', 'rBoot'].includes(child.name)) {
+                        child.material = stageMat;
+                    }
+                }
+            });
+
+            // Adjust scale based on stage
+            const scales = { 1: 0.75, 2: 0.88, 3: 1.0, 4: 1.15, 5: 1.3 };
+            const currentScale = scales[stage] || 1.0;
+            mesh.scale.set(currentScale, currentScale, currentScale);
+
+            // Hide standard gears
+            const hood = mesh.getObjectByName('hood');
+            const backpack = mesh.getObjectByName('backpack');
+            const sleepingBag = mesh.getObjectByName('sleepingBag');
+            const beret = mesh.getObjectByName('beret');
+            const helmet = mesh.getObjectByName('helmet');
+            const goggles = mesh.getObjectByName('goggles');
+            const vest = mesh.getObjectByName('vest');
+            const officerCap = mesh.getObjectByName('officerCap');
+            if (hood) hood.visible = false;
+            if (backpack) backpack.visible = false;
+            if (sleepingBag) sleepingBag.visible = false;
+            if (beret) beret.visible = false;
+            if (helmet) helmet.visible = false;
+            if (goggles) goggles.visible = false;
+            if (vest) vest.visible = false;
+            if (officerCap) officerCap.visible = false;
+
+            // Remove existing attachments
+            const cleanObj = (name) => {
+                const obj = mesh.getObjectByName(name);
+                if (obj && obj.parent) obj.parent.remove(obj);
+            };
+            cleanObj('creatorCrown');
+            cleanObj('creatorCollar');
+            cleanObj('leftWing');
+            cleanObj('rightWing');
+            cleanObj('lBooster');
+            cleanObj('rBooster');
+            cleanObj('backBooster');
+            cleanObj('cosmicLight');
+            cleanObj('creatorChestCore');
+            cleanObj('creatorFacePanel');
+            cleanObj('creatorNameplate');
+            cleanObj('creatorAuraRing');
+            if (mesh.userData.orbitingRocks) {
+                mesh.userData.orbitingRocks.forEach(rock => {
+                    if (rock.parent) rock.parent.remove(rock);
+                });
+                mesh.userData.orbitingRocks = null;
+            }
+
+            // 1. Add Crown & Neck Collar to Head
+            const head = mesh.getObjectByName('head');
+            if (head) {
+                const crownGroup = new THREE.Group();
+                crownGroup.name = 'creatorCrown';
+                const goldMat = new THREE.MeshStandardMaterial({
+                    color: 0xffd700,
+                    metalness: 1.0,
+                    roughness: 0.15
+                });
+                
+                const crownScale = stage === 1 ? 0.5 : (stage === 2 ? 0.75 : (stage === 3 ? 1.0 : (stage === 4 ? 1.25 : 1.4)));
+                crownGroup.scale.set(crownScale, crownScale, crownScale);
+
+                // Base band
+                const band = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.05, 16), goldMat);
+                band.position.y = 0.18;
+                crownGroup.add(band);
+                
+                // Spikes
+                const numSpikes = stage === 1 ? 4 : 6;
+                const radius = 0.14;
+                const rubyMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
+                const sapphireMat = new THREE.MeshBasicMaterial({ color: 0x0066ff });
+                
+                for (let i = 0; i < numSpikes; i++) {
+                    const angle = (i / numSpikes) * Math.PI * 2;
+                    const spikeGroup = new THREE.Group();
+                    
+                    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.08, 4), goldMat);
+                    spike.position.y = 0.04;
+                    spikeGroup.add(spike);
+                    
+                    if (stage > 1) {
+                        const gemMat = (i % 2 === 0) ? rubyMat : sapphireMat;
+                        const gem = new THREE.Mesh(new THREE.SphereGeometry(0.01, 6, 6), gemMat);
+                        gem.position.y = 0.08;
+                        spikeGroup.add(gem);
+                    }
+                    
+                    spikeGroup.position.set(Math.cos(angle) * radius, 0.18, Math.sin(angle) * radius);
+                    spikeGroup.rotation.z = -Math.cos(angle) * 0.15;
+                    spikeGroup.rotation.x = Math.sin(angle) * 0.15;
+                    spikeGroup.rotation.y = -angle;
+                    
+                    crownGroup.add(spikeGroup);
+                }
+                head.add(crownGroup);
+
+                const facePanel = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.26, 0.2, 0.012),
+                    new THREE.MeshBasicMaterial({ color: 0x050509 })
+                );
+                facePanel.name = 'creatorFacePanel';
+                facePanel.position.set(0, -0.01, 0.181);
+                head.add(facePanel);
+
+                if (stage >= 2) {
+                    const collarGeom = new THREE.TorusGeometry(0.17, 0.02, 8, 24);
+                    const collar = new THREE.Mesh(collarGeom, goldMat);
+                    collar.rotation.x = Math.PI / 2;
+                    collar.name = 'creatorCollar';
+                    collar.position.y = -0.16;
+                    head.add(collar);
+                }
+            }
+
+            // 2. Add Wings to Torso (Stages 2, 4, 5)
+            const torso = mesh.getObjectByName('torso');
+            if (torso) {
+                const coreGroup = new THREE.Group();
+                coreGroup.name = 'creatorChestCore';
+                const neonColor = stage === 5 ? 0xd946ef : (stage === 4 ? 0xa855f7 : 0xffd700);
+                const panelMat = new THREE.MeshBasicMaterial({ color: 0x06060a });
+                const trimMat = new THREE.MeshBasicMaterial({ color: neonColor });
+                const chestPanel = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.46, 0.018), panelMat);
+                chestPanel.position.set(0, 0.03, 0.215);
+                coreGroup.add(chestPanel);
+                const topTrim = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.035, 0.022), trimMat);
+                topTrim.position.set(0, 0.275, 0.23);
+                coreGroup.add(topTrim);
+                const bottomTrim = topTrim.clone();
+                bottomTrim.position.y = -0.215;
+                coreGroup.add(bottomTrim);
+                const leftTrim = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.48, 0.022), trimMat);
+                leftTrim.position.set(-0.31, 0.03, 0.23);
+                coreGroup.add(leftTrim);
+                const rightTrim = leftTrim.clone();
+                rightTrim.position.x = 0.31;
+                coreGroup.add(rightTrim);
+                torso.add(coreGroup);
+
+                if (stage === 2 || stage === 4 || stage === 5) {
+                    const makeWing = (isRight) => {
+                        const wing = new THREE.Group();
+                        wing.name = isRight ? 'rightWing' : 'leftWing';
+                        const sideSign = isRight ? -1 : 1;
+                        
+                        const wingBaseMat = new THREE.MeshStandardMaterial({
+                            color: 0x141416,
+                            roughness: 0.3,
+                            metalness: 0.8,
+                            side: THREE.DoubleSide
+                        });
+                        
+                        const edgeColors = {
+                            2: 0xd946ef,
+                            4: 0xa855f7,
+                            5: 0xffd700
+                        };
+                        const edgeColor = edgeColors[stage] || 0xa855f7;
+                        
+                        const wingEdgeMat = new THREE.MeshBasicMaterial({
+                            color: edgeColor,
+                            side: THREE.DoubleSide
+                        });
+                        
+                        const joint = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.06), wingBaseMat);
+                        joint.position.set(0, 0, -0.02);
+                        wing.add(joint);
+                        
+                        const wingScaleFactor = stage === 2 ? 0.6 : (stage === 5 ? 1.2 : 0.85);
+
+                        try {
+                            const outerShape = new THREE.Shape();
+                            outerShape.moveTo(0, -0.08);
+                            outerShape.lineTo(0.08, -0.08);
+                            outerShape.quadraticCurveTo(0.35, 0.15, 0.55, 0.95);
+                            outerShape.quadraticCurveTo(0.28, 0.28, 0, 0.08);
+                            outerShape.closePath();
+                            
+                            const extrudeSettings = {
+                                depth: 0.03,
+                                bevelEnabled: true,
+                                bevelSegments: 2,
+                                steps: 1,
+                                bevelSize: 0.006,
+                                bevelThickness: 0.006
+                            };
+                            const wingGeom = new THREE.ExtrudeGeometry(outerShape, extrudeSettings);
+                            const mainWingMesh = new THREE.Mesh(wingGeom, wingBaseMat);
+                            
+                            const innerShape = new THREE.Shape();
+                            innerShape.moveTo(0.02, -0.05);
+                            innerShape.quadraticCurveTo(0.3, 0.18, 0.5, 0.88);
+                            innerShape.quadraticCurveTo(0.25, 0.25, 0.02, 0.05);
+                            innerShape.closePath();
+                            
+                            const innerExtrudeSettings = {
+                                depth: 0.04,
+                                bevelEnabled: true,
+                                bevelSegments: 1,
+                                steps: 1,
+                                bevelSize: 0.003,
+                                bevelThickness: 0.003
+                            };
+                            const innerGeom = new THREE.ExtrudeGeometry(innerShape, innerExtrudeSettings);
+                            const innerWingMesh = new THREE.Mesh(innerGeom, wingEdgeMat);
+                            innerWingMesh.position.z = -0.005;
+                            
+                            wing.add(mainWingMesh);
+                            wing.add(innerWingMesh);
+
+                            if (stage === 5) {
+                                const sphereGeom = new THREE.SphereGeometry(0.045, 8, 8);
+                                const orbCyan = new THREE.Mesh(sphereGeom, new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+                                orbCyan.position.set(0.5, 0.9, 0.05);
+                                wing.add(orbCyan);
+
+                                const orbGold = new THREE.Mesh(sphereGeom, new THREE.MeshBasicMaterial({ color: 0xffd700 }));
+                                orbGold.position.set(0.3, 0.5, 0.05);
+                                wing.add(orbGold);
+                            }
+                        } catch (err) {
+                            const seg1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.04), wingBaseMat);
+                            seg1.position.set(sideSign * 0.18, 0.02, -0.04);
+                            seg1.rotation.z = sideSign * 0.1;
+                            wing.add(seg1);
+                            
+                            const trim1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.03, 0.05), wingEdgeMat);
+                            trim1.position.set(sideSign * 0.18, 0.08, -0.04);
+                            trim1.rotation.z = sideSign * 0.1;
+                            wing.add(trim1);
+                        }
+                        
+                        wing.scale.set(sideSign * wingScaleFactor, wingScaleFactor, wingScaleFactor);
+                        wing.rotation.y = -sideSign * 0.25;
+                        wing.rotation.z = sideSign * 0.2;
+                        
+                        return wing;
+                    };
+                    
+                    const leftWing = makeWing(false);
+                    leftWing.position.set(0.2, 0.1, -0.2);
+                    torso.add(leftWing);
+                    
+                    const rightWing = makeWing(true);
+                    rightWing.position.set(-0.2, 0.1, -0.2);
+                    torso.add(rightWing);
+                }
+
+                // 3. Back Booster Rocket (Stage 3 only)
+                if (stage === 3) {
+                    const backBoosterGroup = new THREE.Group();
+                    backBoosterGroup.name = 'backBooster';
+                    
+                    const metalMat = new THREE.MeshStandardMaterial({ color: 0x221144, metalness: 0.8, roughness: 0.2 });
+                    const trimMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, emissive: 0xa855f7, emissiveIntensity: 1.5 });
+                    
+                    const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.35, 12), metalMat);
+                    cylinder.rotation.x = Math.PI / 6;
+                    cylinder.position.set(0, 0.1, -0.25);
+                    backBoosterGroup.add(cylinder);
+                    
+                    const trim = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.025, 6, 12), trimMat);
+                    trim.rotation.x = Math.PI / 2 + Math.PI / 6;
+                    trim.position.set(0, -0.08, -0.35);
+                    backBoosterGroup.add(trim);
+                    
+                    const flameGroup = new THREE.Group();
+                    flameGroup.name = 'flame';
+                    flameGroup.position.set(0, -0.1, -0.37);
+                    flameGroup.visible = false;
+                    
+                    const outerFlame = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.4, 8), new THREE.MeshBasicMaterial({
+                        color: 0xff3300, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending
+                    }));
+                    outerFlame.rotation.x = Math.PI / 6;
+                    outerFlame.geometry.translate(0, -0.2, 0);
+                    flameGroup.add(outerFlame);
+                    
+                    const innerFlame = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.22, 8), new THREE.MeshBasicMaterial({
+                        color: 0xffffff, transparent: true, opacity: 0.95
+                    }));
+                    innerFlame.rotation.x = Math.PI / 6;
+                    innerFlame.geometry.translate(0, -0.11, 0);
+                    flameGroup.add(innerFlame);
+                    
+                    backBoosterGroup.add(flameGroup);
+                    torso.add(backBoosterGroup);
+                }
+            }
+
+            // 4. Boosters to Boots (All stages)
+            const makeBooster = (name) => {
+                const boosterGroup = new THREE.Group();
+                boosterGroup.name = name;
+                
+                const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1 });
+                const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.12, 12), stageMat);
+                nozzle.position.y = -0.06;
+                boosterGroup.add(nozzle);
+                
+                const trim = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.015, 6, 12), goldMat);
+                trim.rotation.x = Math.PI / 2;
+                trim.position.y = -0.12;
+                boosterGroup.add(trim);
+                
+                const lightColors = { 1: 0xffaa00, 2: 0xff00ff, 3: 0xa855f7, 4: 0xff7700, 5: 0x00ffff };
+                const thrustLight = new THREE.PointLight(lightColors[stage] || 0xff7700, 0, 6);
+                thrustLight.name = 'thrustLight';
+                thrustLight.position.set(0, -0.2, 0);
+                boosterGroup.add(thrustLight);
+                
+                const flameGroup = new THREE.Group();
+                flameGroup.name = 'flame';
+                flameGroup.position.y = -0.12;
+                flameGroup.visible = false;
+                
+                const flameColors = {
+                    1: { outer: 0xffaa00, inner: 0xffffff },
+                    2: { outer: 0xd946ef, inner: 0xffffff },
+                    3: { outer: 0xa855f7, inner: 0xffffff },
+                    4: { outer: 0xff3300, inner: 0xffaa00 },
+                    5: { outer: 0x00ffff, inner: 0xffffff }
+                };
+                const colors = flameColors[stage] || { outer: 0xff3300, inner: 0xffffff };
+
+                const outerFlameGeo = new THREE.ConeGeometry(0.12, 0.45, 8);
+                outerFlameGeo.translate(0, -0.225, 0);
+                const outerFlame = new THREE.Mesh(outerFlameGeo, new THREE.MeshBasicMaterial({
+                    color: colors.outer, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending
+                }));
+                outerFlame.name = 'outer';
+                flameGroup.add(outerFlame);
+                
+                const innerFlameGeo = new THREE.ConeGeometry(0.05, 0.22, 8);
+                innerFlameGeo.translate(0, -0.11, 0);
+                const innerFlame = new THREE.Mesh(innerFlameGeo, new THREE.MeshBasicMaterial({
+                    color: colors.inner, transparent: true, opacity: 0.95
+                }));
+                innerFlame.name = 'inner';
+                flameGroup.add(innerFlame);
+                
+                boosterGroup.add(flameGroup);
+                return boosterGroup;
+            };
+
+            const lBoot = mesh.getObjectByName('lBoot');
+            if (lBoot) lBoot.add(makeBooster('lBooster'));
+
+            const rBoot = mesh.getObjectByName('rBoot');
+            if (rBoot) rBoot.add(makeBooster('rBooster'));
+
+            // 5. Stage 5 Orbiting Space Rocks & Cosmic Light
+            if (stage === 5) {
+                mesh.userData.orbitingRocks = [];
+                const rockMat = new THREE.MeshStandardMaterial({
+                    color: 0x3d1a66, roughness: 0.9, metalness: 0.2, emissive: 0x6d28d9, emissiveIntensity: 0.3
+                });
+                for (let i = 0; i < 4; i++) {
+                    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.06), rockMat);
+                    rock.userData = {
+                        angle: (i / 4) * Math.PI * 2,
+                        radius: 0.8,
+                        speed: 1.5 + i * 0.2,
+                        yOffset: 0.5 + i * 0.2
+                    };
+                    mesh.add(rock);
+                    mesh.userData.orbitingRocks.push(rock);
+                }
+                const cosmicLight = new THREE.PointLight(0xa855f7, 2, 5);
+                cosmicLight.name = 'cosmicLight';
+                cosmicLight.position.set(0, 1.25, 0);
+                mesh.add(cosmicLight);
+
+                const auraRing = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.92, 0.018, 8, 64),
+                    new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.75 })
+                );
+                auraRing.name = 'creatorAuraRing';
+                auraRing.rotation.x = Math.PI / 2;
+                auraRing.position.y = 0.08;
+                mesh.add(auraRing);
+            }
+
+            const labelCanvas = document.createElement('canvas');
+            labelCanvas.width = 512;
+            labelCanvas.height = 128;
+            const labelCtx = labelCanvas.getContext('2d');
+            labelCtx.fillStyle = 'rgba(5, 5, 12, 0.78)';
+            labelCtx.fillRect(0, 0, 512, 128);
+            labelCtx.strokeStyle = '#d946ef';
+            labelCtx.lineWidth = 6;
+            labelCtx.strokeRect(8, 8, 496, 112);
+            labelCtx.fillStyle = '#ffd166';
+            labelCtx.font = 'bold 34px Pretendard, sans-serif';
+            labelCtx.textAlign = 'center';
+            labelCtx.fillText('BOSS 제작진 킹', 256, 50);
+            labelCtx.fillStyle = '#ffffff';
+            labelCtx.font = 'bold 26px Pretendard, sans-serif';
+            labelCtx.fillText('ree1203', 256, 88);
+            const labelTex = new THREE.CanvasTexture(labelCanvas);
+            const labelSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex, transparent: true }));
+            labelSprite.name = 'creatorNameplate';
+            labelSprite.position.set(0, 2.35, 0);
+            labelSprite.scale.set(1.9, 0.48, 1);
+            mesh.add(labelSprite);
+        };
+
         const createPlayerModel = (colorHex) => {
             const group = new THREE.Group();
             const mat = getCamoMaterial(colorHex);
@@ -3450,6 +4173,78 @@ const initChat = () => {
 
         window.refreshPlayerSkin = (mesh, skinId, rank, isJailed) => {
             if (!mesh) return;
+
+            const isLocalCreator = (mesh === window.localPlayerBody && STATE.currentUser && STATE.currentUser.username === 'ree1203');
+            const isOtherCreator = mesh.userData.isCreator || (mesh.userData.isCreatorMesh === true);
+            const shouldBeCreator = isLocalCreator || isOtherCreator || (skinId && skinId.startsWith('creator_skin'));
+            
+            const isCreatorSkin = (skinId && (skinId.startsWith('creator_skin') || skinId === 'creator_skin')) ||
+                                  (isLocalCreator && (!skinId || skinId === 'normal' || skinId === 'camo_army'));
+
+            if (shouldBeCreator && isCreatorSkin) {
+                let stage = 5;
+                if (skinId && skinId.startsWith('creator_skin_stage')) {
+                    stage = parseInt(skinId.replace('creator_skin_stage', '')) || 4;
+                }
+                
+                if (!mesh.userData.isCreator || mesh.userData.creatorStage !== stage) {
+                    convertToCreatorModel(mesh, stage);
+                }
+                
+                const hood = mesh.getObjectByName('hood');
+                const backpack = mesh.getObjectByName('backpack');
+                const sleepingBag = mesh.getObjectByName('sleepingBag');
+                const beret = mesh.getObjectByName('beret');
+                const helmet = mesh.getObjectByName('helmet');
+                const goggles = mesh.getObjectByName('goggles');
+                const vest = mesh.getObjectByName('vest');
+                const officerCap = mesh.getObjectByName('officerCap');
+                if (hood) hood.visible = false;
+                if (backpack) backpack.visible = false;
+                if (sleepingBag) sleepingBag.visible = false;
+                if (beret) beret.visible = false;
+                if (helmet) helmet.visible = false;
+                if (goggles) goggles.visible = false;
+                if (vest) vest.visible = false;
+                if (officerCap) officerCap.visible = false;
+                
+                const crown = mesh.getObjectByName('creatorCrown');
+                if (crown) crown.visible = true;
+                const collar = mesh.getObjectByName('creatorCollar');
+                if (collar) collar.visible = (stage >= 2);
+                const leftWing = mesh.getObjectByName('leftWing');
+                if (leftWing) leftWing.visible = (stage === 2 || stage === 4 || stage === 5);
+                const rightWing = mesh.getObjectByName('rightWing');
+                if (rightWing) rightWing.visible = (stage === 2 || stage === 4 || stage === 5);
+                const lBooster = mesh.getObjectByName('lBooster');
+                if (lBooster) lBooster.visible = true;
+                const rBooster = mesh.getObjectByName('rBooster');
+                if (rBooster) rBooster.visible = true;
+                const backBooster = mesh.getObjectByName('backBooster');
+                if (backBooster) backBooster.visible = (stage === 3);
+                
+                return;
+            } else if (mesh.userData.isCreator) {
+                mesh.userData.isCreator = false;
+                mesh.userData.creatorStage = null;
+                const cleanObj = (name) => {
+                    const obj = mesh.getObjectByName(name);
+                    if (obj && obj.parent) obj.parent.remove(obj);
+                };
+                cleanObj('creatorCrown');
+                cleanObj('creatorCollar');
+                cleanObj('leftWing');
+                cleanObj('rightWing');
+                cleanObj('lBooster');
+                cleanObj('rBooster');
+                cleanObj('backBooster');
+                if (mesh.userData.orbitingRocks) {
+                    mesh.userData.orbitingRocks.forEach(rock => {
+                        if (rock.parent) rock.parent.remove(rock);
+                    });
+                    mesh.userData.orbitingRocks = null;
+                }
+            }
 
             let targetColor = 0x4b5320; 
             const isJailSkin = (isJailed || skinId === 'camo_jail');
@@ -3674,6 +4469,9 @@ const initChat = () => {
         
         window.localPlayerBody.visible = false; 
         camera.add(window.localPlayerBody);
+        if (STATE.currentUser && STATE.currentUser.username === 'ree1203') {
+            convertToCreatorModel(window.localPlayerBody, 5);
+        }
 
         window.localWeapon = makeWeaponModel('k2');
         window.localWeapon.visible = false;
@@ -3905,49 +4703,147 @@ const initChat = () => {
             { id: 'burger', name: '군대리아', desc: '일요일 아침의 특식', price: 800, emoji: '🍔' },
             { id: 'liner', name: '깔깔이 (방한복 상의 내피)', desc: '겨울철 최고의 보온 아이템', price: 1500, emoji: '🧥' },
             { id: 'armor', name: '전술 방탄복', desc: '피해량 감소', price: 2000, emoji: '🦺' },
-            { id: 'scope', name: '홀로그래픽 조준경', desc: '사격 정확도 향상', price: 3000, emoji: '🔭' },
-            { id: 'k2', name: 'K2C1 소총', desc: '고급형 돌격소총', price: 5000, emoji: '🔫' },
-            { id: 'k3', name: 'K3 경기관총', desc: '분대지원화기 경기관총 (분대지원화기병용)', price: 6000, emoji: '💥' },
-            { id: 'k5', name: 'K5 권총', desc: '휴대용 9mm 권총 (간부용 부무장)', price: 2000, emoji: '🔫' },
-            { id: 'k1a', name: 'K1A 기관단총', desc: '가볍고 강력한 기관단총 (특수부대/차량승무원용)', price: 4500, emoji: '🔫' },
-            { id: 'k14', name: 'K14 저격소총', desc: '초정밀 볼트액션 저격소총 (특수부대용)', price: 9000, emoji: '🎯' },
-            { id: 'k6', name: 'K6 중기관총', desc: '강력한 화력의 12.7mm 중기관총 (중화기병용)', price: 12000, emoji: '🔥' },
-            { id: 'silencer', name: '소음기', desc: 'K2 소총 격발음과 총구 화염을 대폭 감소시킴', price: 1500, emoji: '🤫' },
-            { id: 'laser_sight', name: '레이저 조준경', desc: 'K2 소총 하단에 적색 조준 가이드 선을 비춤', price: 2000, emoji: '🔴' },
-            { id: 'advanced_scope', name: '고배율 스코프', desc: 'K2 소총 장착 시 우클릭으로 극대화된 줌 사용 가능', price: 2500, emoji: '🔭' },
-            { id: 'gas_mask', name: '방독면', desc: '화생방실 유독 가스로부터 체력을 보호해주는 특수 마스크', price: 1000, emoji: '😷' },
-            { id: 'nvg', name: '야간 투시경 (NVG)', desc: 'N 키로 작동하며, 야간이나 어두운 곳에서 전방을 밝게 비춰주는 특수 광학장비', price: 1500, emoji: '👓' },
-            { id: 'px_truck', name: '황금마차 호출권', desc: '이동식 PX를 내 위치로 호출', price: 7000, emoji: '🚚' },
-            { id: 'heli', name: '공격 헬기 호출권', desc: '일회용 헬기 지원', price: 10000, emoji: '🚁' },
-            { id: 'artillery', name: 'K9 자주포 포격 요청', desc: '지정된 위치에 막강한 화력 지원', price: 15000, emoji: '💥' },
-            { id: 'gas_canister', name: '화생방 정화통', desc: '방독면 정화 성능을 100%로 재충전하는 소모품', price: 300, emoji: '🧪' },
-            { id: 'camo_desert', name: '사막 위장복', desc: '👕 모래빛 사막 디지털 전투복 스킨', price: 1500, emoji: '🏜️' },
-            { id: 'camo_marine', name: '해병대 위장복', desc: '👕 해병대 특유의 붉은 디지털 전투복 스킨', price: 2000, emoji: '🟥' },
-            { id: 'camo_swat', name: '블랙 대테러복', desc: '👕 특수부대 스타일의 흑복/대테러복 스킨', price: 2500, emoji: '🐈‍⬛' },
-            { id: 'camo_winter', name: '동계 위장복', desc: '👕 눈 덮인 전장용 백색 전투복 스킨', price: 1800, emoji: '❄️' }
+            { id: 'scope', name: '홀로그래픽 조준경', desc: '사격 정확도 향상', price: 3000, emoji: '🔭', category: 'gears', rarity: 'rare' },
+            { id: 'k2', name: 'K2C1 소총', desc: '고급형 돌격소총', price: 5000, emoji: '🔫', category: 'weapons', rarity: 'epic' },
+            { id: 'k3', name: 'K3 경기관총', desc: '분대지원화기 경기관총 (분대지원화기병용)', price: 6000, emoji: '💥', category: 'weapons', rarity: 'epic' },
+            { id: 'k5', name: 'K5 권총', desc: '휴대용 9mm 권총 (간부용 부무장)', price: 2000, emoji: '🔫', category: 'weapons', rarity: 'rare' },
+            { id: 'k1a', name: 'K1A 기관단총', desc: '가볍고 강력한 기관단총 (특수부대/차량승무원용)', price: 4500, emoji: '🔫', category: 'weapons', rarity: 'epic' },
+            { id: 'k14', name: 'K14 저격소총', desc: '초정밀 볼트액션 저격소총 (특수부대용)', price: 9000, emoji: '🎯', category: 'weapons', rarity: 'legendary' },
+            { id: 'k6', name: 'K6 중기관총', desc: '강력한 화력의 12.7mm 중기관총 (중화기병용)', price: 12000, emoji: '🔥', category: 'weapons', rarity: 'legendary' },
+            { id: 'silencer', name: '소음기', desc: 'K2 소총 격발음과 총구 화염을 대폭 감소시킴', price: 1500, emoji: '🤫', category: 'gears', rarity: 'rare' },
+            { id: 'laser_sight', name: '레이저 조준경', desc: 'K2 소총 하단에 적색 조준 가이드 선을 비춤', price: 2000, emoji: '🔴', category: 'gears', rarity: 'rare' },
+            { id: 'advanced_scope', name: '고배율 스코프', desc: 'K2 소총 장착 시 우클릭으로 극대화된 줌 사용 가능', price: 2500, emoji: '🔭', category: 'gears', rarity: 'rare' },
+            { id: 'gas_mask', name: '방독면', desc: '화생방실 유독 가스로부터 체력을 보호해주는 특수 마스크', price: 1000, emoji: '😷', image: '../../../.gemini/antigravity-ide/brain/21651c40-860a-4f63-888b-1aa706b9c917/media__1781937718463.png', category: 'gears', rarity: 'common' },
+            { id: 'nvg', name: '야간 투시경 (NVG)', desc: 'N 키로 작동하며, 야간이나 어두운 곳에서 전방을 밝게 비춰주는 특수 광학장비', price: 1500, emoji: '👓', category: 'gears', rarity: 'common' },
+            { id: 'px_truck', name: '황금마차 호출권', desc: '이동식 PX를 내 위치로 호출', price: 7000, emoji: '🚚', category: 'support', rarity: 'epic' },
+            { id: 'heli', name: '공격 헬기 호출권', desc: '일회용 헬기 지원', price: 10000, emoji: '🚁', category: 'support', rarity: 'legendary' },
+            { id: 'artillery', name: 'K9 자주포 포격 요청', desc: '지정된 위치에 막강한 화력 지원', price: 15000, emoji: '💥', category: 'support', rarity: 'legendary' },
+            { id: 'gas_canister', name: '화생방 정화통', desc: '방독면 정화 성능을 100%로 재충전하는 소모품', price: 300, emoji: '🧪', category: 'support', rarity: 'common' },
+            { id: 'camo_desert', name: '사막 위장복', desc: '👕 모래빛 사막 디지털 전투복 스킨', price: 1500, emoji: '🏜️', category: 'skins', rarity: 'rare' },
+            { id: 'camo_marine', name: '해병대 위장복', desc: '👕 해병대 특유의 붉은 디지털 전투복 스킨', price: 2000, emoji: '🟥', category: 'skins', rarity: 'rare' },
+            { id: 'camo_swat', name: '블랙 대테러복', desc: '👕 특수부대 스타일의 흑복/대테러복 스킨', price: 2500, emoji: '🐈‍⬛', category: 'skins', rarity: 'rare' },
+            { id: 'camo_winter', name: '동계 위장복', desc: '👕 눈 덮인 전장용 백색 전투복 스킨', price: 1800, emoji: '❄️', category: 'skins', rarity: 'rare' }
         ];
+
+        const RARITY_STYLING = {
+            legendary: {
+                bg: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(20,25,20,0.95) 100%)',
+                border: '2px solid #f59e0b',
+                glow: 'box-shadow: 0 0 15px rgba(245,158,11,0.25);',
+                badge: '<span style="font-size:0.65rem; background:#f59e0b; color:black; padding:2px 6px; border-radius:4px; font-weight:900; letter-spacing: 0.5px;">LEGENDARY</span>'
+            },
+            epic: {
+                bg: 'linear-gradient(135deg, rgba(168,85,247,0.08) 0%, rgba(20,25,20,0.95) 100%)',
+                border: '2px solid #a855f7',
+                glow: 'box-shadow: 0 0 15px rgba(168,85,247,0.25);',
+                badge: '<span style="font-size:0.65rem; background:#a855f7; color:white; padding:2px 6px; border-radius:4px; font-weight:900; letter-spacing: 0.5px;">EPIC</span>'
+            },
+            rare: {
+                bg: 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(20,25,20,0.95) 100%)',
+                border: '2px solid #3b82f6',
+                glow: 'box-shadow: 0 0 15px rgba(59,130,246,0.25);',
+                badge: '<span style="font-size:0.65rem; background:#3b82f6; color:white; padding:2px 6px; border-radius:4px; font-weight:900; letter-spacing: 0.5px;">RARE</span>'
+            },
+            common: {
+                bg: 'linear-gradient(135deg, rgba(156,163,175,0.08) 0%, rgba(20,25,20,0.95) 100%)',
+                border: '2px solid #4b5563',
+                glow: '',
+                badge: '<span style="font-size:0.65rem; background:#4b5563; color:white; padding:2px 6px; border-radius:4px; font-weight:900; letter-spacing: 0.5px;">COMMON</span>'
+            }
+        };
+
+        window.switchShopTab = (category) => {
+            const tabButtons = document.querySelectorAll('#shop-tabs .shop-tab-btn');
+            tabButtons.forEach(btn => {
+                if (btn.getAttribute('onclick').includes(category)) {
+                    btn.classList.add('active');
+                    btn.style.background = 'rgba(46, 139, 87, 0.25)';
+                    btn.style.color = '#fff';
+                    btn.style.borderColor = '#2e8b57';
+                } else {
+                    btn.classList.remove('active');
+                    btn.style.background = 'rgba(255,255,255,0.03)';
+                    btn.style.color = '#ccc';
+                    btn.style.borderColor = 'rgba(255,255,255,0.1)';
+                }
+            });
+
+            const itemsContainer = document.getElementById('shop-items');
+            if (!itemsContainer) return;
+            itemsContainer.innerHTML = '';
+
+            const filteredItems = category === 'all' 
+                ? SHOP_ITEMS 
+                : SHOP_ITEMS.filter(item => item.category === category);
+
+            const isMaster = STATE.currentUser && STATE.currentUser.username === 'ree1203';
+
+            filteredItems.forEach(item => {
+                const style = RARITY_STYLING[item.rarity] || RARITY_STYLING.common;
+                const card = document.createElement('div');
+                card.style.cssText = `
+                    background: ${style.bg};
+                    border: ${style.border};
+                    ${style.glow}
+                    border-radius: 12px;
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                    gap: 12px;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                    position: relative;
+                `;
+                
+                card.onmouseover = () => {
+                    card.style.transform = 'translateY(-4px)';
+                    card.style.boxShadow = style.glow ? style.glow.replace('0.25', '0.4').replace('box-shadow:', '') : '0 6px 15px rgba(0,0,0,0.4)';
+                };
+                card.onmouseout = () => {
+                    card.style.transform = 'translateY(0)';
+                    card.style.boxShadow = style.glow ? style.glow.replace('box-shadow:', '') : 'none';
+                };
+
+                const smallMediaHtml = item.image 
+                    ? `<img src="${item.image}" style="width: 1.5rem; height: 1.5rem; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));" onerror="this.style.display='none';">`
+                    : ``;
+
+                const centerMediaHtml = item.image
+                    ? `<img src="${item.image}" style="max-height: 100px; max-width: 100%; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6));" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <div style="font-size: 3.5rem; display: none; align-items: center; justify-content: center;">${item.emoji}</div>`
+                    : `<div style="font-size: 3.5rem; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">${item.emoji}</div>`;
+
+                card.innerHTML = `
+                    <div style="position: absolute; top: 12px; right: 12px;">
+                        ${style.badge}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+                        ${smallMediaHtml}
+                        <div style="font-weight: 800; font-size: 1.1rem; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">${item.name}</div>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #bbb; line-height: 1.4; min-height: 38px; margin-top: 4px;">
+                        ${item.desc}
+                    </div>
+                    <!-- 카드 중앙 대형 프리뷰 영역 -->
+                    <div style="height: 130px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.25); border-radius: 8px; margin: 10px 0; border: 1px solid rgba(255,255,255,0.02); overflow: hidden;">
+                        ${centerMediaHtml}
+                    </div>
+                    <button class="btn" style="width: 100%; padding: 12px; margin: 0; background: #2e8b57; font-size: 0.95rem; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: white; display: flex; justify-content: center; align-items: center; gap: 5px; transition: background 0.2s;" onclick="buyItem('${item.id}', ${item.price}, '${item.name}')">
+                        <span>💰</span>
+                        <span>${isMaster ? '무료' : item.price.toLocaleString() + ' G'}</span>
+                    </button>
+                `;
+                itemsContainer.appendChild(card);
+            });
+        };
 
         document.getElementById('btn-shop').onclick = () => {
             const modal = document.getElementById('shop-modal');
-            const itemsContainer = document.getElementById('shop-items');
-            const isMaster = STATE.currentUser.username === 'ree1203';
+            const isMaster = STATE.currentUser && STATE.currentUser.username === 'ree1203';
             document.getElementById('shop-money').textContent = isMaster ? "무제한 (∞)" : (STATE.currentUser.money || 0).toLocaleString();
             
-            itemsContainer.innerHTML = '';
-            SHOP_ITEMS.forEach(item => {
-                const div = document.createElement('div');
-                div.style.cssText = 'background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1); gap: 10px;';
-                div.innerHTML = `
-                    <div style="flex: 1;">
-                        <div style="font-weight: bold; font-size: 1rem; color: #fff;">${item.emoji} ${item.name}</div>
-                        <div style="font-size: 0.75rem; color: #aaa; margin-top: 3px; line-height: 1.2;">${item.desc}</div>
-                    </div>
-                    <button class="btn" style="width: auto; padding: 8px 15px; margin: 0; background: #2e8b57; font-size: 0.85rem; border-radius: 8px; white-space: nowrap;" onclick="buyItem('${item.id}', ${item.price}, '${item.name}')">${item.price.toLocaleString()}G</button>
-                `;
-                itemsContainer.appendChild(div);
-            });
-            
             modal.style.display = 'flex';
+            window.switchShopTab('all');
         };
 
         window.buyItem = (id, price, name) => {
@@ -3966,7 +4862,7 @@ const initChat = () => {
             }
             
             const priceText = isMaster ? "무료(마스터 권한)로" : `${price.toLocaleString()}G에`;
-            if (confirm(`${name}을(를) ${priceText} 구매하시겠습니까?\n(구매 시 확인 광고가 1회 재생됩니다.)`)) {
+            if (confirm(`${name}을(를) ${priceText} 구매하시겠습니까?`)) {
                 window.showRewardedAd('shop_purchase', (success) => {
                     if (success) {
                         if (!isMaster) {
@@ -3979,7 +4875,7 @@ const initChat = () => {
                         db.ref('users/' + STATE.currentUser.uid + '/inventory').push(id);
                         alert(`${name} 구매 완료!`);
                     } else {
-                        alert("⚠️ 광고 시청이 완료되지 않아 구매가 중단되었습니다.");
+                        alert("⚠️ 구매 처리에 실패했습니다.");
                     }
                 });
             }
@@ -4008,11 +4904,19 @@ const initChat = () => {
                     const itemData = SHOP_ITEMS.find(i => i.id === itemId);
                     if (!itemData) return;
                     
+                    const mediaHtml = itemData.image 
+                        ? `<img src="${itemData.image}" style="width: 1.5rem; height: 1.5rem; object-fit: contain; vertical-align: middle; margin-right: 5px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                           <span style="font-size: 1.5rem; display: none; vertical-align: middle; margin-right: 5px;">${itemData.emoji}</span>`
+                        : `<span style="font-size: 1.5rem; vertical-align: middle; margin-right: 5px;">${itemData.emoji}</span>`;
+
                     const div = document.createElement('div');
                     div.style.cssText = 'background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1); gap: 10px;';
                     div.innerHTML = `
                         <div style="flex: 1;">
-                            <div style="font-weight: bold; font-size: 1rem; color: #fff;">${itemData.emoji} ${itemData.name}</div>
+                            <div style="font-weight: bold; font-size: 1rem; color: #fff; display: flex; align-items: center;">
+                                ${mediaHtml}
+                                <span>${itemData.name}</span>
+                            </div>
                             <div style="font-size: 0.75rem; color: #aaa; margin-top: 3px; line-height: 1.2;">${itemData.desc}</div>
                         </div>
                         <button class="btn" style="width: auto; padding: 8px 15px; margin: 0; background: #4682b4; font-size: 0.85rem; border-radius: 8px; white-space: nowrap;" onclick="useItem('${key}', '${itemData.id}', '${itemData.name}')">사용</button>
@@ -5114,6 +6018,13 @@ const initChat = () => {
                     const damage = (window.WEAPONS_CONFIG && window.WEAPONS_CONFIG[weaponId]) ? window.WEAPONS_CONFIG[weaponId].damage : 25;
                     showToast(`🎯 ${hitPlayerName}을(를) 맞췄습니다! (피해량: ${damage})`, "#ff0000");
                     
+                    if (hitUid === 'creator_boss') {
+                        if (typeof window.damageCreatorBoss === 'function') {
+                            window.damageCreatorBoss(damage, closestPlayerHit.point);
+                        }
+                        return;
+                    }
+                    
                     if (db) {
                         db.ref('users/' + hitUid + '/hit').set({
                             shooter: STATE.currentUser.name || STATE.currentUser.username,
@@ -5819,6 +6730,7 @@ const initChat = () => {
             { id: 'vehicle_pilot',  name: '기동대',  desc: '차량을 처음 탑승했습니다.',         icon: '🚗', expReward: 150 },
             { id: 'voice_chat',     name: '무전병',  desc: 'P키로 무전을 처음 송신했습니다.',   icon: '📻', expReward: 80 },
             { id: 'survivor',       name: '생존왕',  desc: '영창을 탈출(석방)했습니다.',        icon: '🔓', expReward: 200 },
+            { id: 'gas_survivor',   name: '가스실 생존왕', desc: '화생방실에서 30초 동안 버텼습니다.', icon: '😤', expReward: 250 },
         ];
 
         window.unlockAchievement = (id) => {
@@ -5858,11 +6770,21 @@ const initChat = () => {
         // SYSTEM D: DAILY MISSIONS
         // ====================================================
         const getTodayKey = () => new Date().toISOString().slice(0, 10);
+        const getWeekKey = () => {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7)); // nearest Thursday (ISO week)
+            const yearStart = new Date(d.getFullYear(), 0, 1);
+            const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            return `${d.getFullYear()}-W${weekNo}`;
+        };
 
         const DAILY_MISSIONS = [
             { id: 'dm_shoot3',   name: '사격 훈련 참가',   desc: '사격장에서 3발 이상 명중하기',   target: 3,  rewardG: 500,  rewardExp: 100, trackKey: 'shootHits'  },
             { id: 'dm_chat5',    name: '전우와 대화',       desc: '채팅 메시지 5개 보내기',         target: 5,  rewardG: 300,  rewardExp: 60,  trackKey: 'chatCount'  },
             { id: 'dm_walk',     name: '순찰 완료',         desc: '총 이동거리 500m 달성',          target: 500,rewardG: 400,  rewardExp: 80,  trackKey: 'walkDist'   },
+            { id: 'dm_guard',    name: '위병소 경계근무',   desc: '위병소에서 60초 동안 경계 근무 서기', target: 60, rewardG: 400,  rewardExp: 90,  trackKey: 'guardDuty'  },
+            { id: 'dm_ammo',     name: '탄약고 보급 임무',  desc: '탄약고에서 60초 동안 보급 작업 수행', target: 60, rewardG: 450,  rewardExp: 95,  trackKey: 'ammoSupply' },
         ];
 
         // Load or init today's mission progress
@@ -5870,19 +6792,33 @@ const initChat = () => {
         if (!STATE.currentUser.dailyMissions || STATE.currentUser.dailyMissions.date !== todayKey) {
             STATE.currentUser.dailyMissions = { date: todayKey, progress: {}, completed: {} };
         }
+        // Firebase drops empty objects on save, so progress/completed can come back undefined
+        if (!STATE.currentUser.dailyMissions.progress) STATE.currentUser.dailyMissions.progress = {};
+        if (!STATE.currentUser.dailyMissions.completed) STATE.currentUser.dailyMissions.completed = {};
 
         window.trackMission = (key, amount = 1) => {
             if (!STATE.currentUser || STATE.currentUser.dashboardOnly) return;
             const dm = STATE.currentUser.dailyMissions;
             if (dm.date !== getTodayKey()) { dm.date = getTodayKey(); dm.progress = {}; dm.completed = {}; }
+            if (!dm.progress) dm.progress = {};
+            if (!dm.completed) dm.completed = {};
             dm.progress[key] = (dm.progress[key] || 0) + amount;
             DAILY_MISSIONS.forEach(m => {
                 if (m.trackKey === key && !dm.completed[m.id] && dm.progress[key] >= m.target) {
                     dm.completed[m.id] = true;
                     STATE.currentUser.money = (STATE.currentUser.money || 0) + m.rewardG;
-                    db.ref('users/' + STATE.currentUser.uid).update({ money: STATE.currentUser.money });
+                    STATE.currentUser.leavePoints = (STATE.currentUser.leavePoints || 0) + 10;
+                    db.ref('users/' + STATE.currentUser.uid).update({ money: STATE.currentUser.money, leavePoints: STATE.currentUser.leavePoints });
                     gainEXP(m.rewardExp, '일일 미션 완료');
-                    showToast(`📋 미션 완료: ${m.name}! (+${m.rewardG}G +${m.rewardExp}EXP)`, '#22c55e');
+                    showToast(`📋 미션 완료: ${m.name}! (+${m.rewardG}G +${m.rewardExp}EXP +10휴가P)`, '#22c55e');
+
+                    // Weekly unit-ranking tally (counts mission completions per branch)
+                    const wk = getWeekKey();
+                    if (!STATE.currentUser.weeklyStats || STATE.currentUser.weeklyStats.week !== wk) {
+                        STATE.currentUser.weeklyStats = { week: wk, count: 0 };
+                    }
+                    STATE.currentUser.weeklyStats.count += 1;
+                    db.ref('users/' + STATE.currentUser.uid + '/weeklyStats').set(STATE.currentUser.weeklyStats);
                 }
             });
             db.ref('users/' + STATE.currentUser.uid + '/dailyMissions').set(STATE.currentUser.dailyMissions);
@@ -5919,11 +6855,11 @@ const initChat = () => {
             list.innerHTML = '<div style="color:#888; text-align:center; padding:20px;">데이터 로딩 중...</div>';
             modal.style.display = 'flex';
 
-            db.ref('users').orderByChild('money').limitToLast(20).once('value', snap => {
+            db.ref('users').orderByChild('money').limitToLast(150).once('value', snap => {
                 const users = [];
                 snap.forEach(c => { const u = c.val(); if (u.username && !u.dashboardOnly) users.push(u); });
                 users.sort((a, b) => (b.money || 0) - (a.money || 0));
-                list.innerHTML = users.slice(0, 10).map((u, i) => {
+                list.innerHTML = users.slice(0, 100).map((u, i) => {
                     const medals = ['🥇','🥈','🥉'];
                     const pos = medals[i] || `${i+1}위`;
                     const rankIdx = RANKS.indexOf(u.rank) || 0;
@@ -5938,6 +6874,79 @@ const initChat = () => {
                         <div style="font-weight:900;color:#deb887;">${(u.money||0).toLocaleString()}G</div>
                     </div>`;
                 }).join('') || '<div style="color:#888;text-align:center;padding:20px;">데이터 없음</div>';
+            });
+        };
+
+        // ====================================================
+        // SYSTEM E2: LEAVE PASS (외출증) - 면회실
+        // ====================================================
+        window.issueLeavePass = () => {
+            if (!STATE.currentUser) return;
+            const pts = STATE.currentUser.leavePoints || 0;
+            if (window.leavePassActive) {
+                showToast('🎫 이미 외출증이 발급되어 있습니다!', '#f59e0b');
+                return;
+            }
+            if (pts < 50) {
+                document.getElementById('leave-pass-status').textContent = `휴가포인트가 부족합니다. (보유: ${pts}P / 필요: 50P)`;
+                return;
+            }
+            STATE.currentUser.leavePoints = pts - 50;
+            db.ref('users/' + STATE.currentUser.uid).update({ leavePoints: STATE.currentUser.leavePoints });
+            document.getElementById('leave-points-display').textContent = STATE.currentUser.leavePoints;
+
+            window.leavePassActive = true;
+            showToast('🎫 외출증 발급! 5분간 이동속도 +30%', '#0d9488');
+            document.getElementById('leave-pass-status').textContent = '✅ 외출증 사용 중... (5분간 이동속도 증가)';
+
+            setTimeout(() => {
+                window.leavePassActive = false;
+                showToast('🎫 외출증 시간이 종료되었습니다. 복귀하십시오!', '#888888');
+                const statusEl = document.getElementById('leave-pass-status');
+                if (statusEl) statusEl.textContent = '';
+            }, 5 * 60 * 1000);
+        };
+
+        document.getElementById('btn-leave-pass').onclick = () => {
+            if (!STATE.currentUser) return;
+            document.getElementById('leave-points-display').textContent = STATE.currentUser.leavePoints || 0;
+            document.getElementById('leave-pass-status').textContent = window.leavePassActive ? '✅ 외출증 사용 중...' : '';
+            document.getElementById('leave-modal').style.display = 'flex';
+        };
+
+        // ====================================================
+        // SYSTEM E3: UNIT (부대) WEEKLY RANKING
+        // ====================================================
+        document.getElementById('btn-unit-ranking').onclick = () => {
+            const modal = document.getElementById('unit-ranking-modal');
+            const list = document.getElementById('unit-ranking-list');
+            list.innerHTML = '<div style="color:#888; text-align:center; padding:20px;">데이터 로딩 중...</div>';
+            modal.style.display = 'flex';
+
+            const wk = getWeekKey();
+            db.ref('users').once('value', snap => {
+                const branchTotals = {};
+                snap.forEach(c => {
+                    const u = c.val();
+                    if (!u.username || u.dashboardOnly) return;
+                    const ws = u.weeklyStats;
+                    if (!ws || ws.week !== wk) return;
+                    const branch = u.branch || '소속없음';
+                    branchTotals[branch] = (branchTotals[branch] || 0) + (ws.count || 0);
+                });
+                const entries = Object.entries(branchTotals).sort((a, b) => b[1] - a[1]);
+                list.innerHTML = entries.map(([branch, count], i) => {
+                    const medals = ['🥇', '🥈', '🥉'];
+                    const pos = medals[i] || `${i + 1}위`;
+                    return `<div class="rank-item">
+                        <div class="rank-pos">${pos}</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:800;color:#fff;">${branch}</div>
+                            <div style="font-size:0.8rem;color:#888;">이번 주 미션 완료 수</div>
+                        </div>
+                        <div style="font-weight:900;color:#fbbf24;">${count}건</div>
+                    </div>`;
+                }).join('') || '<div style="color:#888;text-align:center;padding:20px;">이번 주 데이터가 아직 없습니다.</div>';
             });
         };
 
@@ -5997,6 +7006,16 @@ const initChat = () => {
                     if (typeof updatePromoHUD === 'function') updatePromoHUD();
                 }
                 lastCamPos = camera.position.clone();
+            }
+
+            // Location-based daily missions: guard duty (위병소) & ammo supply (탄약고)
+            const guardLoc = LOCATIONS['위병소'];
+            const ammoLoc = LOCATIONS['탄약고'];
+            if (guardLoc && camera.position.distanceTo(new THREE.Vector3(guardLoc.x, camera.position.y, guardLoc.z)) < 10) {
+                trackMission('guardDuty', 2);
+            }
+            if (ammoLoc && camera.position.distanceTo(new THREE.Vector3(ammoLoc.x, camera.position.y, ammoLoc.z)) < 12) {
+                trackMission('ammoSupply', 2);
             }
 
             // Auto-salute: check if higher-rank player is nearby
@@ -6303,6 +7322,19 @@ const initChat = () => {
         if (isNaN(delta) || delta <= 0) {
             delta = 0.016;
         }
+
+        if (typeof window.updateBossAI === 'function') {
+            window.updateBossAI();
+        }
+        if (typeof window.updateBossProjectiles === 'function') {
+            window.updateBossProjectiles(delta);
+        }
+        if (typeof window.updateLootDrops === 'function') {
+            window.updateLootDrops(delta);
+        }
+        if (typeof window.checkProximityInteractions === 'function') {
+            window.checkProximityInteractions();
+        }
         
         if (camera && (isNaN(camera.position.x) || isNaN(camera.position.y) || isNaN(camera.position.z))) {
             camera.position.set(0, 1.6, 0);
@@ -6316,6 +7348,57 @@ const initChat = () => {
                 light.group.rotation.y = light.baseAngle + Math.sin(timeSec * light.speed) * 0.8;
             });
         }
+
+        // Rotate orbiting space rocks for Creator boss Phase 2
+        if (window.orbitingRocks && window.bossMesh) {
+            const timeSec = time / 1000;
+            window.orbitingRocks.forEach(rock => {
+                const speed = rock.userData.speed;
+                const angle = rock.userData.angle + timeSec * speed;
+                const r = rock.userData.radius;
+                rock.position.set(
+                    Math.cos(angle) * r,
+                    rock.userData.yOffset + Math.sin(timeSec * 2.0) * 0.2,
+                    Math.sin(angle) * r
+                );
+                rock.rotation.x += 0.02;
+                rock.rotation.y += 0.02;
+            });
+        }
+        // Rotate orbiting space rocks for local player
+        if (window.localPlayerBody && window.localPlayerBody.userData && window.localPlayerBody.userData.orbitingRocks) {
+            const timeSec = time / 1000;
+            window.localPlayerBody.userData.orbitingRocks.forEach(rock => {
+                const speed = rock.userData.speed;
+                const angle = rock.userData.angle + timeSec * speed;
+                const r = rock.userData.radius;
+                rock.position.set(
+                    Math.cos(angle) * r,
+                    rock.userData.yOffset + Math.sin(timeSec * 2.0) * 0.2,
+                    Math.sin(angle) * r
+                );
+                rock.rotation.x += 0.02;
+                rock.rotation.y += 0.02;
+            });
+        }
+        // Rotate orbiting space rocks for other players
+        Object.values(otherPlayers).forEach(p => {
+            if (p.mesh && p.mesh.userData && p.mesh.userData.orbitingRocks) {
+                const timeSec = time / 1000;
+                p.mesh.userData.orbitingRocks.forEach(rock => {
+                    const speed = rock.userData.speed;
+                    const angle = rock.userData.angle + timeSec * speed;
+                    const r = rock.userData.radius;
+                    rock.position.set(
+                        Math.cos(angle) * r,
+                        rock.userData.yOffset + Math.sin(timeSec * 2.0) * 0.2,
+                        Math.sin(angle) * r
+                    );
+                    rock.rotation.x += 0.02;
+                    rock.rotation.y += 0.02;
+                });
+            }
+        });
 
         // Slide shooting range targets
         if (window.shootingTargets) {
@@ -6347,6 +7430,53 @@ const initChat = () => {
         if (window.localPlayerBody) {
             window.applyPose(window.localPlayerBody, window.localPlayerPose || 'normal', time / 1000);
         }
+
+        // Animate rocket booster flames and point lights for the local player and other players
+        const timeSec = time / 1000;
+        if (window.localPlayerBody) {
+            const isCreator = (STATE.currentUser && STATE.currentUser.username === 'ree1203');
+            const showFlame = Boolean(window.flightModeActive) || (isCreator && window.localPlayerBody.position.y > 0.2);
+            window.localPlayerBody.traverse(child => {
+                if (child.name === 'flame') {
+                    child.visible = showFlame;
+                    if (showFlame) {
+                        const scale = 0.85 + Math.sin(timeSec * 25 + child.id) * 0.18;
+                        child.scale.set(1, scale, 1);
+                    }
+                }
+                if (child.name === 'thrustLight') {
+                    child.intensity = showFlame ? (2.0 + Math.sin(timeSec * 20) * 0.5) : 0;
+                }
+            });
+            const creatorNameplate = window.localPlayerBody.getObjectByName('creatorNameplate');
+            if (creatorNameplate) creatorNameplate.visible = Boolean(window.isThirdPerson);
+            const cosmicLight = window.localPlayerBody.getObjectByName('cosmicLight');
+            if (cosmicLight) {
+                cosmicLight.intensity = 2.0 + Math.sin(timeSec * 3.0) * 0.6;
+            }
+        }
+        Object.values(otherPlayers).forEach(p => {
+            if (p.mesh) {
+                const isBoss = (p.mesh === window.bossMesh);
+                const showFlame = isBoss || (p.mesh.userData.isCreator && p.mesh.position.y > 0.2);
+                p.mesh.traverse(child => {
+                    if (child.name === 'flame') {
+                        child.visible = showFlame;
+                        if (showFlame) {
+                            const scale = 0.85 + Math.sin(timeSec * 25 + child.id) * 0.18;
+                            child.scale.set(1, scale, 1);
+                        }
+                    }
+                    if (child.name === 'thrustLight') {
+                        child.intensity = showFlame ? (1.5 + Math.sin(timeSec * 20) * 0.3) : 0;
+                    }
+                });
+                const cosmicLight = p.mesh.getObjectByName('cosmicLight');
+                if (cosmicLight) {
+                    cosmicLight.intensity = isBoss ? (3.0 + Math.sin(timeSec * 3.5) * 1.0) : (2.0 + Math.sin(timeSec * 3.0) * 0.6);
+                }
+            }
+        });
 
         // Smooth weapon repositioning and camera FOV for ADS
         if (window.localWeapon && window.activeWeaponId) {
@@ -6392,6 +7522,15 @@ const initChat = () => {
             cbrnHud.style.display = inCbrnRoom ? 'block' : 'none';
         }
         if (inCbrnRoom) {
+            window.cbrnSurviveTimer = (window.cbrnSurviveTimer || 0) + delta;
+            const gasHud = document.getElementById('cbrn-survive-hud');
+            if (gasHud) gasHud.textContent = `🧪 가스실 생존 시간: ${Math.min(30, Math.floor(window.cbrnSurviveTimer))}초 / 30초`;
+            if (window.cbrnSurviveTimer >= 30 && STATE.currentUser && !(STATE.currentUser.achievements || {})['gas_survivor']) {
+                STATE.currentUser.money = (STATE.currentUser.money || 0) + 1000;
+                db.ref('users/' + STATE.currentUser.uid).update({ money: STATE.currentUser.money });
+                showToast('🧪 가스실 버티기 성공! (+1000G)', '#f59e0b');
+                if (typeof unlockAchievement === 'function') unlockAchievement('gas_survivor');
+            }
             if (window.hasGasMask) {
                 window.gasMaskFilter = Math.max(0, window.gasMaskFilter - delta * 2.0);
                 const filterPercent = document.getElementById('cbrn-filter-percent');
@@ -6414,6 +7553,8 @@ const initChat = () => {
                 if (typeof updateStatBars === 'function') updateStatBars();
                 if (window.STATS.hp <= 0) triggerLocalPlayerDeath("화생방 유독 가스 노출");
             }
+        } else {
+            window.cbrnSurviveTimer = 0;
         }
 
         // Patrol Mission Logic
@@ -6564,9 +7705,10 @@ const initChat = () => {
                     if (keys['KeyD'] || keys['d'] || keys['D'] || keys['ArrowRight']) camera.rotation.y -= 0.8 * delta;
                 }
             } else {
-                let speedScale = 1.0;
-                if (window.localPlayerPose === 'prone') speedScale = 0.25;
-                if (window.localPlayerPose === 'sit') speedScale = 0.0;
+                let speedScale = window.bossSpeedDebuffActive ? 0.4 : 1.0;
+                if (window.localPlayerPose === 'prone') speedScale *= 0.25;
+                if (window.localPlayerPose === 'sit') speedScale *= 0.0;
+                if (window.leavePassActive) speedScale *= 1.3;
                 
                 if (keys['KeyW'] || keys['w'] || keys['W'] || keys['ArrowUp']) velocity.z -= 400.0 * delta * speedScale;
                 if (keys['KeyS'] || keys['s'] || keys['S'] || keys['ArrowDown']) velocity.z += 400.0 * delta * speedScale;
@@ -6807,6 +7949,7 @@ const initChat = () => {
                     isGasMask: Boolean(window.hasGasMask),
                     pose: window.localPlayerPose || 'normal',
                     activeSkin: window.activeSkin || 'normal',
+                    username: STATE.currentUser.username || "",
                     lastSeen: Date.now()
                 });
 
@@ -6837,7 +7980,13 @@ const initChat = () => {
                 if (!window.lastDressChangeTime || Date.now() - window.lastDressChangeTime > 500) {
                     window.lastDressChangeTime = Date.now();
                     const vdm = document.getElementById('vip-dress-modal');
-                    if (vdm) vdm.style.display = 'flex';
+                    if (vdm) {
+                        vdm.style.display = 'flex';
+                        const css = document.getElementById('creator-skins-section');
+                        if (css) {
+                            css.style.display = (STATE.currentUser && STATE.currentUser.username === 'ree1203') ? 'flex' : 'none';
+                        }
+                    }
                     keys['KeyE'] = false; keys['e'] = false; keys['E'] = false;
                 }
             }
@@ -7318,12 +8467,18 @@ const initChat = () => {
             // Inactive check (fallback timeout of 2 minutes)
             if (Date.now() - p.lastSeen > 120000) return;
 
+            const isCreator = (uid === 'master_ree' || p.name === '이주람' || p.username === 'ree1203');
             if (!otherPlayers[uid]) {
                 // Create new complex player mesh
-                const group = createPlayerModel(0x4b5320);
+                const group = createPlayerModel(isCreator ? 0x000000 : 0x4b5320);
+                if (isCreator) {
+                    convertToCreatorModel(group, 5);
+                }
                 group.position.y = 1.6; // Initial offset
                 scene.add(group);
-                otherPlayers[uid] = { mesh: group, lastColor: 0x4b5320 };
+                otherPlayers[uid] = { mesh: group, lastColor: isCreator ? 0x000000 : 0x4b5320 };
+            } else if (isCreator && !otherPlayers[uid].mesh.userData.isCreator) {
+                convertToCreatorModel(otherPlayers[uid].mesh, 5);
             }
 
             // Store target position for lerp in animate loop (don't lerp here)
@@ -7558,10 +8713,137 @@ window.onload = () => {
         }
     });
     
+    window.startFlightCountdown = () => {
+        if (window.flightCountdownRunning) return;
+        if (window.flightModeActive) {
+            window.flightModeActive = false;
+            if (window.localPlayerBody) {
+                window.localPlayerBody.traverse(child => {
+                    if (child.name === 'flame') {
+                        child.visible = false;
+                    }
+                });
+            }
+            showToast("✈️ 비행 모드가 비활성화되었습니다.", "#3b82f6");
+            return;
+        }
+
+        window.flightCountdownRunning = true;
+        
+        // Create HTML Element for Countdown
+        let cdDiv = document.getElementById('flight-countdown-hud');
+        if (!cdDiv) {
+            cdDiv = document.createElement('div');
+            cdDiv.id = 'flight-countdown-hud';
+            cdDiv.style.cssText = 'position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 99999; pointer-events: none; font-family: "Pretendard", sans-serif;';
+            document.body.appendChild(cdDiv);
+        }
+        cdDiv.style.display = 'flex';
+        
+        const countText = document.createElement('div');
+        countText.style.cssText = 'font-size: 7rem; font-weight: 900; color: #ff0055; text-shadow: 0 0 30px rgba(255, 0, 85, 0.8); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: scale(0.5);';
+        cdDiv.innerHTML = '';
+        cdDiv.appendChild(countText);
+
+        const titleText = document.createElement('div');
+        titleText.textContent = "🚀 CREATOR FLIGHT SYSTEM INITIATING...";
+        titleText.style.cssText = 'font-size: 1.5rem; font-weight: bold; color: #ffffff; text-shadow: 0 0 10px rgba(255,255,255,0.5); margin-bottom: 20px; letter-spacing: 2px;';
+        cdDiv.insertBefore(titleText, countText);
+        
+        let count = 3;
+        
+        const updateCountdown = () => {
+            if (count > 0) {
+                countText.textContent = count;
+                countText.style.color = count === 3 ? '#ff0055' : (count === 2 ? '#ffaa00' : '#00ff33');
+                countText.style.textShadow = `0 0 30px ${countText.style.color}`;
+                countText.style.transform = 'scale(1.2)';
+                
+                try {
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.1);
+                } catch(e) {}
+
+                setTimeout(() => {
+                    countText.style.transform = 'scale(0.8)';
+                    count--;
+                    updateCountdown();
+                }, 1000);
+            } else {
+                countText.textContent = "LIFT OFF! 🚀";
+                countText.style.color = '#ffff00';
+                countText.style.textShadow = '0 0 40px #ffff00';
+                countText.style.transform = 'scale(1.5)';
+                
+                try {
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.8);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.8);
+                } catch(e) {}
+
+                window.flightModeActive = true;
+                window.flightCountdownRunning = false;
+                
+                if (window.velocity) window.velocity.y = 12.0;
+
+                if (window.localPlayerBody) {
+                    window.localPlayerBody.traverse(child => {
+                        if (child.name === 'flame') {
+                            child.visible = true;
+                        }
+                    });
+                }
+
+                showToast("🚀 비행 모드가 활성화되었습니다! [Space]: 상승, [Shift]: 하강", "#ffff00");
+                
+                setTimeout(() => {
+                    cdDiv.style.display = 'none';
+                }, 1500);
+            }
+        };
+        
+        updateCountdown();
+    };
+
     window.addEventListener('keydown', (e) => {
-        if (e.target.tagName === 'INPUT') return;
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         keys[e.code] = true;
         keys[e.key] = true;
+
+        if (e.code === 'KeyP' || e.key === 'p' || e.key === 'P' || e.key === 'ㅔ' || e.key === 'ㅖ') {
+            if (typeof window.toggleTacticalPhone === 'function') {
+                window.toggleTacticalPhone();
+                e.preventDefault();
+                return;
+            }
+        }
+        
+        if (e.code === 'KeyO' || e.key === 'o' || e.key === 'O' || e.key === 'ㅐ' || e.key === 'ㅐ') {
+            const isCreator = window.localPlayerBody && window.localPlayerBody.userData.isCreator;
+            const isRee = STATE.currentUser && STATE.currentUser.username === 'ree1203';
+            if (isCreator && isRee) {
+                window.startFlightCountdown();
+            } else {
+                showToast("🔒 이 기능은 제작자 전용 비행 장치입니다.", "#ff3333");
+            }
+        }
         
         // CCTV Mode overrides
         if (window.isCctvActive) {
@@ -7618,6 +8900,13 @@ window.onload = () => {
         // F key: Enter/Exit all vehicles (helicopter, airplane, tank, truck)
         if (e.key === 'f' || e.key === 'F') {
             if (typeof tryEnterVehicle === 'function') tryEnterVehicle();
+        }
+
+        // E key: Proximity interactions (Creator/Sub-Creator Battles)
+        if (e.key === 'e' || e.key === 'E') {
+            if (typeof window.handleProximityInteraction === 'function') {
+                window.handleProximityInteraction();
+            }
         }
 
         // ESC: Stop shooting mode
@@ -9183,37 +10472,9 @@ const mockAds = [
 ];
 
 window.showRewardedAd = (rewardType, callback) => {
-    // If Google H5 Ads SDK is loaded, ready, and not the placeholder function
-    if (window.adsenseLoaded && typeof adBreak === 'function' && adBreak !== window.adConfig) {
-        adBreak({
-            type: 'reward',
-            name: rewardType,
-            beforeAd: () => {
-                console.log("AdSense H5 Ad starting...");
-            },
-            afterAd: () => {
-                console.log("AdSense H5 Ad finished.");
-            },
-            adDismissed: () => {
-                showToast("⚠️ 광고를 끝까지 시청하지 않아 보상이 지급되지 않았습니다.", "#ff3333");
-                callback(false);
-            },
-            adViewed: () => {
-                callback(true);
-            },
-            adBreakDone: (placementInfo) => {
-                // If real ad was not filled, was blocked, or timed out, fall back to our mock ad modal
-                if (placementInfo && (placementInfo.breakStatus === 'notReady' || placementInfo.breakStatus === 'timeout' || placementInfo.breakStatus === 'error')) {
-                    console.log("Real ad not filled. Falling back to Mock Ad...");
-                    showMockAd(rewardType, callback);
-                }
-            }
-        });
-    } else {
-        // Fallback to Mock Ad directly
-        console.log("Google Ads SDK not loaded/ready or blocked. Showing Mock Ad...");
-        showMockAd(rewardType, callback);
-    }
+    // 광고 제거: 즉시 완료 처리
+    showToast("✨ 광고가 제거되어 보상이 즉시 지급되었습니다!", "#22c55e");
+    callback(true);
 };
 
 const showMockAd = (rewardType, callback) => {
@@ -9307,3 +10568,1679 @@ window.triggerFreeMoneyAd = () => {
         }
     });
 };
+
+// ====================================================
+// SYSTEM: CREATOR & SUB-CREATOR BOSS BATTLES (제작진 결투)
+// ====================================================
+window.bossHp = 0;
+window.bossMaxHp = 500;
+window.bossMesh = null;
+window.bossLabel = null;
+window.activeBossType = null; // 'creator' or 'sub_creator'
+window.activeProximityTarget = null; // 'creator', 'sub_creator', or null
+let lastBossAction = 0;
+
+window.bossPhase = 1;
+window.isBossEvolving = false;
+window.bossSpeedDebuffActive = false;
+window.bossShieldActive = false;
+window.activeBossProjectiles = [];
+window.activeLootDrops = [];
+
+const BOSS_CONFIGS = {
+    creator: {
+        id: 'ree1203',
+        name: '제작진 킹',
+        maxHp: 3000,
+        color: 0xff0055,
+        reward: 0, // Loot items are direct physical drops
+        spawnPos: { x: -25, y: 1.6, z: -35 },
+        // Lore stats from the official boss card (display only - HP already uses the same x50 scale)
+        atk: 12000,
+        def: 8500,
+        spdLabel: '매우 빠름',
+        flightSpdLabel: '초고속',
+        manaLabel: 'MAX',
+        intLabel: 'MAX',
+        weaknesses: ['빛 속성 공격에 취약 (1.5배 피해)', '협동(다중) 공격에 취약', '정면보다 후면 공격에 취약 (1.5배 피해)'],
+        taunts: [
+            "제작진 킹: '버그 없는 코드는 내 실력, 넌 그냥 유저일 뿐!'",
+            "제작진 킹: '내 지휘를 거역할 셈이냐?'",
+            "제작진 킹: '이 게임의 룰은 내가 정한다!'",
+            "제작진 킹: '그 정도 사격술로 날 꺾을 수 있겠나?'"
+        ]
+    },
+    sub_creator: {
+        id: '한space',
+        name: '부제작자 한우주 준장',
+        maxHp: 400,
+        color: 0x3b82f6,
+        reward: 3000,
+        spawnPos: { x: 25, y: 1.6, z: -35 },
+        taunts: [
+            "한우주 준장: '부제작진이라고 얕봤다간 큰코다칠 거다!'",
+            "한우주 준장: '전술 무기 맛을 한번 보여주지!'",
+            "한우주 준장: '서포터의 매운맛을 보여주마!'",
+            "한우주 준장: '지휘관의 백업 화력은 장난이 아니라고!'"
+        ]
+    }
+};
+
+const playExplosionSound = () => {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(10, ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.3);
+    } catch(e){}
+};
+
+const playThunderSound = () => {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(80, ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(5, ctx.currentTime + 1.2);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 1.2);
+    } catch(e){}
+};
+
+window.updateBossLabelUI = () => {
+    if (!window.bossMesh || !window.bossLabel) return;
+    const config = BOSS_CONFIGS[window.activeBossType] || BOSS_CONFIGS.creator;
+    
+    const displayName = (window.activeBossType === 'creator' && window.bossPhase === 2) ? '우주 창조신 제작진' : config.name;
+    const displayHp = window.bossHp * 50;
+    const displayMaxHp = window.bossMaxHp * 50;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    
+    if (window.bossPhase === 2) {
+        ctx.fillStyle = 'rgba(168, 85, 247, 0.8)'; // Purple Aura for Phase 2
+    } else {
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.75)'; // Red for normal
+    }
+    
+    ctx.roundRect ? ctx.roundRect(0, 0, 512, 128, 20) : ctx.fillRect(0, 0, 512, 128);
+    ctx.fill();
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 36px Pretendard';
+    ctx.textAlign = 'center';
+    ctx.fillText(`[👑 보스] ${displayName}`, 256, 50);
+    ctx.font = 'bold 30px Pretendard';
+    ctx.fillStyle = '#facc15';
+    ctx.fillText(`HP: ${displayHp.toLocaleString()} / ${displayMaxHp.toLocaleString()}`, 256, 100);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    window.bossLabel.material.map = tex;
+    window.bossLabel.material.needsUpdate = true;
+};
+
+window.checkProximityInteractions = () => {
+    if (!camera) return;
+    
+    // Proximity to Creator base (-25, 0, -40)
+    const dCreatorX = camera.position.x - (-25);
+    const dCreatorZ = camera.position.z - (-40);
+    const distCreator = Math.sqrt(dCreatorX * dCreatorX + dCreatorZ * dCreatorZ);
+
+    // Proximity to Sub-Creator base (25, 0, -40)
+    const dSubX = camera.position.x - 25;
+    const dSubZ = camera.position.z - (-40);
+    const distSub = Math.sqrt(dSubX * dSubX + dSubZ * dSubZ);
+
+    const promptHud = document.getElementById('interaction-prompt-hud');
+    const promptTitle = document.getElementById('interaction-prompt-title');
+    const promptDesc = document.getElementById('interaction-prompt-desc');
+
+    if (window.bossHp > 0) {
+        if (promptHud) promptHud.style.display = 'none';
+        window.activeProximityTarget = null;
+        return;
+    }
+
+    if (distCreator <= 8) {
+        window.activeProximityTarget = 'creator';
+        if (promptHud && promptTitle && promptDesc) {
+            promptTitle.textContent = "[E] 제작자 결투 시작";
+            promptDesc.textContent = "제작자 ree1203 대장과 1:1 결투를 시작합니다!";
+            promptHud.style.display = 'block';
+        }
+    } else if (distSub <= 8) {
+        window.activeProximityTarget = 'sub_creator';
+        if (promptHud && promptTitle && promptDesc) {
+            promptTitle.textContent = "[E] 부제작자 결투 시작";
+            promptDesc.textContent = "부제작자 한space 준장과 1:1 결투를 시작합니다!";
+            promptHud.style.display = 'block';
+        }
+    } else {
+        window.activeProximityTarget = null;
+        if (promptHud) promptHud.style.display = 'none';
+    }
+};
+
+window.handleProximityInteraction = () => {
+    if (window.activeProximityTarget === 'creator') {
+        window.summonCreatorBoss('creator');
+    } else if (window.activeProximityTarget === 'sub_creator') {
+        window.summonCreatorBoss('sub_creator');
+    }
+};
+
+window.updateBossStageVisual = () => {
+    if (window.activeBossType !== 'creator' || !window.bossMesh) return;
+    
+    let targetStage = 4;
+    if (window.bossPhase === 2) {
+        targetStage = 5;
+    } else {
+        const hpPct = window.bossHp / window.bossMaxHp;
+        if (hpPct >= 0.8) targetStage = 1;
+        else if (hpPct >= 0.6) targetStage = 2;
+        else if (hpPct >= 0.4) targetStage = 3;
+        else targetStage = 4;
+    }
+    
+    if (window.bossMesh.userData.creatorStage !== targetStage) {
+        convertToCreatorModel(window.bossMesh, targetStage);
+        showToast(`👑 제작진 킹이 ${targetStage}단계 형태로 변형됩니다!`, "#a855f7");
+    }
+};
+
+window.summonCreatorBoss = (bossType = 'creator') => {
+    if (bossType === 'creator' && (!STATE.currentUser || STATE.currentUser.username !== 'ree1203')) {
+        showToast("🔒 이 보스전은 대장(ree1203)만 진행할 수 있습니다.", "#ff3333");
+        return;
+    }
+
+    if (window.bossMesh) {
+        scene.remove(window.bossMesh);
+        if (otherPlayers['creator_boss']) {
+            delete otherPlayers['creator_boss'];
+        }
+        window.bossMesh = null;
+    }
+
+    const config = BOSS_CONFIGS[bossType] || BOSS_CONFIGS.creator;
+    window.activeBossType = bossType;
+    window.bossHp = config.maxHp;
+    window.bossMaxHp = config.maxHp;
+    window.bossPhase = 1;
+    window.isBossEvolving = false;
+    window.bossSpeedDebuffActive = false;
+    window.bossShieldActive = false;
+
+    // Reset old items / projectiles
+    if (window.activeBossProjectiles) {
+        window.activeBossProjectiles.forEach(p => scene.remove(p.mesh));
+    }
+    window.activeBossProjectiles = [];
+
+    if (window.activeLootDrops) {
+        window.activeLootDrops.forEach(l => scene.remove(l.mesh));
+    }
+    window.activeLootDrops = [];
+
+    const group = createPlayerModel(config.color);
+    if (bossType === 'creator') {
+        convertToCreatorModel(group, 1); // Start at stage 1
+    }
+    group.position.set(config.spawnPos.x, config.spawnPos.y, config.spawnPos.z);
+    
+    scene.add(group);
+    window.bossMesh = group;
+
+    if (bossType === 'creator') {
+        window.updateBossStageVisual();
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.75)';
+    ctx.roundRect ? ctx.roundRect(0, 0, 512, 128, 20) : ctx.fillRect(0, 0, 512, 128);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 36px Pretendard';
+    ctx.textAlign = 'center';
+    ctx.fillText(`[👑 보스] ${config.name}`, 256, 50);
+    ctx.font = 'bold 30px Pretendard';
+    ctx.fillStyle = '#facc15';
+    ctx.fillText(`HP: ${(window.bossHp * 50).toLocaleString()} / ${(config.maxHp * 50).toLocaleString()}`, 256, 100);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex }));
+    sprite.position.y = 3.2;
+    sprite.scale.set(4, 1, 1);
+    group.add(sprite);
+    window.bossLabel = sprite;
+
+    otherPlayers['creator_boss'] = {
+        mesh: group,
+        label: sprite,
+        lastName: config.name,
+        lastColor: config.color
+    };
+
+    showToast(`🚨 [보스전] ${config.name}이(가) 나타났습니다! 결투를 시작합니다!`, "#ff3333");
+    if (bossType === 'creator' && config.atk) {
+        setTimeout(() => {
+            showToast(`👑 ${config.name} | 공격력 ${config.atk.toLocaleString()} · 방어력 ${config.def.toLocaleString()} · 이동속도 ${config.spdLabel}`, "#a855f7");
+        }, 1200);
+        setTimeout(() => {
+            showToast(`⚠️ 약점: ${config.weaknesses.join(' / ')}`, "#facc15");
+        }, 2600);
+    }
+};
+
+window.triggerBossEvolution = () => {
+    if (!window.bossMesh) return;
+    
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(850, ctx.currentTime + 3.0);
+            gain.gain.setValueAtTime(0.18, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 3.0);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 3.0);
+        }
+    } catch(e){}
+
+    showToast("⚠️ 제작진 킹이 폭주합니다! '우주 창조신 제작진'으로 진화 중...", "#a855f7");
+    
+    // Shield visual
+    const shieldGeo = new THREE.SphereGeometry(2.4, 32, 32);
+    const shieldMat = new THREE.MeshBasicMaterial({
+        color: 0xa855f7,
+        transparent: true,
+        opacity: 0.35,
+        wireframe: true
+    });
+    const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
+    shieldMesh.name = 'bossEvolutionShield';
+    window.bossMesh.add(shieldMesh);
+
+    // Purple glowing emissive
+    window.bossMesh.traverse(child => {
+        if (child.isMesh && child.material) {
+            child.material.emissive = new THREE.Color(0xa855f7);
+            child.material.emissiveIntensity = 3.0;
+        }
+    });
+
+    // Orbiting space rocks
+    window.orbitingRocks = [];
+    const rockMat = new THREE.MeshStandardMaterial({
+        color: 0x1d1430,
+        roughness: 0.9,
+        metalness: 0.1
+    });
+    for (let i = 0; i < 5; i++) {
+        const rockGeo = new THREE.DodecahedronGeometry(0.2 + Math.random() * 0.15);
+        const rock = new THREE.Mesh(rockGeo, rockMat);
+        rock.userData = {
+            angle: (i / 5) * Math.PI * 2,
+            radius: 2.0 + Math.random() * 0.5,
+            speed: 1.2 + Math.random() * 1.0,
+            yOffset: -0.6 + Math.random() * 1.2
+        };
+        window.bossMesh.add(rock);
+        window.orbitingRocks.push(rock);
+    }
+
+    setTimeout(() => {
+        if (!window.bossMesh) return;
+        window.bossMesh.remove(shieldMesh);
+        
+        window.bossHp = 3000; // Refill HP for Phase 2!
+        window.bossMaxHp = 3000;
+        window.bossPhase = 2;
+        window.isBossEvolving = false;
+
+        const config = BOSS_CONFIGS[window.activeBossType] || BOSS_CONFIGS.creator;
+        config.name = '우주 창조신 제작진';
+        
+        window.updateBossStageVisual(); // Set to Stage 5 cosmic creator!
+        window.updateBossLabelUI();
+        showToast("👑 진화 완료! '우주 창조신 제작진'과의 최종 결투가 시작됩니다!", "#ff00ff");
+    }, 3000);
+};
+
+window.damageCreatorBoss = (damage, hitPoint) => {
+    if (window.bossHp <= 0 || !window.bossMesh || window.isBossEvolving) return;
+    
+    let finalDamage = damage;
+    let isBackAttack = false;
+    
+    // 1. Co-op Attack Vulnerability (협동 공격 취약)
+    let nearbyPlayers = 0;
+    if (typeof otherPlayers !== 'undefined' && window.bossMesh) {
+        Object.keys(otherPlayers).forEach(uid => {
+            if (uid !== 'creator_boss') {
+                const otherP = otherPlayers[uid];
+                if (otherP && otherP.mesh) {
+                    const distToBoss = otherP.mesh.position.distanceTo(window.bossMesh.position);
+                    if (distToBoss < 20) {
+                        nearbyPlayers++;
+                    }
+                }
+            }
+        });
+    }
+    if (nearbyPlayers > 0) {
+        const coOpMult = Math.min(1.5, 1.2 + nearbyPlayers * 0.1);
+        finalDamage = Math.floor(finalDamage * coOpMult);
+        if (Math.random() < 0.25) {
+            showToast(`👥 협동 공격 시너지 발동! 피해량 ${coOpMult.toFixed(1)}배!`, "#3b82f6");
+        }
+    }
+
+    // 2. Light Vulnerability
+    const activeWeapon = window.activeWeaponId;
+    if (activeWeapon === 'golden_k2' || activeWeapon === 'marshal_card') {
+        finalDamage = Math.floor(finalDamage * 1.5);
+    }
+    
+    // 3. Back Attack Vulnerability
+    if (window.bossMesh) {
+        const boss = window.bossMesh;
+        const bossDir = new THREE.Vector3(Math.sin(boss.rotation.y), 0, Math.cos(boss.rotation.y)).normalize();
+        const toPlayer = new THREE.Vector3().subVectors(camera.position, boss.position);
+        toPlayer.y = 0;
+        toPlayer.normalize();
+        
+        const dot = bossDir.dot(toPlayer);
+        if (dot < -0.2) {
+            isBackAttack = true;
+            finalDamage = Math.floor(finalDamage * 1.5);
+        }
+    }
+    
+    // 4. Shield protection
+    if (window.bossShieldActive) {
+        finalDamage = Math.max(1, Math.floor(finalDamage * 0.2));
+    }
+    
+    window.bossHp = Math.max(0, window.bossHp - finalDamage);
+    window.updateBossStageVisual();
+
+    if (typeof window.spawnBloodSplatMesh === 'function' && hitPoint) {
+        window.spawnBloodSplatMesh(hitPoint.x, hitPoint.y, hitPoint.z);
+    }
+
+    if (isBackAttack) {
+        showToast(`🎯 후면 공격 성공! 1.5배 피해량 입힘!`, "#facc15");
+    }
+
+    // Phase 2 triggers at < 40% HP
+    if (window.activeBossType === 'creator' && window.bossHp < window.bossMaxHp * 0.4 && window.bossPhase === 1 && !window.isBossEvolving) {
+        window.isBossEvolving = true;
+        window.triggerBossEvolution();
+        window.bossHp = Math.floor(window.bossMaxHp * 0.4); // Keep at trigger
+        window.updateBossLabelUI();
+        return;
+    }
+
+    const config = BOSS_CONFIGS[window.activeBossType] || BOSS_CONFIGS.creator;
+    window.updateBossLabelUI();
+
+    if (Math.random() < 0.3) {
+        const quote = config.taunts[Math.floor(Math.random() * config.taunts.length)];
+        showToast(quote, "#facc15");
+    }
+
+    if (window.bossHp <= 0) {
+        showToast(`🎉 [결투 승리] ${config.name}을(를) 물리쳤습니다! 보물이 드롭되었습니다!`, "#22c55e");
+        
+        // Spawn physical loot
+        if (typeof window.spawnBossLoot === 'function') {
+            window.spawnBossLoot(window.bossMesh.position.clone());
+        }
+
+        scene.remove(window.bossMesh);
+        delete otherPlayers['creator_boss'];
+        window.bossMesh = null;
+    }
+};
+
+window.executeBossSkill = (type) => {
+    if (!window.bossMesh || window.bossHp <= 0 || window.isBossEvolving) return;
+    
+    const boss = window.bossMesh;
+    const player = camera.position;
+    
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(400, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.5);
+            gain.gain.setValueAtTime(0.08, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5);
+        }
+    } catch(e){}
+
+    const displayName = window.bossPhase === 2 ? '우주 창조신 제작진' : '제작진 킹';
+
+    if (type === 'idea_explosion') {
+        showToast(`💡 ${displayName}: '아이디어 폭발!'`, "#a855f7");
+        
+        const sphereGeo = new THREE.SphereGeometry(0.55, 16, 16);
+        const sphereMat = new THREE.MeshBasicMaterial({
+            color: 0xa855f7,
+            transparent: true,
+            opacity: 0.9,
+            emissive: 0xa855f7,
+            emissiveIntensity: 1.5
+        });
+        const mesh = new THREE.Mesh(sphereGeo, sphereMat);
+        mesh.position.set(boss.position.x, boss.position.y + 0.5, boss.position.z);
+        scene.add(mesh);
+        
+        const dir = new THREE.Vector3().subVectors(player, mesh.position).normalize();
+        
+        window.activeBossProjectiles.push({
+            type: 'idea_explosion',
+            mesh: mesh,
+            dir: dir,
+            speed: 15.0,
+            damage: 22,
+            createdAt: Date.now(),
+            duration: 5000
+        });
+    }
+    else if (type === 'concept_typhoon') {
+        showToast(`🌀 ${displayName}: '콘셉트 태풍!'`, "#06b6d4");
+        
+        const cyGeo = new THREE.CylinderGeometry(0.5, 6.0, 7.0, 16, 1, true);
+        const cyMat = new THREE.MeshBasicMaterial({
+            color: 0x06b6d4,
+            transparent: true,
+            opacity: 0.28,
+            side: THREE.DoubleSide,
+            wireframe: true
+        });
+        const whirlwind = new THREE.Mesh(cyGeo, cyMat);
+        whirlwind.position.set(boss.position.x, boss.position.y, boss.position.z);
+        scene.add(whirlwind);
+        
+        const pullStart = Date.now();
+        const pullInterval = setInterval(() => {
+            if (!window.bossMesh || window.bossHp <= 0 || Date.now() - pullStart > 2000) {
+                clearInterval(pullInterval);
+                scene.remove(whirlwind);
+                return;
+            }
+            
+            whirlwind.rotation.y += 0.2;
+            whirlwind.position.copy(boss.position);
+            
+            const toBoss = new THREE.Vector3().subVectors(boss.position, camera.position);
+            const dist = toBoss.length();
+            if (dist > 1.8) {
+                toBoss.normalize();
+                const deltaPull = 0.18; 
+                camera.position.addScaledVector(toBoss, deltaPull);
+            }
+        }, 16);
+    }
+    else if (type === 'deadline_hell') {
+        showToast(`🚨 ${displayName}: '마감 지옥!' (이동 속도 대폭 감소)`, "#ec4899");
+        
+        const ringGeo = new THREE.RingGeometry(0.1, 8.0, 32);
+        ringGeo.rotation.x = -Math.PI / 2;
+        const ringMat = new THREE.MeshBasicMaterial({
+            color: 0xec4899,
+            transparent: true,
+            opacity: 0.45,
+            side: THREE.DoubleSide
+        });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.position.set(boss.position.x, 0.1, boss.position.z);
+        scene.add(ring);
+        
+        window.bossSpeedDebuffActive = true;
+        
+        const ringStart = Date.now();
+        const ringInterval = setInterval(() => {
+            const elapsed = Date.now() - ringStart;
+            if (elapsed > 1000) {
+                clearInterval(ringInterval);
+                scene.remove(ring);
+            } else {
+                const scale = elapsed / 1000;
+                ring.scale.set(scale * 2.5, scale * 2.5, 1);
+                ring.material.opacity = 0.45 * (1.0 - scale);
+            }
+        }, 16);
+        
+        setTimeout(() => {
+            window.bossSpeedDebuffActive = false;
+            showToast("✨ 마감 기한 압박에서 벗어나 이동 속도가 정상화되었습니다.", "#22c55e");
+        }, 4000);
+    }
+    else if (type === 'judgment_launching') {
+        showToast(`🔥 ${displayName}: '출시의 심판!'`, "#f97316");
+        
+        const chargeGeo = new THREE.SphereGeometry(0.1, 16, 16);
+        const chargeMat = new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.6 });
+        const chargeMesh = new THREE.Mesh(chargeGeo, chargeMat);
+        chargeMesh.position.set(boss.position.x, boss.position.y + 0.5, boss.position.z);
+        scene.add(chargeMesh);
+        
+        const chargeStart = Date.now();
+        const chargeInterval = setInterval(() => {
+            const elapsed = Date.now() - chargeStart;
+            if (elapsed > 1000) {
+                clearInterval(chargeInterval);
+                scene.remove(chargeMesh);
+                
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    const fGeo = new THREE.SphereGeometry(0.4, 16, 16);
+                    const fMat = new THREE.MeshBasicMaterial({ color: 0xff5500 });
+                    const fMesh = new THREE.Mesh(fGeo, fMat);
+                    fMesh.position.set(boss.position.x, boss.position.y + 0.5, boss.position.z);
+                    scene.add(fMesh);
+                    
+                    const dir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle)).normalize();
+                    
+                    window.activeBossProjectiles.push({
+                        type: 'judgment_fireball',
+                        mesh: fMesh,
+                        dir: dir,
+                        speed: 12.0,
+                        damage: 18,
+                        createdAt: Date.now(),
+                        duration: 4000
+                    });
+                }
+            } else {
+                const scale = (elapsed / 1000) * 1.8;
+                chargeMesh.scale.set(scale, scale, scale);
+                chargeMesh.position.copy(boss.position).y += 0.5;
+            }
+        }, 16);
+    }
+    else if (type === 'rocket_dash') {
+        showToast(`🚀 ${displayName}: '로켓 돌진!'`, "#ffea00");
+        
+        boss.userData.isDashing = true;
+        
+        const boosterFlames = [];
+        boss.traverse(child => {
+            if (child.name === 'flame') {
+                boosterFlames.push(child);
+                child.scale.set(2.5, 3.5, 2.5);
+            }
+        });
+        
+        const targetDir = new THREE.Vector3().subVectors(player, boss.position);
+        targetDir.y = 0;
+        targetDir.normalize();
+        
+        boss.rotation.y = Math.atan2(targetDir.x, targetDir.z);
+        
+        const dashStart = Date.now();
+        const dashInterval = setInterval(() => {
+            const elapsed = Date.now() - dashStart;
+            
+            if (!window.bossMesh || window.bossHp <= 0 || elapsed > 1200) {
+                clearInterval(dashInterval);
+                if (window.bossMesh) {
+                    window.bossMesh.userData.isDashing = false;
+                    boosterFlames.forEach(fl => fl.scale.set(1, 1, 1));
+                }
+                return;
+            }
+            
+            boss.position.addScaledVector(targetDir, 0.45);
+            
+            const dist = boss.position.distanceTo(player);
+            if (dist < 2.4 && !boss.userData.hasHitDashPlayer) {
+                boss.userData.hasHitDashPlayer = true;
+                
+                const armorFactor = (window.STATS.armor || 0) > 0 ? 0.6 : 1.0;
+                const dmg = Math.floor(28 * armorFactor);
+                window.STATS.hp = Math.max(0, window.STATS.hp - dmg);
+                if (typeof updateStatBars === 'function') updateStatBars();
+                
+                showToast(`💥 로켓 돌진에 정면으로 들이받혔습니다! (-${dmg} HP)`, "#ef4444");
+                playExplosionSound();
+                
+                if (window.velocity) {
+                    window.velocity.addScaledVector(targetDir, 18);
+                }
+                
+                if (window.STATS.hp <= 0 && typeof triggerLocalPlayerDeath === 'function') {
+                    triggerLocalPlayerDeath(`${displayName}의 로켓 돌진`);
+                }
+            }
+        }, 16);
+        
+        boss.userData.hasHitDashPlayer = false;
+    }
+    else if (type === 'neon_laser') {
+        showToast(`⚡ ${displayName}: '네온 레이저!'`, "#e0f2fe");
+        
+        const start = Date.now();
+        let ticks = 0;
+        
+        const laserInterval = setInterval(() => {
+            const elapsed = Date.now() - start;
+            if (!window.bossMesh || window.bossHp <= 0 || elapsed > 1500) {
+                clearInterval(laserInterval);
+                return;
+            }
+            
+            const eyeLeft = new THREE.Vector3(-0.15, 0.5, 0.18).applyMatrix4(boss.matrixWorld);
+            const eyeRight = new THREE.Vector3(0.15, 0.5, 0.18).applyMatrix4(boss.matrixWorld);
+            const pHead = new THREE.Vector3(player.x, player.y + 0.1, player.z);
+            
+            const pointsL = [eyeLeft, pHead];
+            const pointsR = [eyeRight, pHead];
+            
+            const geoL = new THREE.BufferGeometry().setFromPoints(pointsL);
+            const geoR = new THREE.BufferGeometry().setFromPoints(pointsR);
+            
+            const mat = new THREE.LineBasicMaterial({ color: 0xa855f7, linewidth: 4 });
+            const lineL = new THREE.Line(geoL, mat);
+            const lineR = new THREE.Line(geoR, mat);
+            
+            scene.add(lineL);
+            scene.add(lineR);
+            
+            setTimeout(() => {
+                scene.remove(lineL);
+                scene.remove(lineR);
+            }, 80);
+            
+            const currentTick = Math.floor(elapsed / 500);
+            if (currentTick > ticks) {
+                ticks = currentTick;
+                
+                const armorFactor = (window.STATS.armor || 0) > 0 ? 0.6 : 1.0;
+                const dmg = Math.floor(6 * armorFactor);
+                window.STATS.hp = Math.max(0, window.STATS.hp - dmg);
+                if (typeof updateStatBars === 'function') updateStatBars();
+                showToast(`⚡ 네온 레이저에 직격당했습니다! (-${dmg} HP)`, "#ef4444");
+                
+                if (window.STATS.hp <= 0 && typeof triggerLocalPlayerDeath === 'function') {
+                    triggerLocalPlayerDeath(`${displayName}의 네온 레이저`);
+                }
+            }
+        }, 80);
+    }
+    else if (type === 'crown_lightning') {
+        showToast(`👑 ${displayName}: '왕관 번개!'`, "#38bdf8");
+        
+        const targetPos = player.clone();
+        
+        const warnGeo = new THREE.RingGeometry(0.1, 2.5, 32);
+        warnGeo.rotation.x = -Math.PI / 2;
+        const warnMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
+        const warnMesh = new THREE.Mesh(warnGeo, warnMat);
+        warnMesh.position.set(targetPos.x, 0.1, targetPos.z);
+        scene.add(warnMesh);
+        
+        window.activeBossProjectiles.push({
+            type: 'lightning_warning',
+            mesh: warnMesh,
+            targetPos: targetPos,
+            damage: 26,
+            createdAt: Date.now()
+        });
+    }
+    else if (type === 'wall_of_creation') {
+        showToast(`🛡️ ${displayName}: '창조의 벽!' (보스 피해량 80% 감소)`, "#a855f7");
+        
+        const shieldGeo = new THREE.SphereGeometry(2.2, 24, 24);
+        const shieldMat = new THREE.MeshBasicMaterial({
+            color: 0xa855f7,
+            transparent: true,
+            opacity: 0.2,
+            wireframe: true
+        });
+        const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
+        boss.add(shieldMesh);
+        
+        window.bossShieldActive = true;
+        
+        setTimeout(() => {
+            boss.remove(shieldMesh);
+            window.bossShieldActive = false;
+            showToast("✨ 창조의 벽이 해제되어 보스가 정상 피해를 받습니다.", "#22c55e");
+        }, 6000);
+    }
+    else if (type === 'galaxy_summon') {
+        showToast(`🌌 ${displayName}: '은하 소환!' (낙하 소행성 경고)`, "#818cf8");
+        
+        for (let i = 0; i < 3; i++) {
+            setTimeout(() => {
+                if (!window.bossMesh || window.bossHp <= 0) return;
+                
+                const offsetAngle = Math.random() * Math.PI * 2;
+                const offsetDist = Math.random() * 8.0;
+                const targetX = camera.position.x + Math.cos(offsetAngle) * offsetDist;
+                const targetZ = camera.position.z + Math.sin(offsetAngle) * offsetDist;
+                
+                const warnGeo = new THREE.RingGeometry(0.1, 3.2, 24);
+                warnGeo.rotation.x = -Math.PI / 2;
+                const warnMat = new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.45, side: THREE.DoubleSide });
+                const warnMesh = new THREE.Mesh(warnGeo, warnMat);
+                warnMesh.position.set(targetX, 0.1, targetZ);
+                scene.add(warnMesh);
+                
+                const rockGeo = new THREE.DodecahedronGeometry(0.8);
+                const rockMat = new THREE.MeshStandardMaterial({ color: 0x22153b, roughness: 0.8 });
+                const rockMesh = new THREE.Mesh(rockGeo, rockMat);
+                rockMesh.position.set(targetX, 35.0, targetZ);
+                scene.add(rockMesh);
+                
+                window.activeBossProjectiles.push({
+                    type: 'galaxy_rock',
+                    mesh: rockMesh,
+                    warningMesh: warnMesh,
+                    speed: 16.0,
+                    damage: 28,
+                    createdAt: Date.now()
+                });
+            }, i * 450);
+        }
+    }
+    else if (type === 'final_creation') {
+        showToast(`💥 ${displayName}: '최종 제작!' (치명적인 광역 파괴 발동!)`, "#ff0055");
+        
+        const originalY = boss.position.y;
+        boss.position.y = 4.5;
+        
+        const targetPos = player.clone();
+        const warnGeo = new THREE.RingGeometry(0.1, 15.0, 64);
+        warnGeo.rotation.x = -Math.PI / 2;
+        const warnMat = new THREE.MeshBasicMaterial({ color: 0xff0033, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
+        const warnMesh = new THREE.Mesh(warnGeo, warnMat);
+        warnMesh.position.set(targetPos.x, 0.15, targetPos.z);
+        scene.add(warnMesh);
+        
+        window.activeBossProjectiles.push({
+            type: 'final_creation_warning',
+            mesh: warnMesh,
+            warningMesh: warnMesh,
+            targetPos: targetPos,
+            damage: 85,
+            createdAt: Date.now()
+        });
+        
+        setTimeout(() => {
+            if (window.bossMesh) {
+                window.bossMesh.position.y = originalY;
+            }
+        }, 3000);
+    }
+};
+
+window.triggerRandomBossSkill = () => {
+    if (!window.bossMesh || window.bossHp <= 0 || window.isBossEvolving) return;
+    
+    const skills = [
+        'idea_explosion',
+        'concept_typhoon',
+        'deadline_hell',
+        'judgment_launching',
+        'rocket_dash',
+        'neon_laser',
+        'crown_lightning',
+        'wall_of_creation',
+        'galaxy_summon'
+    ];
+    
+    if (window.bossPhase === 2) {
+        skills.push('final_creation');
+    }
+    
+    const chosenSkill = skills[Math.floor(Math.random() * skills.length)];
+    window.executeBossSkill(chosenSkill);
+};
+
+window.updateBossAI = () => {
+    if (!window.bossMesh || window.bossHp <= 0 || window.isBossEvolving) return;
+    
+    const boss = window.bossMesh;
+    const player = camera.position;
+    
+    const dx = player.x - boss.position.x;
+    const dz = player.z - boss.position.z;
+    const dist = Math.sqrt(dx*dx + dz*dz);
+    
+    if (dist > 60) return;
+    
+    if (!boss.userData.isDashing) {
+        const angle = Math.atan2(dx, dz);
+        boss.rotation.y = angle;
+    }
+    
+    if (dist > 4 && !boss.userData.isDashing) {
+        const speed = window.bossPhase === 2 ? 0.075 : 0.045;
+        const angle = Math.atan2(dx, dz);
+        boss.position.x += Math.sin(angle) * speed;
+        boss.position.z += Math.cos(angle) * speed;
+        boss.position.y = 1.6 + Math.sin(Date.now() / 300) * 0.15;
+    }
+    
+    const now = Date.now();
+    
+    // Normal shot basic attack
+    if (dist < 35 && now - lastBossAction > 1500 && !boss.userData.isCastingSkill && !boss.userData.isDashing) {
+        lastBossAction = now;
+        
+        const config = BOSS_CONFIGS[window.activeBossType] || BOSS_CONFIGS.creator;
+        const armorFactor = (window.STATS.armor || 0) > 0 ? 0.6 : 1.0;
+        const baseDmg = window.activeBossType === 'creator' ? (window.bossPhase === 2 ? 22 : 18) : 12;
+        const dmg = Math.floor(baseDmg * armorFactor);
+        window.STATS.hp = Math.max(0, window.STATS.hp - dmg);
+        if (typeof updateStatBars === 'function') updateStatBars();
+        
+        const dmgInd = document.getElementById('damage-indicator');
+        const dmgFlash = document.getElementById('damage-flash-indicator');
+        if (dmgInd && dmgFlash) {
+            dmgInd.style.display = 'block';
+            dmgFlash.style.borderColor = 'rgba(239, 68, 68, 0.8)';
+            dmgFlash.style.boxShadow = 'inset 0 0 100px rgba(239, 68, 68, 0.8)';
+            setTimeout(() => {
+                dmgInd.style.display = 'none';
+            }, 200);
+        }
+        
+        const displayName = window.bossPhase === 2 ? '우주 창조신 제작진' : config.name;
+        showToast(`💥 ${displayName}의 사격에 당했습니다! (-${dmg} HP)`, "#ef4444");
+        
+        const points = [
+            new THREE.Vector3(boss.position.x, boss.position.y + 0.5, boss.position.z),
+            new THREE.Vector3(player.x, player.y - 0.2, player.z)
+        ];
+        
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+        const laserColor = window.activeBossType === 'creator' ? 0xff0000 : 0x00ffff;
+        const lineMat = new THREE.LineBasicMaterial({ color: laserColor, linewidth: 2 });
+        const laser = new THREE.Line(lineGeo, lineMat);
+        scene.add(laser);
+        setTimeout(() => scene.remove(laser), 100);
+        
+        if (window.STATS.hp <= 0) {
+            if (typeof triggerLocalPlayerDeath === 'function') {
+                triggerLocalPlayerDeath(`${displayName}과의 결투`);
+            }
+        }
+    }
+    
+    // Cast active skill
+    const skillInterval = window.bossPhase === 2 ? 3500 : 5000;
+    if (window.activeBossType === 'creator' && now - lastSkillTime > skillInterval && !boss.userData.isDashing) {
+        lastSkillTime = now;
+        window.triggerRandomBossSkill();
+    }
+};
+
+window.updateBossProjectiles = (delta) => {
+    if (!window.activeBossProjectiles) return;
+    
+    const player = camera.position;
+    const now = Date.now();
+    
+    for (let i = window.activeBossProjectiles.length - 1; i >= 0; i--) {
+        const p = window.activeBossProjectiles[i];
+        let removeProj = false;
+        
+        if (p.type === 'idea_explosion' || p.type === 'judgment_fireball') {
+            p.mesh.position.addScaledVector(p.dir, p.speed * delta);
+            
+            const dist = p.mesh.position.distanceTo(player);
+            if (dist < 1.8) {
+                removeProj = true;
+                
+                const armorFactor = (window.STATS.armor || 0) > 0 ? 0.6 : 1.0;
+                const dmg = Math.floor(p.damage * armorFactor);
+                window.STATS.hp = Math.max(0, window.STATS.hp - dmg);
+                if (typeof updateStatBars === 'function') updateStatBars();
+                
+                showToast(`💥 보스의 투사체에 맞아 피해를 입었습니다! (-${dmg} HP)`, "#ef4444");
+                playExplosionSound();
+                
+                if (window.STATS.hp <= 0 && typeof triggerLocalPlayerDeath === 'function') {
+                    const bossName = window.bossPhase === 2 ? '우주 창조신 제작진' : '제작진 킹';
+                    triggerLocalPlayerDeath(`${bossName}의 투사체 공격`);
+                }
+            }
+            
+            if (now - p.createdAt > p.duration) {
+                removeProj = true;
+            }
+        }
+        else if (p.type === 'lightning_warning') {
+            const elapsed = now - p.createdAt;
+            if (elapsed > 1200) {
+                removeProj = true;
+                
+                const strikeGeo = new THREE.CylinderGeometry(0.5, 0.5, 60, 16);
+                const strikeMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.9 });
+                const strikeMesh = new THREE.Mesh(strikeGeo, strikeMat);
+                strikeMesh.position.set(p.targetPos.x, 30, p.targetPos.z);
+                scene.add(strikeMesh);
+                setTimeout(() => scene.remove(strikeMesh), 200);
+                
+                playExplosionSound();
+                
+                const dX = player.x - p.targetPos.x;
+                const dZ = player.z - p.targetPos.z;
+                const dist = Math.sqrt(dX*dX + dZ*dZ);
+                if (dist < 3.5) {
+                    const armorFactor = (window.STATS.armor || 0) > 0 ? 0.6 : 1.0;
+                    const dmg = Math.floor(p.damage * armorFactor);
+                    window.STATS.hp = Math.max(0, window.STATS.hp - dmg);
+                    if (typeof updateStatBars === 'function') updateStatBars();
+                    showToast(`⚡ 왕관 번개에 감전되었습니다! (-${dmg} HP)`, "#ef4444");
+                    
+                    if (window.STATS.hp <= 0 && typeof triggerLocalPlayerDeath === 'function') {
+                        triggerLocalPlayerDeath(`제작진 킹의 왕관 번개`);
+                    }
+                }
+            }
+        }
+        else if (p.type === 'galaxy_rock') {
+            p.mesh.position.y -= p.speed * delta;
+            p.mesh.rotation.x += 0.03;
+            p.mesh.rotation.y += 0.02;
+            
+            if (p.mesh.position.y <= 0.1) {
+                removeProj = true;
+                
+                playExplosionSound();
+                
+                const dX = player.x - p.mesh.position.x;
+                const dZ = player.z - p.mesh.position.z;
+                const dist = Math.sqrt(dX*dX + dZ*dZ);
+                if (dist < 4.0) {
+                    const armorFactor = (window.STATS.armor || 0) > 0 ? 0.6 : 1.0;
+                    const dmg = Math.floor(p.damage * armorFactor);
+                    window.STATS.hp = Math.max(0, window.STATS.hp - dmg);
+                    if (typeof updateStatBars === 'function') updateStatBars();
+                    showToast(`☄️ 낙하하는 소행성에 충돌했습니다! (-${dmg} HP)`, "#ef4444");
+                    
+                    if (window.STATS.hp <= 0 && typeof triggerLocalPlayerDeath === 'function') {
+                        triggerLocalPlayerDeath(`제작진 킹의 소행성 낙하`);
+                    }
+                }
+                
+                if (p.warningMesh && p.warningMesh.parent) {
+                    p.warningMesh.parent.remove(p.warningMesh);
+                }
+            }
+        }
+        else if (p.type === 'final_creation_warning') {
+            const elapsed = now - p.createdAt;
+            if (elapsed > 2500) {
+                removeProj = true;
+                
+                const cylGeo = new THREE.CylinderGeometry(15, 15, 80, 32);
+                const cylMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+                const cylMesh = new THREE.Mesh(cylGeo, cylMat);
+                cylMesh.position.set(p.targetPos.x, 40, p.targetPos.z);
+                scene.add(cylMesh);
+                
+                const innerCylGeo = new THREE.CylinderGeometry(10, 10, 80, 24);
+                const innerCylMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.95 });
+                const innerCylMesh = new THREE.Mesh(innerCylGeo, innerCylMat);
+                innerCylMesh.position.set(p.targetPos.x, 40, p.targetPos.z);
+                scene.add(innerCylMesh);
+                
+                setTimeout(() => {
+                    scene.remove(cylMesh);
+                    scene.remove(innerCylMesh);
+                }, 400);
+                
+                playThunderSound();
+                
+                const dX = player.x - p.targetPos.x;
+                const dZ = player.z - p.targetPos.z;
+                const dist = Math.sqrt(dX*dX + dZ*dZ);
+                if (dist < 15.0) {
+                    const armorFactor = (window.STATS.armor || 0) > 0 ? 0.6 : 1.0;
+                    const dmg = Math.floor(p.damage * armorFactor);
+                    window.STATS.hp = Math.max(0, window.STATS.hp - dmg);
+                    if (typeof updateStatBars === 'function') updateStatBars();
+                    showToast(`💥 최종 제작의 광선에 휩쓸려 치명적인 피해를 입었습니다! (-${dmg} HP)`, "#ff0055");
+                    
+                    if (window.velocity) window.velocity.y = 30.0;
+                    
+                    if (window.STATS.hp <= 0 && typeof triggerLocalPlayerDeath === 'function') {
+                        triggerLocalPlayerDeath(`우주 창조신 제작진의 최종 제작`);
+                    }
+                }
+                
+                if (p.warningMesh && p.warningMesh.parent) {
+                    p.warningMesh.parent.remove(p.warningMesh);
+                }
+            }
+        }
+        
+        if (removeProj) {
+            scene.remove(p.mesh);
+            window.activeBossProjectiles.splice(i, 1);
+        }
+    }
+};
+
+window.spawnBossLoot = (pos) => {
+    if (!window.activeLootDrops) window.activeLootDrops = [];
+    
+    const items = [
+        {
+            name: "창조의 왕관",
+            color: 0xffd700,
+            tier: "전설",
+            reward: 10000,
+            toastColor: "#facc15",
+            createMesh: () => {
+                const group = new THREE.Group();
+                const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 1.0, roughness: 0.1 });
+                const band = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 12), goldMat);
+                group.add(band);
+                
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i / 5) * Math.PI * 2;
+                    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 4), goldMat);
+                    spike.position.set(Math.cos(angle) * 0.3, 0.12, Math.sin(angle) * 0.3);
+                    spike.rotation.y = -angle;
+                    spike.rotation.z = -Math.cos(angle) * 0.15;
+                    spike.rotation.x = Math.sin(angle) * 0.15;
+                    group.add(spike);
+                }
+                return group;
+            }
+        },
+        {
+            name: "네온 로켓 엔진",
+            color: 0xa855f7,
+            tier: "영웅",
+            reward: 5000,
+            toastColor: "#a855f7",
+            createMesh: () => {
+                const group = new THREE.Group();
+                const engMat = new THREE.MeshStandardMaterial({ color: 0x221144, metalness: 0.8, roughness: 0.2 });
+                const trimMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, emissive: 0xa855f7, emissiveIntensity: 1.5 });
+                
+                const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.4, 12), engMat);
+                group.add(cylinder);
+                
+                const trim = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.04, 6, 12), trimMat);
+                trim.rotation.x = Math.PI / 2;
+                trim.position.y = -0.2;
+                group.add(trim);
+                return group;
+            }
+        },
+        {
+            name: "우주 수정",
+            color: 0x00ffff,
+            tier: "희귀",
+            reward: 2500,
+            toastColor: "#06b6d4",
+            createMesh: () => {
+                const geom = new THREE.OctahedronGeometry(0.25);
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0x00ccff,
+                    emissive: 0x0055ff,
+                    emissiveIntensity: 1.0,
+                    roughness: 0.1,
+                    metalness: 0.9,
+                    transparent: true,
+                    opacity: 0.85
+                });
+                return new THREE.Mesh(geom, mat);
+            }
+        },
+        {
+            name: "별 조각",
+            color: 0xffea00,
+            tier: "일반",
+            reward: 1000,
+            toastColor: "#eab308",
+            createMesh: () => {
+                const group = new THREE.Group();
+                const starMat = new THREE.MeshStandardMaterial({
+                    color: 0xffea00,
+                    emissive: 0xffaa00,
+                    emissiveIntensity: 0.8,
+                    metalness: 0.5,
+                    roughness: 0.3
+                });
+                const cone1 = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.35, 4), starMat);
+                cone1.rotation.x = Math.PI / 2;
+                group.add(cone1);
+                
+                const cone2 = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.35, 4), starMat);
+                cone2.rotation.x = -Math.PI / 2;
+                group.add(cone2);
+                
+                return group;
+            }
+        }
+    ];
+
+    items.forEach((item, idx) => {
+        const mesh = item.createMesh();
+        const angle = (idx / items.length) * Math.PI * 2;
+        const radius = 1.8;
+        
+        const targetX = pos.x + Math.cos(angle) * radius;
+        const targetZ = pos.z + Math.sin(angle) * radius;
+        const targetY = 1.0;
+        
+        mesh.position.set(targetX, targetY, targetZ);
+        scene.add(mesh);
+        
+        let light = null;
+        if (item.tier === "전설" || item.tier === "영웅") {
+            light = new THREE.PointLight(item.color, 1.5, 4);
+            light.position.set(0, 0, 0);
+            mesh.add(light);
+        }
+        
+        window.activeLootDrops.push({
+            name: item.name,
+            tier: item.tier,
+            reward: item.reward,
+            toastColor: item.toastColor,
+            mesh: mesh,
+            light: light,
+            baseY: targetY,
+            angleOffset: Math.random() * Math.PI * 2
+        });
+    });
+};
+
+window.updateLootDrops = (delta) => {
+    if (!window.activeLootDrops) return;
+    
+    const player = camera.position;
+    const timeSec = performance.now() / 1000;
+    
+    for (let i = window.activeLootDrops.length - 1; i >= 0; i--) {
+        const drop = window.activeLootDrops[i];
+        
+        drop.mesh.position.y = drop.baseY + Math.sin(timeSec * 2.5 + drop.angleOffset) * 0.18;
+        drop.mesh.rotation.y += 1.5 * delta;
+        
+        const dist = drop.mesh.position.distanceTo(player);
+        if (dist < 1.8) {
+            scene.remove(drop.mesh);
+            window.activeLootDrops.splice(i, 1);
+            
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    const ctx = new AudioContext();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, ctx.currentTime);
+                    osc.frequency.setValueAtTime(1320, ctx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.3);
+                }
+            } catch(e){}
+            
+            if (STATE.currentUser) {
+                STATE.currentUser.money = (STATE.currentUser.money || 0) + drop.reward;
+                if (db && STATE.currentUser.uid) {
+                    db.ref('users/' + STATE.currentUser.uid).update({ money: STATE.currentUser.money });
+                }
+                
+                const lobbyMoney = document.getElementById('lobby-money');
+                if (lobbyMoney) lobbyMoney.textContent = STATE.currentUser.money.toLocaleString();
+                const hudMoney = document.getElementById('hud-money');
+                if (hudMoney) hudMoney.textContent = STATE.currentUser.money.toLocaleString();
+            }
+            
+            showToast(`🎁 [${drop.tier} 아이템] ${drop.name} 획득! (+${drop.reward.toLocaleString()}G)`, drop.toastColor);
+        }
+    }
+};
+
+// ==========================================
+// TACTICAL SMARTPHONE / PDA SYSTEM LOGIC
+// ==========================================
+window.toggleTacticalPhone = () => {
+    const gameScreen = document.getElementById('game-screen');
+    if (!gameScreen || !gameScreen.classList.contains('active')) {
+        showToast("⚠️ 전술폰은 연병장 대원 출동(훈련 시작) 후에 사용할 수 있습니다!", "#ff9900");
+        return;
+    }
+    
+    const phone = document.getElementById('tactical-phone');
+    if (!phone) return;
+    
+    if (phone.style.display === 'none' || phone.style.display === '') {
+        phone.style.display = 'flex';
+        // Release pointerlock so mouse cursor is visible
+        if (document.exitPointerLock) {
+            document.exitPointerLock();
+        }
+        
+        // Start real-time GPS updates and stats updates
+        window.updatePhoneData();
+        window.phoneDataInterval = setInterval(window.updatePhoneData, 500);
+        
+        // Setup clock
+        window.updatePhoneClock();
+        window.phoneClockInterval = setInterval(window.updatePhoneClock, 10000);
+        
+        showToast("📱 전술 단말기를 열었습니다. 마우스 조작을 위해 화면을 터치하십시오.");
+    } else {
+        phone.style.display = 'none';
+        clearInterval(window.phoneDataInterval);
+        clearInterval(window.phoneClockInterval);
+        window.stopPhoneMusic();
+    }
+};
+
+window.updatePhoneClock = () => {
+    const timeEl = document.getElementById('phone-time');
+    if (timeEl) {
+        const now = new Date();
+        const hrs = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        timeEl.textContent = `${hrs}:${mins}`;
+    }
+};
+
+window.updatePhoneData = () => {
+    if (typeof camera !== 'undefined' && camera) {
+        const xEl = document.getElementById('phone-gps-x');
+        const yEl = document.getElementById('phone-gps-y');
+        const zEl = document.getElementById('phone-gps-z');
+        if (xEl) xEl.textContent = camera.position.x.toFixed(2);
+        if (yEl) yEl.textContent = camera.position.y.toFixed(2);
+        if (zEl) zEl.textContent = camera.position.z.toFixed(2);
+    }
+    
+    if (STATE.currentUser) {
+        const nameEl = document.getElementById('phone-info-name');
+        const rankEl = document.getElementById('phone-info-rank');
+        const branchEl = document.getElementById('phone-info-branch');
+        const killsEl = document.getElementById('phone-info-kills');
+        const deathsEl = document.getElementById('phone-info-deaths');
+        
+        if (nameEl) nameEl.textContent = STATE.currentUser.name || '신병';
+        if (rankEl) rankEl.textContent = `[${STATE.currentUser.rank || '이등병'}]`;
+        if (branchEl) branchEl.textContent = STATE.currentUser.branch || '육군';
+        if (killsEl) killsEl.textContent = STATE.currentUser.kills || 0;
+        if (deathsEl) deathsEl.textContent = STATE.currentUser.deaths || 0;
+    }
+    
+    const pingEl = document.getElementById('phone-info-ping');
+    const lobbyPing = document.getElementById('lobby-ping');
+    if (pingEl && lobbyPing) {
+        pingEl.textContent = lobbyPing.textContent;
+    }
+};
+
+window.openPhoneApp = (appId) => {
+    // Hide home screen
+    document.getElementById('phone-home').style.display = 'none';
+    // Hide all apps
+    document.getElementById('phone-app-px').style.display = 'none';
+    document.getElementById('phone-app-support').style.display = 'none';
+    document.getElementById('phone-app-gps').style.display = 'none';
+    document.getElementById('phone-app-music').style.display = 'none';
+    document.getElementById('phone-app-info').style.display = 'none';
+    
+    // Show specific app
+    const appContainer = document.getElementById('phone-app-' + appId);
+    if (appContainer) {
+        appContainer.style.display = 'flex';
+    }
+};
+
+window.goPhoneHome = () => {
+    // Hide all apps
+    document.getElementById('phone-app-px').style.display = 'none';
+    document.getElementById('phone-app-support').style.display = 'none';
+    document.getElementById('phone-app-gps').style.display = 'none';
+    document.getElementById('phone-app-music').style.display = 'none';
+    document.getElementById('phone-app-info').style.display = 'none';
+    
+    // Show home screen
+    document.getElementById('phone-home').style.display = 'flex';
+};
+
+// PX Delivery App Purchase
+window.buyPXItem = (itemKey, cost, itemName) => {
+    if (!STATE.currentUser || !STATE.currentUser.uid) return;
+    
+    const isBoss = STATE.currentUser.username === 'ree1203';
+    const userMoney = isBoss ? Infinity : (STATE.currentUser.money || 0);
+
+    if (userMoney < cost) {
+        showToast("❌ 군자금이 부족합니다!", "#ff3333");
+        return;
+    }
+
+    const performPurchase = () => {
+        if (db) {
+            db.ref(`users/${STATE.currentUser.uid}/inventory`).push(itemKey).then(() => {
+                showToast(`🎒 [${itemName}] 배달 완료! 인벤토리를 확인하세요.`, "#10b981");
+                if (itemKey === 'k2') {
+                    window.hasK2 = true;
+                    if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson;
+                    document.getElementById('crosshair').style.display = 'block';
+                }
+            });
+        }
+    };
+
+    if (isBoss) {
+        performPurchase();
+    } else {
+        db.ref(`users/${STATE.currentUser.uid}/money`).transaction(current => {
+            if ((current || 0) >= cost) {
+                return current - cost;
+            }
+            return current;
+        }, (error, committed) => {
+            if (committed) {
+                performPurchase();
+            } else {
+                showToast("❌ 구매 실패: 군자금이 부족합니다.", "#ff3333");
+            }
+        });
+    }
+};
+
+// Vehicle Summoning via Phone
+window.callVehicle = (type, cost, name) => {
+    if (!STATE.currentUser || !STATE.currentUser.uid) return;
+    
+    const isBoss = STATE.currentUser.username === 'ree1203';
+    const userMoney = isBoss ? Infinity : (STATE.currentUser.money || 0);
+
+    if (userMoney < cost) {
+        showToast("❌ 군자금이 부족합니다!", "#ff3333");
+        return;
+    }
+
+    const spawnVehicle = () => {
+        if (type === 'apc') {
+            if (window.tankMesh) {
+                window.tankMesh.position.set(camera.position.x, 0.5, camera.position.z);
+                showToast("🚜 장갑차(전차)가 배달되었습니다!", "#10b981");
+            }
+        } else if (type === 'heli') {
+            if (window.helicopterMesh) {
+                window.helicopterMesh.position.set(camera.position.x, 5.0, camera.position.z);
+                showToast("🚁 공격 헬기가 공중 배달되었습니다!", "#10b981");
+            }
+        }
+    };
+
+    if (isBoss) {
+        spawnVehicle();
+    } else {
+        db.ref(`users/${STATE.currentUser.uid}/money`).transaction(current => {
+            if ((current || 0) >= cost) {
+                return current - cost;
+            }
+            return current;
+        }, (error, committed) => {
+            if (committed) {
+                spawnVehicle();
+            } else {
+                showToast("❌ 구매 실패: 군자금이 부족합니다.", "#ff3333");
+            }
+        });
+    }
+};
+
+// Airstrike Support
+window.callAirstrike = (cost) => {
+    if (!STATE.currentUser || !STATE.currentUser.uid) return;
+
+    const isBoss = STATE.currentUser.username === 'ree1203';
+    const userMoney = isBoss ? Infinity : (STATE.currentUser.money || 0);
+
+    if (userMoney < cost) {
+        showToast("❌ 군자금이 부족합니다!", "#ff3333");
+        return;
+    }
+
+    const launchAirstrike = () => {
+        showToast("🚨 [포격 지원 요청 승인] 3초 후 목표 지점에 포격이 시작됩니다!", "#ef4444");
+        
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        const targetPos = camera.position.clone().add(forward.multiplyScalar(35));
+        targetPos.y = 0.1;
+
+        const ringGeo = new THREE.RingGeometry(0.1, 4.0, 32);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.copy(targetPos);
+        ring.position.y = 0.15;
+        scene.add(ring);
+
+        let blinkCount = 0;
+        const blinkInterval = setInterval(() => {
+            ring.visible = !ring.visible;
+            blinkCount++;
+            if (blinkCount >= 6) {
+                clearInterval(blinkInterval);
+                scene.remove(ring);
+                
+                for (let i = 0; i < 4; i++) {
+                    setTimeout(() => {
+                        const offset = new THREE.Vector3(
+                            (Math.random() - 0.5) * 6,
+                            0,
+                            (Math.random() - 0.5) * 6
+                        );
+                        const expPos = targetPos.clone().add(offset);
+                        
+                        const expGeo = new THREE.SphereGeometry(3.5 + Math.random() * 1.5, 16, 16);
+                        const expMat = new THREE.MeshBasicMaterial({ color: 0xff4500, transparent: true, opacity: 0.8 });
+                        const explosion = new THREE.Mesh(expGeo, expMat);
+                        explosion.position.copy(expPos);
+                        explosion.position.y = 2.0;
+                        scene.add(explosion);
+                        
+                        if (typeof playExplosionSound === 'function') {
+                            playExplosionSound();
+                        } else {
+                            playGunshotSound('k6');
+                        }
+                        
+                        if (window.creatorBossMesh) {
+                            const bossDist = explosion.position.distanceTo(window.creatorBossMesh.position);
+                            if (bossDist < 8.0) {
+                                if (typeof damageCreatorBoss === 'function') {
+                                    damageCreatorBoss(50);
+                                    showToast("💥 포격이 제작자 보스에게 직격했습니다! (-50 HP)", "#fbbf24");
+                                }
+                            }
+                        }
+
+                        setTimeout(() => {
+                            scene.remove(explosion);
+                        }, 500);
+                    }, i * 350);
+                }
+            }
+        }, 500);
+    };
+
+    if (isBoss) {
+        launchAirstrike();
+    } else {
+        db.ref(`users/${STATE.currentUser.uid}/money`).transaction(current => {
+            if ((current || 0) >= cost) {
+                return current - cost;
+            }
+            return current;
+        }, (error, committed) => {
+            if (committed) {
+                launchAirstrike();
+            } else {
+                showToast("❌ 포격 요청 실패: 군자금이 부족합니다.", "#ff3333");
+            }
+        });
+    }
+};
+
+// Web Audio API Synthesizer Radio
+let phoneAudioCtx = null;
+let phoneOscillator = null;
+let phoneGainNode = null;
+let musicTimeout = null;
+
+window.playPhoneMusic = (songKey) => {
+    window.stopPhoneMusic();
+    
+    const titleEl = document.getElementById('music-playing-title');
+    const songName = songKey === 'military_song_1' ? "재생 중: 육군가 🇰🇷" : "재생 중: 멋진 사나이 ⚡";
+    if (titleEl) titleEl.textContent = songName;
+    
+    try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        phoneAudioCtx = new AudioContextClass();
+        
+        const notes_army = [
+            { note: 261.63, duration: 0.4 }, // C4
+            { note: 329.63, duration: 0.4 }, // E4
+            { note: 392.00, duration: 0.4 }, // G4
+            { note: 523.25, duration: 0.8 }, // C5
+            { note: 392.00, duration: 0.4 }, // G4
+            { note: 523.25, duration: 0.8 }, // C5
+            { note: 440.00, duration: 0.4 }, // A4
+            { note: 392.00, duration: 0.8 }, // G4
+            { note: 329.63, duration: 0.4 }, // E4
+            { note: 261.63, duration: 0.4 }, // C4
+            { note: 293.66, duration: 0.4 }, // D4
+            { note: 329.63, duration: 0.8 }, // E4
+            { note: 293.66, duration: 1.2 }, // D4
+        ];
+        
+        const notes_man = [
+            { note: 392.00, duration: 0.3 }, // G4
+            { note: 392.00, duration: 0.3 }, // G4
+            { note: 440.00, duration: 0.3 }, // A4
+            { note: 392.00, duration: 0.6 }, // G4
+            { note: 523.25, duration: 0.6 }, // C5
+            { note: 392.00, duration: 0.6 }, // G4
+            { note: 329.63, duration: 0.6 }, // E4
+            { note: 293.66, duration: 1.2 }, // D4
+            { note: 392.00, duration: 0.3 }, // G4
+            { note: 392.00, duration: 0.3 }, // G4
+            { note: 440.00, duration: 0.3 }, // A4
+            { note: 392.00, duration: 0.6 }, // G4
+            { note: 523.25, duration: 0.6 }, // C5
+            { note: 392.00, duration: 0.6 }, // G4
+            { note: 293.66, duration: 0.6 }, // D4
+            { note: 261.63, duration: 1.2 }, // C4
+        ];
+        
+        const notes = songKey === 'military_song_1' ? notes_army : notes_man;
+        let noteIndex = 0;
+        
+        const playNextNote = () => {
+            if (!phoneAudioCtx) return;
+            if (noteIndex >= notes.length) {
+                noteIndex = 0;
+            }
+            
+            const current = notes[noteIndex];
+            phoneOscillator = phoneAudioCtx.createOscillator();
+            phoneGainNode = phoneAudioCtx.createGain();
+            
+            phoneOscillator.type = 'triangle';
+            phoneOscillator.frequency.value = current.note;
+            
+            phoneGainNode.gain.setValueAtTime(0, phoneAudioCtx.currentTime);
+            phoneGainNode.gain.linearRampToValueAtTime(0.15, phoneAudioCtx.currentTime + 0.05);
+            phoneGainNode.gain.setValueAtTime(0.15, phoneAudioCtx.currentTime + current.duration - 0.05);
+            phoneGainNode.gain.linearRampToValueAtTime(0, phoneAudioCtx.currentTime + current.duration);
+            
+            phoneOscillator.connect(phoneGainNode);
+            phoneGainNode.connect(phoneAudioCtx.destination);
+            
+            phoneOscillator.start();
+            phoneOscillator.stop(phoneAudioCtx.currentTime + current.duration);
+            
+            noteIndex++;
+            musicTimeout = setTimeout(playNextNote, current.duration * 1000 + 50);
+        };
+        
+        playNextNote();
+    } catch (e) {
+        console.error("Audio playback error", e);
+    }
+};
+
+window.stopPhoneMusic = () => {
+    const titleEl = document.getElementById('music-playing-title');
+    if (titleEl) titleEl.textContent = "현재 재생 중이지 않음";
+    
+    if (musicTimeout) {
+        clearTimeout(musicTimeout);
+        musicTimeout = null;
+    }
+    if (phoneOscillator) {
+        try { phoneOscillator.stop(); } catch(e){}
+        phoneOscillator = null;
+    }
+    if (phoneAudioCtx) {
+        try { phoneAudioCtx.close(); } catch(e){}
+        phoneAudioCtx = null;
+    }
+};
+

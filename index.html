@@ -1909,6 +1909,18 @@
         #lobby-screen.active ~ .compliance-global-footer {
             display: flex !important;
         }
+
+        /* Pulse animation for deploy button */
+        @keyframes tacticalPulse {
+            0% {
+                box-shadow: 0 0 15px rgba(245, 158, 11, 0.3), inset 0 0 10px rgba(245, 158, 11, 0.1);
+                filter: brightness(1);
+            }
+            100% {
+                box-shadow: 0 0 35px rgba(245, 158, 11, 0.65), inset 0 0 20px rgba(245, 158, 11, 0.3);
+                filter: brightness(1.15);
+            }
+        }
     </style>
 
 </head>
@@ -2073,6 +2085,12 @@
                 </div>
             </div>
 
+            <!-- Tactical Status Sub-panel -->
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: #888; font-family: var(--font-mono); margin-top: -15px; margin-bottom: 22px; border-bottom: 1px solid rgba(163, 230, 53, 0.15); padding-bottom: 8px; padding-left: 5px; padding-right: 5px;">
+                <span style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 6px; height: 6px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 8px #22c55e; animation: blink 1.5s infinite;"></span>전술 네트워크: 활성화됨 (SECURE)</span>
+                <span id="lobby-ping" style="color: var(--tactical-blue);">PING: 24ms</span>
+            </div>
+
             <!-- Menu Grid -->
             <div class="lobby-menu-grid">
                 <button id="btn-lobby-inventory" class="lobby-menu-btn">
@@ -2091,6 +2109,10 @@
                     <span>🏆</span>
                     <span>명예의 전당 (랭킹)</span>
                 </button>
+                <button id="btn-lobby-creator-battle" class="lobby-menu-btn" onclick="startCreatorBattleFromLobby()" style="border: 1.5px dashed #f59e0b; background: rgba(245,158,11,0.15); box-shadow: 0 0 10px rgba(245,158,11,0.2);">
+                    <span>⚔️</span>
+                    <span>제작자와 싸우기 (보스전)</span>
+                </button>
                 <button id="btn-lobby-rollcall" class="lobby-menu-btn" onclick="triggerRollCall()">
                     <span>🫡</span>
                     <span>일일 점호 행사</span>
@@ -2106,7 +2128,7 @@
             </div>
 
             <!-- Deploy Button -->
-            <button id="btn-deploy-field">
+            <button id="btn-deploy-field" onclick="enterGameField()">
                 ⚔️ 연병장 대원 출동 (훈련 시작)
             </button>
 
@@ -2179,6 +2201,7 @@
             <div id="cbrn-action-prompt"
                 style="font-size: 0.75rem; color: #ff3333; font-weight: bold; margin-top: 4px; display: none;">[E]키를 눌러
                 정화통 교체!</div>
+            <div id="cbrn-survive-hud" style="font-size: 0.8rem; color: #fbbf24; font-weight: bold; margin-top: 6px;">🧪 가스실 생존 시간: 0초 / 30초</div>
         </div>
 
         <!-- Patrol Mission HUD -->
@@ -2477,6 +2500,7 @@
             onclick="document.getElementById('action-buttons').classList.toggle('active')">메뉴<br>☰</button>
 
         <div id="action-buttons">
+            <button id="btn-tactical-phone" class="action-btn" style="background: #10b981;" onclick="toggleTacticalPhone()">📱<br>전술폰</button>
             <button id="btn-training" class="action-btn">훈련<br>(미션)</button>
             <button id="btn-shop" class="action-btn" style="background: #2e8b57;">PX<br>상점</button>
             <button id="btn-inventory" class="action-btn" style="background: #4682b4;">내<br>가방</button>
@@ -2485,6 +2509,8 @@
             <button id="btn-official-chat" class="action-btn" style="background: #5865F2;">공식<br>채팅방</button>
             <button id="btn-missions" class="action-btn" style="background: #059669;">일일<br>미션</button>
             <button id="btn-leaderboard" class="action-btn" style="background: #b45309;">명예<br>전당</button>
+            <button id="btn-leave-pass" class="action-btn" style="background: #0d9488;">외출증<br>발급</button>
+            <button id="btn-unit-ranking" class="action-btn" style="background: #be123c;">부대<br>랭킹</button>
             <button id="btn-achievements" class="action-btn" style="background: #7c3aed;">업적<br>배지</button>
             <button id="btn-vehicle" class="action-btn" style="background: #d97706; display: none;">🚖<br>차량</button>
             <button id="btn-voice" class="action-btn" style="background: #ef4444; display: none;">🎙️<br>무전</button>
@@ -2530,6 +2556,31 @@
                         <span>👔 6. 대한민국 장교 정복 (Dress White)</span>
                         <span style="font-size: 0.8rem; background: #cbd5e1; color: black; padding: 2px 6px; border-radius: 4px;">장교행사</span>
                     </button>
+                    
+                    <!-- Creator Skins (ree1203 only) -->
+                    <div id="creator-skins-section" style="display: none; flex-direction: column; gap: 10px; border-top: 1px dashed rgba(168, 85, 247, 0.3); padding-top: 15px; margin-top: 5px;">
+                        <div style="font-weight: bold; color: #c084fc; font-size: 0.95rem; margin-bottom: 5px; font-family: 'Orbitron', sans-serif;">🚀 제작진 킹 진화 단계 의상 (ree1203 전용)</div>
+                        <button onclick="changeVipSkin('creator_skin_stage1', '제작진 1단계: 로켓 병사')" style="background: rgba(234, 179, 8, 0.15); border: 1px solid #eab308; color: #fef08a; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+                            <span>👑 [1단계] 로켓 병사 (Rocket Soldier)</span>
+                            <span style="font-size: 0.75rem; background: #eab308; color: black; padding: 2px 6px; border-radius: 4px;">노란색 네온</span>
+                        </button>
+                        <button onclick="changeVipSkin('creator_skin_stage2', '제작진 2단계: 네온 기사')" style="background: rgba(217, 70, 239, 0.15); border: 1px solid #d946ef; color: #fdf4ff; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+                            <span>👑 [2단계] 네온 기사 (Neon Knight)</span>
+                            <span style="font-size: 0.75rem; background: #d946ef; color: white; padding: 2px 6px; border-radius: 4px;">분홍색 네온</span>
+                        </button>
+                        <button onclick="changeVipSkin('creator_skin_stage3', '제작진 3단계: 로켓 킹')" style="background: rgba(168, 85, 247, 0.15); border: 1px solid #a855f7; color: #f3e8ff; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+                            <span>👑 [3단계] 로켓 킹 (Rocket King)</span>
+                            <span style="font-size: 0.75rem; background: #a855f7; color: white; padding: 2px 6px; border-radius: 4px;">보라색 백로켓</span>
+                        </button>
+                        <button onclick="changeVipSkin('creator_skin_stage4', '제작진 4단계: 제작진 킹')" style="background: rgba(99, 102, 241, 0.15); border: 1px solid #6366f1; color: #e0e7ff; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+                            <span>👑 [4단계] 제작진 킹 (Creator King)</span>
+                            <span style="font-size: 0.75rem; background: #6366f1; color: white; padding: 2px 6px; border-radius: 4px;">로켓 날개</span>
+                        </button>
+                        <button onclick="changeVipSkin('creator_skin_stage5', '제작진 5단계: 우주 창조신 제작진')" style="background: rgba(236, 72, 153, 0.2); border: 1px solid #ec4899; color: #fce7f3; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+                            <span>🌌 [5단계] 우주 창조신 제작진 (Cosmic Creator)</span>
+                            <span style="font-size: 0.75rem; background: linear-gradient(135deg, #ec4899, #8b5cf6); color: white; padding: 2px 6px; border-radius: 4px;">FINAL</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2620,6 +2671,30 @@
             </div>
         </div>
 
+        <!-- Leave Pass Modal -->
+        <div id="leave-modal" class="big-modal">
+            <div class="big-modal-box">
+                <button class="close-btn"
+                    onclick="document.getElementById('leave-modal').style.display='none'">✕</button>
+                <h2>🎫 면회실 - 외출증 발급소</h2>
+                <p style="font-size:0.9rem; color:#ccc; margin-bottom:10px;">일일 미션을 완료하면 휴가포인트가 쌓입니다. 50포인트를 모으면 외출증을 발급받아 5분간 이동속도 +30% 버프를 받습니다.</p>
+                <div style="font-weight:800; font-size:1.1rem; color:#5eead4; margin-bottom:14px;">보유 휴가포인트: <span id="leave-points-display">0</span> P</div>
+                <button class="btn" style="width:100%; padding:12px; background:#0d9488; border:none; border-radius:8px; font-weight:bold; color:white; cursor:pointer;" onclick="issueLeavePass()">🎫 외출증 발급 (50P)</button>
+                <div id="leave-pass-status" style="margin-top:10px; font-size:0.85rem; color:#888;"></div>
+            </div>
+        </div>
+
+        <!-- Unit Ranking Modal -->
+        <div id="unit-ranking-modal" class="big-modal">
+            <div class="big-modal-box">
+                <button class="close-btn"
+                    onclick="document.getElementById('unit-ranking-modal').style.display='none'">✕</button>
+                <h2>🎖️ 부대 간 주간 경쟁 랭킹</h2>
+                <p style="font-size:0.85rem; color:#ccc; margin-bottom:10px;">부대원들의 이번 주 일일 미션 완료 수를 합산한 순위입니다. (매주 월요일 리셋)</p>
+                <div id="unit-ranking-list">데이터 로딩 중...</div>
+            </div>
+        </div>
+
         <!-- Achievements Modal -->
         <div id="achievements-modal" class="big-modal">
             <div class="big-modal-box">
@@ -2678,17 +2753,35 @@
 
         <!-- Shop Modal -->
         <div id="shop-modal"
-            style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
-            <div class="panel" style="width: 90%; max-width: 400px; text-align: left; position: relative;">
+            style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 15, 10, 0.98); z-index: 10005; align-items: stretch; justify-content: stretch; backdrop-filter: blur(10px);">
+            <div class="panel" style="width: 100%; height: 100%; max-width: none; max-height: none; text-align: left; position: relative; display: flex; flex-direction: column; background: transparent; border: none; box-shadow: none; padding: 40px 60px; border-radius: 0; box-sizing: border-box;">
                 <button onclick="document.getElementById('shop-modal').style.display='none'"
-                    style="position: absolute; right: 15px; top: 15px; background: none; border: none; font-size: 1.5rem; color: #fff; cursor: pointer;">✕</button>
-                <h2 style="color: var(--accent); margin-bottom: 5px;">PX 상점</h2>
-                <div style="color: #aaa; margin-bottom: 20px;">보유 머니: <span id="shop-money"
-                        style="color: #fff; font-weight: bold;">0</span>G</div>
+                    style="position: absolute; right: 40px; top: 35px; background: none; border: none; font-size: 2.2rem; color: #aaa; cursor: pointer; transition: 0.2s; z-index: 10;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#aaa'">✕</button>
+                
+                <!-- Shop Header -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px; border-bottom: 2px solid rgba(46, 139, 87, 0.3); padding-bottom: 15px; margin-right: 50px;">
+                    <div>
+                        <h2 style="color: #2e8b57; font-family: var(--font-orbitron); margin: 0; font-size: 2.2rem; font-weight: 900; letter-spacing: 3px; text-shadow: 0 0 15px rgba(46, 139, 87, 0.4);">🛒 PX 군인 상점</h2>
+                        <div style="font-size: 0.9rem; color: #888; margin-top: 6px; letter-spacing: 1px;">최고급 작전 장비 및 보급품 지원</div>
+                    </div>
+                    <div style="color: #aaa; font-size: 1.2rem; font-family: var(--font-orbitron);">
+                        보유 머니: <span id="shop-money" style="color: #2e8b57; font-weight: 900; font-size: 1.8rem; text-shadow: 0 0 15px rgba(46, 139, 87, 0.4);">0</span> <span style="font-size:1.1rem; color:#888;">G</span>
+                    </div>
+                </div>
 
+                <!-- Shop Tabs -->
+                <div id="shop-tabs" style="display: flex; gap: 12px; margin-bottom: 25px; flex-wrap: wrap;">
+                    <button class="shop-tab-btn active" onclick="switchShopTab('all')" style="padding: 12px 24px; background: rgba(46, 139, 87, 0.25); color: #fff; border: 1.5px solid #2e8b57; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1rem; letter-spacing: 1px;">전체</button>
+                    <button class="shop-tab-btn" onclick="switchShopTab('weapons')" style="padding: 12px 24px; background: rgba(255,255,255,0.03); color: #ccc; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1rem; letter-spacing: 1px;">🔫 무기</button>
+                    <button class="shop-tab-btn" onclick="switchShopTab('gears')" style="padding: 12px 24px; background: rgba(255,255,255,0.03); color: #ccc; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1rem; letter-spacing: 1px;">🛠️ 장비</button>
+                    <button class="shop-tab-btn" onclick="switchShopTab('support')" style="padding: 12px 24px; background: rgba(255,255,255,0.03); color: #ccc; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1rem; letter-spacing: 1px;">📦 지원/소모품</button>
+                    <button class="shop-tab-btn" onclick="switchShopTab('skins')" style="padding: 12px 24px; background: rgba(255,255,255,0.03); color: #ccc; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1rem; letter-spacing: 1px;">👕 외형 스킨</button>
+                </div>
+
+                <!-- Shop Items Grid Container -->
                 <div id="shop-items"
-                    style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
-                    <!-- Items will be injected here -->
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; flex: 1; overflow-y: auto; padding-right: 10px; padding-bottom: 20px;">
+                    <!-- Items injected here -->
                 </div>
             </div>
         </div>
@@ -2733,6 +2826,13 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Interaction Prompt HUD -->
+        <div id="interaction-prompt-hud"
+            style="display: none; position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); z-index: 10002; background: rgba(0, 0, 0, 0.85); border: 2px dashed #f59e0b; padding: 15px 30px; border-radius: 12px; box-shadow: 0 0 20px rgba(245,158,11,0.5); text-align: center; color: white; pointer-events: none; font-family: 'Pretendard', sans-serif; backdrop-filter: blur(5px);">
+            <div style="font-size: 1.25rem; font-weight: 800; margin-bottom: 4px; color: #f59e0b; text-shadow: 0 0 10px rgba(245,158,11,0.3);" id="interaction-prompt-title">[E] 제작자와 결투 시작</div>
+            <div style="font-size: 0.85rem; color: #ccc;" id="interaction-prompt-desc">대장님의 비상 전술 훈련에 돌입하십시오!</div>
         </div>
 
         <!-- Promotion Exam HUD -->
@@ -3408,7 +3508,240 @@
                     disabled>반성문 제출 및 복귀</button>
         </div>
     </div>
-</div>
+
+        <!-- Tactical Smartphone / PDA Mockup -->
+        <div id="tactical-phone" style="display: none; position: fixed; bottom: 80px; right: 30px; z-index: 25000; width: 320px; height: 560px; background: #0b0f19; border: 4px solid #1f293d; border-radius: 36px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 30px rgba(16, 185, 129, 0.15); font-family: 'Pretendard', sans-serif; overflow: hidden; flex-direction: column; color: #fff;">
+            <!-- Phone Notch & Status Bar -->
+            <div style="height: 30px; background: #080c14; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; font-size: 0.75rem; color: #888; user-select: none;">
+                <span id="phone-time">20:12</span>
+                <!-- Notch -->
+                <div style="width: 100px; height: 16px; background: #000; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; margin-top: -4px;"></div>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <span>📶</span>
+                    <span>🔋 100%</span>
+                </div>
+            </div>
+            
+            <!-- Phone Screen Area -->
+            <div id="phone-screen-content" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; background: radial-gradient(circle, #0f172a 0%, #020617 100%); position: relative; padding: 15px;">
+                
+                <!-- HOME SCREEN -->
+                <div id="phone-home" style="display: flex; flex-direction: column; height: 100%; user-select: none;">
+                    <div style="text-align: center; margin-top: 10px; margin-bottom: 25px;">
+                        <h3 style="color: #10b981; margin: 0; font-family: 'Orbitron', sans-serif; font-size: 1.1rem; letter-spacing: 1px; text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);">ROK TACTICAL PHONE</h3>
+                        <p style="font-size: 0.75rem; color: #64748b; margin: 3px 0 0 0;">전술 통신 단말기 v1.0</p>
+                    </div>
+                    
+                    <!-- App Icons Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; flex: 1;">
+                        <!-- App 1: PX Delivery -->
+                        <div onclick="openPhoneApp('px')" style="display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+                            <div style="width: 55px; height: 55px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); transition: transform 0.1s;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">🛒</div>
+                            <span style="font-size: 0.75rem; margin-top: 6px; font-weight: bold; color: #e2e8f0; text-align: center;">PX 배달</span>
+                        </div>
+                        
+                        <!-- App 2: Support Call -->
+                        <div onclick="openPhoneApp('support')" style="display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+                            <div style="width: 55px; height: 55px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3); transition: transform 0.1s;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">💥</div>
+                            <span style="font-size: 0.75rem; margin-top: 6px; font-weight: bold; color: #e2e8f0; text-align: center;">화력 지원</span>
+                        </div>
+                        
+                        <!-- App 3: GPS map -->
+                        <div onclick="openPhoneApp('gps')" style="display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+                            <div style="width: 55px; height: 55px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); transition: transform 0.1s;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">🗺️</div>
+                            <span style="font-size: 0.75rem; margin-top: 6px; font-weight: bold; color: #e2e8f0; text-align: center;">전술 GPS</span>
+                        </div>
+
+                        <!-- App 4: Military Music -->
+                        <div onclick="openPhoneApp('music')" style="display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+                            <div style="width: 55px; height: 55px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3); transition: transform 0.1s;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">📻</div>
+                            <span style="font-size: 0.75rem; margin-top: 6px; font-weight: bold; color: #e2e8f0; text-align: center;">군가 라디오</span>
+                        </div>
+
+                        <!-- App 5: Info -->
+                        <div onclick="openPhoneApp('info')" style="display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+                            <div style="width: 55px; height: 55px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3); transition: transform 0.1s;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">🎖️</div>
+                            <span style="font-size: 0.75rem; margin-top: 6px; font-weight: bold; color: #e2e8f0; text-align: center;">요원 정보</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- APP 1: PX DELIVERY -->
+                <div id="phone-app-px" style="display: none; flex-direction: column; height: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 12px; user-select: none;">
+                        <span onclick="goPhoneHome()" style="cursor: pointer; color: #10b981; font-weight: bold;">◀ 홈</span>
+                        <span style="font-weight: bold; font-size: 0.95rem;">🛒 황금마차 PX 배달</span>
+                        <span style="color: transparent;">◀ 홈</span>
+                    </div>
+                    <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 0.9rem;">🍔 군대리아 스페셜</div>
+                                <div style="font-size: 0.75rem; color: #aaa;">허기 대폭 회복 (+50)</div>
+                            </div>
+                            <button onclick="buyPXItem('burger', 50, '군대리아')" style="background: #10b981; color: black; font-weight: bold; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">50G</button>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 0.9rem;">😋 특전사 MRE</div>
+                                <div style="font-size: 0.75rem; color: #aaa;">허기 및 체력 회복 (+30)</div>
+                            </div>
+                            <button onclick="buyPXItem('mre', 30, '전투식량')" style="background: #10b981; color: black; font-weight: bold; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">30G</button>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 0.9rem;">🧥 황금 깔깔이</div>
+                                <div style="font-size: 0.75rem; color: #aaa;">체력 자동 회복 버프</div>
+                            </div>
+                            <button onclick="buyPXItem('liner', 200, '황금 깔깔이')" style="background: #10b981; color: black; font-weight: bold; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">200G</button>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 0.9rem;">🌶️ 군인 만능 맛다시</div>
+                                <div style="font-size: 0.75rem; color: #aaa;">스테미나 및 허기 회복</div>
+                            </div>
+                            <button onclick="buyPXItem('sauce', 15, '맛다시')" style="background: #10b981; color: black; font-weight: bold; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">15G</button>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 0.9rem;">🍪 건빵 주머니</div>
+                                <div style="font-size: 0.75rem; color: #aaa;">가벼운 허기 회복</div>
+                            </div>
+                            <button onclick="buyPXItem('hardtack', 10, '건빵')" style="background: #10b981; color: black; font-weight: bold; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">10G</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- APP 2: SUPPORT CALL -->
+                <div id="phone-app-support" style="display: none; flex-direction: column; height: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 12px; user-select: none;">
+                        <span onclick="goPhoneHome()" style="cursor: pointer; color: #ef4444; font-weight: bold;">◀ 홈</span>
+                        <span style="font-weight: bold; font-size: 0.95rem;">💥 화력 및 장비 지원</span>
+                        <span style="color: transparent;">◀ 홈</span>
+                    </div>
+                    <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 0.9rem;">🚨 전술 포격 지원 (Airstrike)</div>
+                                <div style="font-size: 0.75rem; color: #aaa;">조준 지점에 다연장 포격 (50 피해)</div>
+                            </div>
+                            <button onclick="callAirstrike(500)" style="background: #ef4444; color: white; font-weight: bold; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">500G</button>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 0.9rem;"> 장갑차(APC) 즉시 수송</div>
+                                <div style="font-size: 0.75rem; color: #aaa;">현재 위치로 K-200 장갑차 소환</div>
+                            </div>
+                            <button onclick="callVehicle('apc', 1500, '장갑차')" style="background: #ef4444; color: white; font-weight: bold; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">1500G</button>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 0.9rem;">🚁 공격 헬기(Heli) 공중 하강</div>
+                                <div style="font-size: 0.75rem; color: #aaa;">현재 위치로 AH-64 공격 헬기 소환</div>
+                            </div>
+                            <button onclick="callVehicle('heli', 3000, '공격 헬기')" style="background: #ef4444; color: white; font-weight: bold; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">3000G</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- APP 3: GPS MAP -->
+                <div id="phone-app-gps" style="display: none; flex-direction: column; height: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 12px; user-select: none;">
+                        <span onclick="goPhoneHome()" style="cursor: pointer; color: #3b82f6; font-weight: bold;">◀ 홈</span>
+                        <span style="font-weight: bold; font-size: 0.95rem;">🗺️ 전술 GPS 지도</span>
+                        <span style="color: transparent;">◀ 홈</span>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; text-align: center; user-select: none;">
+                        <div style="font-size: 3rem;">🛰️</div>
+                        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; width: 100%; box-sizing: border-box; border: 1px solid rgba(59,130,246,0.3);">
+                            <div style="font-size: 0.8rem; color: #3b82f6; font-weight: bold; margin-bottom: 8px;">현재 GPS 위성 좌표</div>
+                            <div style="font-family: monospace; font-size: 1.1rem; line-height: 1.6;">
+                                East (X): <span id="phone-gps-x" style="color: #60a5fa;">0.00</span><br>
+                                Height (Y): <span id="phone-gps-y" style="color: #34d399;">0.00</span><br>
+                                North (Z): <span id="phone-gps-z" style="color: #f87171;">0.00</span>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.75rem; color: #64748b; line-height: 1.4;">
+                            * 해당 단말기는 군사 통신망 위성과 연동되어 오차 범위 1m 이내의 실시간 전술 위치 정보를 제공합니다.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- APP 4: MILITARY MUSIC -->
+                <div id="phone-app-music" style="display: none; flex-direction: column; height: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 12px; user-select: none;">
+                        <span onclick="goPhoneHome()" style="cursor: pointer; color: #f59e0b; font-weight: bold;">◀ 홈</span>
+                        <span style="font-weight: bold; font-size: 0.95rem;">📻 군가 라디오</span>
+                        <span style="color: transparent;">◀ 홈</span>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding-top: 10px;">
+                        <div style="text-align: center; margin-bottom: 15px; user-select: none;">
+                            <div style="font-size: 2.5rem; margin-bottom: 8px; animation: pulse 1.5s infinite alternate;">🎵</div>
+                            <div id="music-playing-title" style="font-weight: bold; font-size: 0.9rem; color: #f59e0b;">현재 재생 중이지 않음</div>
+                        </div>
+                        
+                        <button onclick="playPhoneMusic('military_song_1')" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 10px;">
+                            <span>🇰🇷</span>
+                            <div style="flex: 1;">
+                                <div style="font-size: 0.85rem;">육군가 (공식 군가)</div>
+                                <div style="font-size: 0.7rem; color: #888;">"백두산 정기 뻗은 삼천리 강산..."</div>
+                            </div>
+                        </button>
+                        
+                        <button onclick="playPhoneMusic('military_song_2')" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 10px;">
+                            <span>⚡</span>
+                            <div style="flex: 1;">
+                                <div style="font-size: 0.85rem;">멋진 사나이 (훈련소 테마)</div>
+                                <div style="font-size: 0.7rem; color: #888;">"멋쟁이 사나이 멋진 사나이..."</div>
+                            </div>
+                        </button>
+
+                        <button onclick="stopPhoneMusic()" style="background: #b91c1c; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 0.85rem;">
+                            🔇 라디오 끄기 (Mute)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- APP 5: AGENT INFO -->
+                <div id="phone-app-info" style="display: none; flex-direction: column; height: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 12px; user-select: none;">
+                        <span onclick="goPhoneHome()" style="cursor: pointer; color: #8b5cf6; font-weight: bold;">◀ 홈</span>
+                        <span style="font-weight: bold; font-size: 0.95rem;">🎖️ 군 정보 및 랭킹</span>
+                        <span style="color: transparent;">◀ 홈</span>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow-y: auto;">
+                        <div style="background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.2); padding: 12px; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 0.8rem; color: #c084fc; font-weight: bold; margin-bottom: 4px;">나의 계급 및 닉네임</div>
+                            <div style="font-size: 1.15rem; font-weight: bold;"><span id="phone-info-rank" style="color: #ffd700;">[이등병]</span> <span id="phone-info-name">신병</span></div>
+                            <div style="font-size: 0.75rem; color: #aaa; margin-top: 4px;">소속: <span id="phone-info-branch">육군</span></div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.7rem; color: #888;">적 처치 수 (Kills)</div>
+                                <div id="phone-info-kills" style="font-size: 1.2rem; font-weight: bold; color: #f87171; margin-top: 2px;">0</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.7rem; color: #888;">사망 횟수 (Deaths)</div>
+                                <div id="phone-info-deaths" style="font-size: 1.2rem; font-weight: bold; color: #94a3b8; margin-top: 2px;">0</div>
+                            </div>
+                        </div>
+
+                        <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #888;">현재 네트워크 지연 시간</div>
+                            <div id="phone-info-ping" style="font-size: 1rem; font-weight: bold; color: #34d399; margin-top: 2px;">PING: --ms</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- Home Bar Button -->
+            <div style="height: 35px; background: #080c14; display: flex; justify-content: center; align-items: center; cursor: pointer; border-bottom-left-radius: 32px; border-bottom-right-radius: 32px;" onclick="goPhoneHome()">
+                <div style="width: 120px; height: 5px; background: #555; border-radius: 3px;"></div>
+            </div>
+        </div>
+        </div>
 
         <!-- Scripts -->
         <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js" crossorigin="anonymous"></script>
@@ -3421,7 +3754,7 @@
 
         <script src="config.js?v=106"></script>
 
-        <script src="military_game.js?v=106"></script>
+        <script src="military_game.js?v=108"></script>
 
         <!-- 보상형 광고 시뮬레이터 모달 -->
         <div id="ad-player-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 30000; align-items: center; justify-content: center; backdrop-filter: blur(15px); font-family: 'Pretendard', sans-serif;">
