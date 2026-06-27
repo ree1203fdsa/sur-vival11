@@ -518,6 +518,23 @@ const initAdminPanel = () => {
             };
         }
 
+        // 💰 머니 이벤트 (제작자 ree1203 한정 - 하늘에서 머니 드랍)
+        const moneyEventBtn = document.getElementById('btn-admin-money-event');
+        if (moneyEventBtn) {
+            if (STATE.currentUser.username !== 'ree1203') {
+                moneyEventBtn.style.display = 'none';
+            }
+            moneyEventBtn.onclick = () => {
+                if (STATE.currentUser.username !== 'ree1203') return;
+                db.ref('system/money_event').set({
+                    cx: camera.position.x,
+                    cz: camera.position.z,
+                    time: Date.now()
+                });
+                showToast("💰 제작자 머니 이벤트 발동! 하늘에서 머니가 떨어집니다!", "#facc15");
+            };
+        }
+
         // ⏰ 낮밤변경
         const timeBtn = document.getElementById('btn-admin-time');
         if (timeBtn) {
@@ -684,6 +701,42 @@ const startGame = () => {
                     }
                     
                     showToast("📦 전장에 보급품 상자가 낙하 완료되었습니다!", "#059669");
+                });
+
+                // 3-2. 💰 머니 이벤트 - 하늘에서 랜덤으로 머니가 떨어짐
+                db.ref('system/money_event').on('value', snap => {
+                    const val = snap.val();
+                    if (!val || val.time < Date.now() - 4000) return;
+                    if (typeof THREE === 'undefined' || typeof scene === 'undefined') return;
+
+                    showToast("💰 제작자 머니 이벤트! 하늘에서 머니가 쏟아집니다! 어서 주우세요!", "#facc15");
+
+                    if (window.moneyEventDrops) {
+                        window.moneyEventDrops.forEach(d => scene.remove(d.mesh));
+                    }
+                    window.moneyEventDrops = [];
+
+                    const dropCount = 40;
+                    const radius = 35;
+                    const geom = new THREE.OctahedronGeometry(0.6);
+                    const mat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.6, metalness: 0.9, roughness: 0.2 });
+
+                    for (let i = 0; i < dropCount; i++) {
+                        const mesh = new THREE.Mesh(geom, mat);
+                        const angle = Math.random() * Math.PI * 2;
+                        const dist = Math.random() * radius;
+                        const x = val.cx + Math.cos(angle) * dist;
+                        const z = val.cz + Math.sin(angle) * dist;
+                        const startY = 20 + Math.random() * 15;
+                        mesh.position.set(x, startY, z);
+                        scene.add(mesh);
+                        window.moneyEventDrops.push({
+                            mesh,
+                            groundY: 0.6,
+                            falling: true,
+                            value: 100 + Math.floor(Math.random() * 400)
+                        });
+                    }
                 });
 
                 // 4. 낮밤변경
@@ -6991,6 +7044,36 @@ const initChat = () => {
             mctx.stroke();
         };
         setInterval(drawMinimap, 500);
+
+        // 💰 머니 이벤트: 낙하 애니메이션 + 줍기 처리 (50ms tick)
+        setInterval(() => {
+            if (!window.moneyEventDrops || !window.moneyEventDrops.length) return;
+            if (typeof camera === 'undefined' || typeof scene === 'undefined') return;
+
+            for (let i = window.moneyEventDrops.length - 1; i >= 0; i--) {
+                const drop = window.moneyEventDrops[i];
+                if (drop.falling) {
+                    drop.mesh.position.y -= 0.35;
+                    drop.mesh.rotation.y += 0.1;
+                    drop.mesh.rotation.x += 0.05;
+                    if (drop.mesh.position.y <= drop.groundY) {
+                        drop.mesh.position.y = drop.groundY;
+                        drop.falling = false;
+                    }
+                } else {
+                    drop.mesh.rotation.y += 0.05;
+                }
+
+                const dist = camera.position.distanceTo(drop.mesh.position);
+                if (dist < 2.5 && STATE.currentUser && !STATE.currentUser.dashboardOnly) {
+                    scene.remove(drop.mesh);
+                    window.moneyEventDrops.splice(i, 1);
+                    STATE.currentUser.money = (STATE.currentUser.money || 0) + drop.value;
+                    if (db) db.ref('users/' + STATE.currentUser.uid + '/money').set(STATE.currentUser.money);
+                    showToast(`💰 +${drop.value}G 획득!`, "#facc15");
+                }
+            }
+        }, 50);
 
         // ====================================================
         // SYSTEM G: SALUTE (경례) + Walk distance tracking
