@@ -213,6 +213,59 @@ const initAuth = () => {
         });
     };
 
+    const googleBtn = document.getElementById('btn-google-login');
+    if (googleBtn) {
+        googleBtn.onclick = () => {
+            if (typeof firebase === 'undefined' || !auth) {
+                return alert("Firebase가 초기화되지 않았거나 로드 중입니다.");
+            }
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).then((result) => {
+                const user = result.user;
+                if (!user) return;
+
+                db.ref('users/' + user.uid).once('value', (snap) => {
+                    let userData = snap.val();
+                    if (userData) {
+                        STATE.currentUser = { ...userData, uid: user.uid };
+                        if (STATE.currentUser.isBanned) {
+                            auth.signOut();
+                            return alert("당신의 계정은 관리자에 의해 정지되었습니다.");
+                        }
+                        if (STATE.currentUser.jailTime && STATE.currentUser.jailTime > Date.now()) {
+                            auth.signOut();
+                            alert("현재 영창에 수감 중입니다! 남은 시간: " + Math.ceil((STATE.currentUser.jailTime - Date.now()) / 60000) + "분");
+                            return;
+                        }
+                        if (!STATE.currentUser.branch) {
+                            showScreen('branch-screen');
+                        } else {
+                            startGame();
+                        }
+                    } else {
+                        // Auto register Google user
+                        const newUser = {
+                            username: user.email ? user.email.split('@')[0] : 'google_' + Math.floor(Math.random() * 100000),
+                            name: user.displayName || '구글 요원',
+                            rank: '이등병',
+                            role: 'user',
+                            created: Date.now(),
+                            money: 1000,
+                            email: user.email || ''
+                        };
+                        db.ref('users/' + user.uid).set(newUser).then(() => {
+                            STATE.currentUser = { ...newUser, uid: user.uid };
+                            showScreen('branch-screen');
+                        });
+                    }
+                });
+            }).catch((err) => {
+                console.error("Google Login Error:", err);
+                alert("구글 로그인 실패: " + err.message);
+            });
+        };
+    }
+
     document.getElementById('btn-branch-army').onclick = () => selectBranch('육군');
     document.getElementById('btn-branch-navy').onclick = () => selectBranch('해군');
     document.getElementById('btn-branch-air').onclick = () => selectBranch('공군');
