@@ -1,6 +1,51 @@
 // auth.js - Authentication and User Session Management
 
 function initAuth() {
+    // 1. 구글 리다이렉트 로그인 결과 처리
+    if (typeof firebase !== 'undefined' && typeof auth !== 'undefined' && auth) {
+        auth.getRedirectResult().then((result) => {
+            const user = result.user;
+            if (user) {
+                if (typeof db === 'undefined' || !db) {
+                    return alert("데이터베이스 연결 대기 중... 로그인 데이터를 반영하지 못했습니다.");
+                }
+                db.ref('users/' + user.uid).once('value', (snap) => {
+                    let userData = snap.val();
+                    if (userData) {
+                        STATE.currentUser = { ...userData, uid: user.uid };
+                        if (STATE.currentUser.isBanned) {
+                            auth.signOut();
+                            return alert("당신의 계정은 관리자에 의해 정지되었습니다.");
+                        }
+                        if (STATE.currentUser.jailTime && STATE.currentUser.jailTime > Date.now()) {
+                            auth.signOut();
+                            alert("현재 영창에 수감 중입니다! 남은 시간: " + Math.ceil((STATE.currentUser.jailTime - Date.now()) / 60000) + "분");
+                            return;
+                        }
+                        finalizeLogin();
+                    } else {
+                        // Auto register Google user
+                        const newUser = {
+                            username: user.email ? user.email.split('@')[0] : 'google_' + Math.floor(Math.random() * 100000),
+                            name: user.displayName || '구글 요원',
+                            rank: '이등병',
+                            branch: '육군',
+                            role: 'user',
+                            team: 'SOLDIER',
+                            email: user.email || ''
+                        };
+                        db.ref('users/' + user.uid).set(newUser).then(() => {
+                            STATE.currentUser = { ...newUser, uid: user.uid };
+                            finalizeLogin();
+                        });
+                    }
+                });
+            }
+        }).catch((err) => {
+            console.error("Google Redirect Login Error in auth.js:", err);
+        });
+    }
+
     const loginBtn = document.getElementById('btn-login');
     const guestBtn = document.getElementById('btn-guest');
     if (!loginBtn) return;
@@ -70,6 +115,15 @@ function initAuth() {
                 return alert("Firebase가 초기화되지 않았거나 로드 중입니다.");
             }
             const provider = new firebase.auth.GoogleAuthProvider();
+            
+            // 모바일 환경이거나 iframe 환경 등 팝업이 제한된 경우 리다이렉트 로그인 우선 실행
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                auth.signInWithRedirect(provider);
+                return;
+            }
+
             auth.signInWithPopup(provider).then((result) => {
                 const user = result.user;
                 if (!user) return;
@@ -106,8 +160,14 @@ function initAuth() {
                     }
                 });
             }).catch((err) => {
-                console.error("Google Login Error:", err);
-                alert("구글 로그인 실패: " + err.message);
+                console.error("Google Popup Login Error in auth.js:", err);
+                // 팝업이 차단되었거나 사용자가 닫은 경우 리다이렉트 방식으로 자동 전환
+                if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+                    console.log("Popup blocked/closed. Attempting Redirect login...");
+                    auth.signInWithRedirect(provider);
+                } else {
+                    alert("구글 로그인 실패: " + err.message);
+                }
             });
         };
     }

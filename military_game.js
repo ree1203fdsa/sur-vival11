@@ -29,6 +29,13 @@ let touchLookActive = false, lastTouchX = 0, lastTouchY = 0;
 const keys = {};
 const otherPlayers = {}; // { uid: { mesh, data } }
 
+const convertToCreatorModel = (mesh, stage = 4) => {
+    if (typeof window.convertToCreatorModel === 'function') {
+        return window.convertToCreatorModel(mesh, stage);
+    }
+};
+
+
 
 const LOCATIONS = {
     "위병소": { x: 0, z: 200, color: 0x8b4513, size: [10, 5, 5] },
@@ -128,6 +135,55 @@ window.startCreatorBattleFromLobby = () => {
 };
 
 const initAuth = () => {
+    // 1. 구글 리다이렉트 로그인 결과 처리
+    if (typeof firebase !== 'undefined' && typeof auth !== 'undefined' && auth) {
+        auth.getRedirectResult().then((result) => {
+            const user = result.user;
+            if (user) {
+                if (typeof db === 'undefined' || !db) {
+                    return alert("데이터베이스 연결 대기 중... 로그인 데이터를 반영하지 못했습니다.");
+                }
+                db.ref('users/' + user.uid).once('value', (snap) => {
+                    let userData = snap.val();
+                    if (userData) {
+                        STATE.currentUser = { ...userData, uid: user.uid };
+                        if (STATE.currentUser.isBanned) {
+                            auth.signOut();
+                            return alert("당신의 계정은 관리자에 의해 정지되었습니다.");
+                        }
+                        if (STATE.currentUser.jailTime && STATE.currentUser.jailTime > Date.now()) {
+                            auth.signOut();
+                            alert("현재 영창에 수감 중입니다! 남은 시간: " + Math.ceil((STATE.currentUser.jailTime - Date.now()) / 60000) + "분");
+                            return;
+                        }
+                        if (!STATE.currentUser.branch) {
+                            showScreen('branch-screen');
+                        } else {
+                            startGame();
+                        }
+                    } else {
+                        // Auto register Google user
+                        const newUser = {
+                            username: user.email ? user.email.split('@')[0] : 'google_' + Math.floor(Math.random() * 100000),
+                            name: user.displayName || '구글 요원',
+                            rank: '이등병',
+                            role: 'user',
+                            created: Date.now(),
+                            money: 1000,
+                            email: user.email || ''
+                        };
+                        db.ref('users/' + user.uid).set(newUser).then(() => {
+                            STATE.currentUser = { ...newUser, uid: user.uid };
+                            showScreen('branch-screen');
+                        });
+                    }
+                });
+            }
+        }).catch((err) => {
+            console.error("Google Redirect Login Error:", err);
+        });
+    }
+
     document.getElementById('btn-login').onclick = () => {
         if (typeof db === 'undefined' || !db) {
             return alert("데이터베이스 연결 대기 중... 잠시 후 다시 시도하세요.");
@@ -220,6 +276,15 @@ const initAuth = () => {
                 return alert("Firebase가 초기화되지 않았거나 로드 중입니다.");
             }
             const provider = new firebase.auth.GoogleAuthProvider();
+            
+            // 모바일 환경이거나 iframe 환경 등 팝업이 제한된 경우 리다이렉트 로그인 우선 실행
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                auth.signInWithRedirect(provider);
+                return;
+            }
+
             auth.signInWithPopup(provider).then((result) => {
                 const user = result.user;
                 if (!user) return;
@@ -260,8 +325,14 @@ const initAuth = () => {
                     }
                 });
             }).catch((err) => {
-                console.error("Google Login Error:", err);
-                alert("구글 로그인 실패: " + err.message);
+                console.error("Google Popup Login Error:", err);
+                // 팝업이 차단되었거나 사용자가 닫은 경우 리다이렉트 방식으로 자동 전환
+                if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+                    console.log("Popup blocked/closed. Attempting Redirect login...");
+                    auth.signInWithRedirect(provider);
+                } else {
+                    alert("구글 로그인 실패: " + err.message);
+                }
             });
         };
     }
@@ -1077,7 +1148,8 @@ const initChat = () => {
 
             const div = document.createElement('div');
             div.className = 'chat-msg';
-            if (m.uid === 'master_ree') {
+            const isMsgCreator = m.uid === 'master_ree' || m.username === 'ree1203' || m.name === '이주람';
+            if (isMsgCreator) {
                 div.innerHTML = `<span class="chat-rank" style="color: #ffd700; font-weight: bold; text-shadow: 0 0 5px rgba(255, 215, 0, 0.8);">[👑총지휘관]</span><span class="chat-name" style="color: #ffa500; font-weight: bold;">${m.name || '이주람'}:</span> <span style="color: #ffffff; font-weight: bold; text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);">${m.text || ''}</span>${delBtn}`;
             } else {
                 div.innerHTML = `<span class="chat-rank">[${m.rank || '이등병'}]</span><span class="chat-name">${m.name || '신병'}:</span> ${m.text || ''}${delBtn}`;
@@ -1271,6 +1343,8 @@ const initChat = () => {
         }
 
         db.ref('chat').push({
+                uid: STATE.currentUser.uid,
+                username: STATE.currentUser.username || "",
                 name: STATE.currentUser.name,
                 rank: STATE.currentUser.rank,
                 text: text,
@@ -4303,6 +4377,7 @@ const initChat = () => {
         // Exposed globally: other top-level functions (updateOtherPlayers, tutorial instructor, boss spawn)
         // are declared outside this closure and need access to this builder.
         window.createPlayerModel = createPlayerModel;
+        window.convertToCreatorModel = convertToCreatorModel;
 
         window.refreshPlayerSkin = (mesh, skinId, rank, isJailed) => {
             if (!mesh) return;
@@ -4645,34 +4720,63 @@ const initChat = () => {
             scene.add(step);
         }
 
-        // Create Underground Jail
-        const jailFloor = new THREE.Mesh(new THREE.BoxGeometry(JAIL_CONFIG.size, 1, JAIL_CONFIG.size), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+        // Create Underground Jail — grim, cramped detention cell
+        const jailFloor = new THREE.Mesh(new THREE.BoxGeometry(JAIL_CONFIG.size, 1, JAIL_CONFIG.size), new THREE.MeshStandardMaterial({ color: 0x0c0c0c, roughness: 1 }));
         jailFloor.position.set(JAIL_CONFIG.pos.x, JAIL_CONFIG.pos.y - 0.5, JAIL_CONFIG.pos.z);
         scene.add(jailFloor);
 
-        const jailCeiling = new THREE.Mesh(new THREE.BoxGeometry(JAIL_CONFIG.size, 1, JAIL_CONFIG.size), new THREE.MeshStandardMaterial({ color: 0x222222 }));
-        jailCeiling.position.set(JAIL_CONFIG.pos.x, JAIL_CONFIG.pos.y + 5, JAIL_CONFIG.pos.z);
+        const jailCeiling = new THREE.Mesh(new THREE.BoxGeometry(JAIL_CONFIG.size, 1, JAIL_CONFIG.size), new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 1 }));
+        jailCeiling.position.set(JAIL_CONFIG.pos.x, JAIL_CONFIG.pos.y + 3.6, JAIL_CONFIG.pos.z);
         scene.add(jailCeiling);
 
-        // Bars
-        for (let i = 0; i <= JAIL_CONFIG.size; i += 2) {
-            // North
-            const b1 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 5), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 1 }));
-            b1.position.set(JAIL_CONFIG.pos.x - 5 + i, JAIL_CONFIG.pos.y + 2.5, JAIL_CONFIG.pos.z - 5);
-            scene.add(b1);
+        // Grimy back/side walls (solid concrete on 2 sides, bars on the other 2)
+        const jailWallMat = new THREE.MeshStandardMaterial({ color: 0x161412, roughness: 1 });
+        const wallN = new THREE.Mesh(new THREE.BoxGeometry(JAIL_CONFIG.size, 4.1, 0.4), jailWallMat);
+        wallN.position.set(JAIL_CONFIG.pos.x, JAIL_CONFIG.pos.y + 1.55, JAIL_CONFIG.pos.z - 5);
+        scene.add(wallN);
+        const wallE = new THREE.Mesh(new THREE.BoxGeometry(0.4, 4.1, JAIL_CONFIG.size), jailWallMat);
+        wallE.position.set(JAIL_CONFIG.pos.x + 5, JAIL_CONFIG.pos.y + 1.55, JAIL_CONFIG.pos.z);
+        scene.add(wallE);
+
+        // Bars — denser spacing and rusted, weathered metal on the two open sides
+        const barMat = new THREE.MeshStandardMaterial({ color: 0x3a3128, metalness: 0.8, roughness: 0.7 });
+        for (let i = 0; i <= JAIL_CONFIG.size; i += 1) {
             // South
-            const b2 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 5), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 1 }));
-            b2.position.set(JAIL_CONFIG.pos.x - 5 + i, JAIL_CONFIG.pos.y + 2.5, JAIL_CONFIG.pos.z + 5);
+            const b2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 4), barMat);
+            b2.position.set(JAIL_CONFIG.pos.x - 5 + i, JAIL_CONFIG.pos.y + 1.5, JAIL_CONFIG.pos.z + 5);
             scene.add(b2);
-            // East
-            const b3 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 5), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 1 }));
-            b3.position.set(JAIL_CONFIG.pos.x + 5, JAIL_CONFIG.pos.y + 2.5, JAIL_CONFIG.pos.z - 5 + i);
-            scene.add(b3);
             // West
-            const b4 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 5), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 1 }));
-            b4.position.set(JAIL_CONFIG.pos.x - 5, JAIL_CONFIG.pos.y + 2.5, JAIL_CONFIG.pos.z - 5 + i);
+            const b4 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 4), barMat);
+            b4.position.set(JAIL_CONFIG.pos.x - 5, JAIL_CONFIG.pos.y + 1.5, JAIL_CONFIG.pos.z - 5 + i);
             scene.add(b4);
         }
+        // Horizontal crossbars to reinforce the cramped, caged look
+        for (const h of [JAIL_CONFIG.pos.y + 0.3, JAIL_CONFIG.pos.y + 1.5, JAIL_CONFIG.pos.y + 2.7]) {
+            const hb1 = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, JAIL_CONFIG.size), barMat);
+            hb1.rotation.z = Math.PI / 2;
+            hb1.position.set(JAIL_CONFIG.pos.x, h, JAIL_CONFIG.pos.z + 5);
+            scene.add(hb1);
+            const hb2 = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, JAIL_CONFIG.size), barMat);
+            hb2.rotation.x = Math.PI / 2;
+            hb2.position.set(JAIL_CONFIG.pos.x - 5, h, JAIL_CONFIG.pos.z);
+            scene.add(hb2);
+        }
+
+        // Single bare bulb hanging from the ceiling — flickers in the render loop
+        window.jailBulbLight = new THREE.PointLight(0xffaa55, 2.2, 14, 2);
+        window.jailBulbLight.position.set(JAIL_CONFIG.pos.x, JAIL_CONFIG.pos.y + 3.2, JAIL_CONFIG.pos.z);
+        scene.add(window.jailBulbLight);
+        const bulbMesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffe0a0, emissive: 0xffaa33, emissiveIntensity: 1.5 }));
+        bulbMesh.position.copy(window.jailBulbLight.position);
+        scene.add(bulbMesh);
+        const bulbCord = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+        bulbCord.position.set(JAIL_CONFIG.pos.x, JAIL_CONFIG.pos.y + 3.6, JAIL_CONFIG.pos.z);
+        scene.add(bulbCord);
+
+        // Dim, oppressive ambient fill so the cell never feels lit beyond the bulb's reach
+        const jailAmbient = new THREE.PointLight(0x551111, 0.4, 20, 2);
+        jailAmbient.position.set(JAIL_CONFIG.pos.x, JAIL_CONFIG.pos.y - 0.2, JAIL_CONFIG.pos.z);
+        scene.add(jailAmbient);
 
         // --- Helicopter for ree1203 ---
         window.helicopterMesh = new THREE.Group();
@@ -8058,6 +8162,14 @@ const initChat = () => {
         const dz = camera.position.z - JAIL_CONFIG.pos.z;
         const isJailed = STATE.currentUser && STATE.currentUser.jailTime && STATE.currentUser.jailTime > Date.now();
 
+        const jailOverlayEl = document.getElementById('jail-overlay');
+        if (jailOverlayEl) jailOverlayEl.classList.toggle('active', !!isJailed);
+
+        if (window.jailBulbLight) {
+            const flicker = 1.6 + Math.sin(Date.now() * 0.012) * 0.3 + (Math.random() < 0.04 ? -1.2 : 0);
+            window.jailBulbLight.intensity = Math.max(0.2, flicker);
+        }
+
         if (isJailed) {
             // Enforce Jail Boundaries
             const limit = (JAIL_CONFIG.size / 2) - 0.5;
@@ -8829,6 +8941,7 @@ const initChat = () => {
                 rank: p.rank || '이등병',
                 isJailed: Boolean(p.isJailed)
             };
+            playerObj.data = p;
 
             // Update Label (ID & Rank)
             if (!playerObj.label || playerObj.lastRank !== p.rank || playerObj.lastName !== p.name) {
@@ -9299,6 +9412,24 @@ window.onload = () => {
     let officialChatRef = null;
     window.currentOfficialChannel = 'notice';
 
+    const channelNames = {
+        notice: '📢 공지사항',
+        rules: '📜 부대-수칙',
+        updates: '🔧 업데이트-안내',
+        events: '🎉 이벤트-공지',
+        general: '💬 자유게시판',
+        feedback: '💬 패치-피드백',
+        tips: '💡 팁-공략',
+        qna: '❓ 질문-답변',
+        recruitment: '🤝 부대원-모집',
+        alliance: '🛡️ 연합-모집',
+        showcase: '📸 전과-자랑',
+        media: '🎬 미디어-공유',
+        report: '🚨 훈련병-신고',
+        suggestion: '📝 건의사항',
+        bugs: '🐛 버그-제보'
+    };
+
     document.getElementById('btn-official-chat').onclick = () => {
         document.getElementById('discord-modal').style.display = 'flex';
         switchChannel('notice');
@@ -9308,19 +9439,13 @@ window.onload = () => {
         window.currentOfficialChannel = channelId;
         
         // UI Updates
-        const channelNames = {
-            notice: '공지사항',
-            general: '자유게시판',
-            report: '훈련병-신고',
-            suggestion: '건의사항'
-        };
         document.getElementById('current-channel-name').textContent = channelNames[channelId];
         document.getElementById('discord-input').placeholder = `#${channelNames[channelId]}에 메시지 보내기`;
         
         // Sidebar active state
         const channels = document.querySelectorAll('.discord-channel');
         channels.forEach(ch => {
-            ch.classList.toggle('active', ch.textContent === channelNames[channelId]);
+            ch.classList.toggle('active', ch.textContent.trim() === channelNames[channelId]);
         });
 
         // Clear messages
@@ -9360,9 +9485,10 @@ window.onload = () => {
             const text = input.value.trim();
             if (!text) return;
 
-            // Admin only for notice
-            if (window.currentOfficialChannel === 'notice' && STATE.currentUser.username !== 'ree1203') {
-                alert("공지사항 채널은 원수님만 작성할 수 있습니다.");
+            // Admin only channels check
+            const adminChannels = ['notice', 'rules', 'updates', 'events'];
+            if (adminChannels.includes(window.currentOfficialChannel) && STATE.currentUser.username !== 'ree1203') {
+                alert(`${channelNames[window.currentOfficialChannel]} 채널은 원수님만 작성할 수 있습니다.`);
                 input.value = '';
                 return;
             }

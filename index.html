@@ -214,6 +214,50 @@
             z-index: 1;
         }
 
+        #jail-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            background:
+                radial-gradient(ellipse at center, rgba(0,0,0,0) 30%, rgba(60,0,0,0.55) 75%, rgba(0,0,0,0.9) 100%);
+            box-shadow: inset 0 0 220px 60px rgba(0,0,0,0.85);
+        }
+
+        #jail-overlay.active {
+            opacity: 1;
+            animation: jail-flicker 3.2s infinite ease-in-out;
+        }
+
+        #jail-overlay::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0,0,0,0.35) 0px,
+                rgba(0,0,0,0.35) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            mix-blend-mode: multiply;
+            opacity: 0.5;
+        }
+
+        @keyframes jail-flicker {
+            0%, 100% { opacity: 1; filter: brightness(1); }
+            45% { opacity: 0.97; filter: brightness(0.9); }
+            48% { opacity: 0.7; filter: brightness(0.55); }
+            50% { opacity: 1; filter: brightness(1.15); }
+            70% { opacity: 0.95; filter: brightness(0.85); }
+            72% { opacity: 1; filter: brightness(1); }
+        }
+
         #hud {
             position: absolute;
             top: 30px;
@@ -2176,6 +2220,7 @@
     <!-- 4. 3D GAME SCREEN -->
     <div id="game-screen" class="screen">
         <canvas id="game-canvas"></canvas>
+        <div id="jail-overlay"></div>
 
         <!-- HUD -->
         <div id="hud">
@@ -2743,10 +2788,28 @@
                             onclick="document.getElementById('discord-modal').style.display='none'">✕</span>
                     </div>
                     <div class="discord-channels">
-                        <div class="discord-channel active" onclick="switchChannel('notice')">공지사항</div>
-                        <div class="discord-channel" onclick="switchChannel('general')">자유게시판</div>
-                        <div class="discord-channel" onclick="switchChannel('report')">훈련병-신고</div>
-                        <div class="discord-channel" onclick="switchChannel('suggestion')">건의사항</div>
+                        <!-- 정보 및 공지 (Admin Only) -->
+                        <div class="discord-channel active" onclick="switchChannel('notice')">📢 공지사항</div>
+                        <div class="discord-channel" onclick="switchChannel('rules')">📜 부대-수칙</div>
+                        <div class="discord-channel" onclick="switchChannel('updates')">🔧 업데이트-안내</div>
+                        <div class="discord-channel" onclick="switchChannel('events')">🎉 이벤트-공지</div>
+                        
+                        <!-- 소통 및 정보공유 -->
+                        <div class="discord-channel" onclick="switchChannel('general')">💬 자유게시판</div>
+                        <div class="discord-channel" onclick="switchChannel('feedback')">💬 패치-피드백</div>
+                        <div class="discord-channel" onclick="switchChannel('tips')">💡 팁-공략</div>
+                        <div class="discord-channel" onclick="switchChannel('qna')">❓ 질문-답변</div>
+                        
+                        <!-- 모집 및 활동 기록 -->
+                        <div class="discord-channel" onclick="switchChannel('recruitment')">🤝 부대원-모집</div>
+                        <div class="discord-channel" onclick="switchChannel('alliance')">🛡️ 연합-모집</div>
+                        <div class="discord-channel" onclick="switchChannel('showcase')">📸 전과-자랑</div>
+                        <div class="discord-channel" onclick="switchChannel('media')">🎬 미디어-공유</div>
+                        
+                        <!-- 신고 및 피드백 -->
+                        <div class="discord-channel" onclick="switchChannel('report')">🚨 훈련병-신고</div>
+                        <div class="discord-channel" onclick="switchChannel('suggestion')">📝 건의사항</div>
+                        <div class="discord-channel" onclick="switchChannel('bugs')">🐛 버그-제보</div>
                     </div>
                 </div>
                 <div class="discord-main">
@@ -3881,6 +3944,7 @@
                 </div>
             </div>
         </div>
+    </div>
 
     <!-- Global AdSense Compliance Footer (Fixed bottom-left on all screens) -->
     <div class="compliance-global-footer" style="position: fixed; bottom: 15px; left: 15px; z-index: 15000; display: flex; flex-direction: column; gap: 6px; font-size: 0.72rem; color: rgba(255, 255, 255, 0.35); font-family: 'Pretendard', sans-serif; letter-spacing: 0.3px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); text-align: left; pointer-events: auto;">
