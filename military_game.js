@@ -1356,6 +1356,15 @@ const initChat = () => {
                     '  /동전 - 동전 던지기',
                     '  /가위바위보 - 랜덤 결과',
                     '  /전체 [메시지] - 강조 메시지',
+                    '',
+                    '🌦️ 환경 명령어:',
+                    '  /날씨 [맑음|비|눈|안개|폭풍]',
+                    '',
+                    '🎮 게임 모드:',
+                    '  /섬멸전 - 팀 섬멸전 시작',
+                    '  /점령전 - 거점 점령전 시작',
+                    '  /미션 - 미션 패널 열기',
+                    '  /무기정보 - 현재 무기 스탯 보기',
                 ].join('\n');
                 const helpDiv = document.getElementById('chat-messages');
                 if (helpDiv) {
@@ -1561,6 +1570,46 @@ const initChat = () => {
                     text: `📢 [전체] ${shoutMsg}`,
                     timestamp: Date.now()
                 });
+                input.value = ''; return;
+            }
+
+            // --- Weather Commands ---
+            if (cmd === '/날씨' || cmd === '/weather') {
+                const weatherType = args[0];
+                if (!weatherType || !['맑음','비','눈','안개','폭풍','clear','rain','snow','fog','storm'].includes(weatherType)) {
+                    showToast("사용법: /날씨 [맑음|비|눈|안개|폭풍]", "#ffaa00");
+                    input.value = ''; return;
+                }
+                const wMap = {'맑음':'clear','비':'rain','눈':'snow','안개':'fog','폭풍':'storm'};
+                window.setWeather(wMap[weatherType] || weatherType);
+                input.value = ''; return;
+            }
+
+            // --- Team Battle Commands ---
+            if (cmd === '/섬멸전' || cmd === '/deathmatch') {
+                window.startTeamBattle('deathmatch');
+                input.value = ''; return;
+            }
+            if (cmd === '/점령전' || cmd === '/capture') {
+                window.startTeamBattle('capture');
+                input.value = ''; return;
+            }
+
+            // --- Mission Command ---
+            if (cmd === '/미션' || cmd === '/mission') {
+                const btnMissions = document.getElementById('btn-missions');
+                if (btnMissions) { window.showMissionPanel(); btnMissions.click(); }
+                input.value = ''; return;
+            }
+
+            // --- Weapon Stats ---
+            if (cmd === '/무기정보' || cmd === '/weaponinfo') {
+                const wepId = window.activeWeaponId;
+                if (wepId) {
+                    window.showWeaponStats(wepId);
+                } else {
+                    showToast("무기를 장착한 상태에서 사용하세요.", "#ffaa00");
+                }
                 input.value = ''; return;
             }
 
@@ -13721,4 +13770,497 @@ window.stopPhoneMusic = () => {
         phoneAudioCtx = null;
     }
 };
+
+// ============================================================
+// MODULE 1: WEAPON STATS COMPARISON UI
+// ============================================================
+window.showWeaponStats = (weaponId) => {
+    const w = window.WEAPONS_CONFIG ? window.WEAPONS_CONFIG[weaponId] : null;
+    if (!w) return;
+    const maxDmg = 150, maxRate = 1200, maxAmmo = 100, maxRange = 350;
+    const statsHtml = `
+        <div style="background:rgba(0,0,0,0.9);position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">
+            <div style="background:rgba(20,30,20,0.95);border:2px solid #deb887;border-radius:16px;padding:24px;max-width:380px;width:90%;">
+                <h3 style="color:#deb887;margin:0 0 16px;font-size:1.2rem;">${w.emoji} ${w.name}</h3>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div><div style="display:flex;justify-content:space-between;color:#ccc;font-size:0.85rem;"><span>🔫 데미지</span><span style="color:#ef4444;font-weight:900;">${w.damage}</span></div><div style="background:rgba(255,255,255,0.1);border-radius:4px;height:8px;margin-top:4px;"><div style="background:#ef4444;height:100%;border-radius:4px;width:${w.damage/maxDmg*100}%"></div></div></div>
+                    <div><div style="display:flex;justify-content:space-between;color:#ccc;font-size:0.85rem;"><span>⚡ 연사속도</span><span style="color:#fbbf24;font-weight:900;">${w.fireRate}ms</span></div><div style="background:rgba(255,255,255,0.1);border-radius:4px;height:8px;margin-top:4px;"><div style="background:#fbbf24;height:100%;border-radius:4px;width:${(1-w.fireRate/maxRate)*100}%"></div></div></div>
+                    <div><div style="display:flex;justify-content:space-between;color:#ccc;font-size:0.85rem;"><span>🎯 사거리</span><span style="color:#38bdf8;font-weight:900;">${w.range}m</span></div><div style="background:rgba(255,255,255,0.1);border-radius:4px;height:8px;margin-top:4px;"><div style="background:#38bdf8;height:100%;border-radius:4px;width:${w.range/maxRange*100}%"></div></div></div>
+                    <div><div style="display:flex;justify-content:space-between;color:#ccc;font-size:0.85rem;"><span>📦 탄약</span><span style="color:#22c55e;font-weight:900;">${w.maxAmmo || (w.melee?'∞':'0')}</span></div><div style="background:rgba(255,255,255,0.1);border-radius:4px;height:8px;margin-top:4px;"><div style="background:#22c55e;height:100%;border-radius:4px;width:${(w.maxAmmo||0)/maxAmmo*100}%"></div></div></div>
+                    <div><div style="display:flex;justify-content:space-between;color:#ccc;font-size:0.85rem;"><span>💨 반동</span><span style="color:#a78bfa;font-weight:900;">${(w.recoil*100).toFixed(0)}%</span></div><div style="background:rgba(255,255,255,0.1);border-radius:4px;height:8px;margin-top:4px;"><div style="background:#a78bfa;height:100%;border-radius:4px;width:${w.recoil/0.12*100}%"></div></div></div>
+                </div>
+                <div style="margin-top:14px;text-align:center;font-size:0.8rem;color:#666;">클릭하여 닫기</div>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', statsHtml);
+};
+
+// ============================================================
+// MODULE 2: MISSION/QUEST SYSTEM
+// ============================================================
+window.MISSION_TEMPLATES = [
+    { id: 'kill3', title: '전투 훈련', desc: '적 3명 처치', goal: 3, type: 'kills', reward: 500, icon: '⚔️' },
+    { id: 'kill10', title: '전투 전문가', desc: '적 10명 처치', goal: 10, type: 'kills', reward: 2000, icon: '💀' },
+    { id: 'visit_px', title: 'PX 방문', desc: 'PX 근처에 도달하기', goal: 1, type: 'visit', location: 'PX', radius: 25, reward: 200, icon: '🏪' },
+    { id: 'visit_range', title: '사격장 출석', desc: '사격장에 도달하기', goal: 1, type: 'visit', location: '사격장', radius: 40, reward: 300, icon: '🎯' },
+    { id: 'patrol_base', title: '기지 순찰', desc: '본청 → 위병소 → 생활관 순서로 이동', goal: 3, type: 'patrol_points', locations: ['본청','위병소','생활관'], reward: 800, icon: '🚶' },
+    { id: 'survive5', title: '5분 생존', desc: '죽지 않고 5분 버티기', goal: 300, type: 'survive', reward: 600, icon: '🛡️' },
+    { id: 'headshot', title: '정밀 사격', desc: '원거리 적 처치 (50m+)', goal: 1, type: 'longkill', reward: 1000, icon: '🔭' },
+];
+
+window.activeMissions = [];
+window.missionProgress = {};
+
+window.generateMissions = () => {
+    const templates = [...window.MISSION_TEMPLATES];
+    const selected = [];
+    for (let i = 0; i < 3 && templates.length > 0; i++) {
+        const idx = Math.floor(Math.random() * templates.length);
+        selected.push({ ...templates.splice(idx, 1)[0], completed: false });
+    }
+    window.activeMissions = selected;
+    window.missionProgress = {};
+    selected.forEach(m => window.missionProgress[m.id] = 0);
+};
+
+window.checkMissionProgress = (type, value) => {
+    if (!window.activeMissions) return;
+    window.activeMissions.forEach(m => {
+        if (m.completed) return;
+        if (m.type === type) {
+            window.missionProgress[m.id] = (window.missionProgress[m.id] || 0) + (value || 1);
+            if (window.missionProgress[m.id] >= m.goal) {
+                m.completed = true;
+                if (typeof showToast === 'function') showToast(`✅ 미션 완료: ${m.title}! +${m.reward}G`, '#22c55e');
+                if (STATE.currentUser) {
+                    STATE.currentUser.money = (STATE.currentUser.money || 0) + m.reward;
+                    if (db && STATE.currentUser.uid) db.ref('users/' + STATE.currentUser.uid + '/money').set(STATE.currentUser.money);
+                }
+            }
+        }
+    });
+};
+
+window.showMissionPanel = () => {
+    if (!window.activeMissions || window.activeMissions.length === 0) window.generateMissions();
+    const missions = window.activeMissions;
+    let html = missions.map(m => {
+        const prog = window.missionProgress[m.id] || 0;
+        const pct = Math.min(100, prog / m.goal * 100);
+        return `<div style="background:rgba(255,255,255,0.04);border:1px solid ${m.completed?'#22c55e':'rgba(255,255,255,0.08)'};border-radius:12px;padding:14px;margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div><span style="font-size:1.2rem;">${m.icon}</span> <strong style="color:${m.completed?'#22c55e':'#fff'};">${m.title}</strong></div>
+                <span style="color:#deb887;font-weight:900;">+${m.reward}G</span>
+            </div>
+            <div style="color:#888;font-size:0.8rem;margin:4px 0;">${m.desc}</div>
+            <div style="background:rgba(255,255,255,0.1);border-radius:4px;height:6px;margin-top:6px;">
+                <div style="background:${m.completed?'#22c55e':'#deb887'};height:100%;border-radius:4px;width:${pct}%;transition:width 0.3s;"></div>
+            </div>
+            <div style="text-align:right;font-size:0.75rem;color:#888;margin-top:2px;">${Math.min(prog,m.goal)}/${m.goal} ${m.completed?'✅':''}</div>
+        </div>`;
+    }).join('');
+    html += `<button onclick="window.generateMissions();window.showMissionPanel();" style="width:100%;padding:10px;margin-top:8px;background:rgba(222,184,135,0.15);border:1px solid #deb887;color:#deb887;border-radius:8px;cursor:pointer;font-weight:700;">🔄 새 미션 받기</button>`;
+    const list = document.getElementById('missions-list');
+    if (list) list.innerHTML = html;
+};
+
+// Mission location check (runs periodically)
+setInterval(() => {
+    if (!window.activeMissions || typeof camera === 'undefined' || !camera) return;
+    window.activeMissions.forEach(m => {
+        if (m.completed || m.type !== 'visit') return;
+        const loc = LOCATIONS[m.location];
+        if (!loc) return;
+        const dx = camera.position.x - loc.x, dz = camera.position.z - loc.z;
+        if (Math.sqrt(dx*dx + dz*dz) < (m.radius || 25)) {
+            window.checkMissionProgress('visit', 1);
+        }
+    });
+    // Survive mission
+    window.activeMissions.forEach(m => {
+        if (m.completed || m.type !== 'survive') return;
+        if (!window.isLocalPlayerDead) window.checkMissionProgress('survive', 1);
+    });
+}, 1000);
+
+// ============================================================
+// MODULE 3: TEAM BATTLE MODE
+// ============================================================
+window.teamBattleActive = false;
+window.teamBattleMode = null; // 'deathmatch' or 'capture'
+window.teamScores = { SOLDIER: 0, RAIDER: 0 };
+window.capturePoints = {};
+
+window.startTeamBattle = (mode) => {
+    window.teamBattleActive = true;
+    window.teamBattleMode = mode;
+    window.teamScores = { SOLDIER: 0, RAIDER: 0 };
+
+    if (mode === 'capture') {
+        window.capturePoints = {
+            '연병장': { owner: null, progress: 0, x: 0, z: 0 },
+            '본청': { owner: null, progress: 0, x: 0, z: -100 },
+            '사격장': { owner: null, progress: 0, x: 100, z: -100 }
+        };
+    }
+
+    if (db) {
+        db.ref('system/team_battle').set({
+            active: true,
+            mode: mode,
+            scores: window.teamScores,
+            startTime: Date.now(),
+            duration: 300000
+        });
+    }
+
+    if (typeof showToast === 'function') {
+        const modeName = mode === 'deathmatch' ? '⚔️ 섬멸전' : '🏴 점령전';
+        showToast(`${modeName} 시작! 5분간 진행됩니다.`, '#ef4444');
+    }
+
+    // Auto-end after 5 minutes
+    setTimeout(() => {
+        if (window.teamBattleActive) window.endTeamBattle();
+    }, 300000);
+};
+
+window.endTeamBattle = () => {
+    window.teamBattleActive = false;
+    const winner = window.teamScores.SOLDIER > window.teamScores.RAIDER ? '국군' :
+                   window.teamScores.RAIDER > window.teamScores.SOLDIER ? '레이더' : '무승부';
+    if (typeof showToast === 'function') {
+        showToast(`🏆 전투 종료! 승리: ${winner} (국군 ${window.teamScores.SOLDIER} vs 레이더 ${window.teamScores.RAIDER})`, '#fbbf24');
+    }
+    if (db) db.ref('system/team_battle').set({ active: false });
+};
+
+window.addTeamScore = (team, points) => {
+    if (!window.teamBattleActive) return;
+    if (window.teamScores[team] !== undefined) {
+        window.teamScores[team] += points;
+        if (db) db.ref('system/team_battle/scores').set(window.teamScores);
+    }
+};
+
+// Team battle HUD update
+setInterval(() => {
+    if (!window.teamBattleActive) return;
+    const hud = document.getElementById('team-battle-hud');
+    if (!hud) {
+        const div = document.createElement('div');
+        div.id = 'team-battle-hud';
+        div.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:9999;background:rgba(0,0,0,0.8);border:1px solid #deb887;border-radius:12px;padding:8px 20px;display:flex;gap:20px;align-items:center;font-weight:900;';
+        document.body.appendChild(div);
+    }
+    const h = document.getElementById('team-battle-hud');
+    if (h) {
+        h.innerHTML = `<span style="color:#4b5320;">🟢 국군 ${window.teamScores.SOLDIER}</span><span style="color:#888;">vs</span><span style="color:#8b0000;">🔴 레이더 ${window.teamScores.RAIDER}</span>`;
+        h.style.display = window.teamBattleActive ? 'flex' : 'none';
+    }
+}, 1000);
+
+// ============================================================
+// MODULE 4: WEATHER SYSTEM
+// ============================================================
+window.currentWeather = 'clear';
+window.weatherParticles = [];
+
+window.setWeather = (type) => {
+    window.currentWeather = type;
+    if (typeof scene === 'undefined' || !scene) return;
+
+    // Remove old particles
+    if (window._weatherMesh) { scene.remove(window._weatherMesh); window._weatherMesh = null; }
+
+    if (type === 'clear') {
+        scene.fog = new THREE.Fog(0x87ceeb, 0, 500);
+        scene.background = new THREE.Color(0x87ceeb);
+        if (typeof showToast === 'function') showToast('☀️ 맑은 날씨', '#fbbf24');
+        return;
+    }
+
+    const count = type === 'rain' ? 5000 : type === 'snow' ? 3000 : 0;
+    if (count > 0) {
+        const geo = new THREE.BufferGeometry();
+        const positions = new Float32Array(count * 3);
+        for (let i = 0; i < count * 3; i += 3) {
+            positions[i] = (Math.random() - 0.5) * 400;
+            positions[i+1] = Math.random() * 200;
+            positions[i+2] = (Math.random() - 0.5) * 400;
+        }
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const mat = new THREE.PointsMaterial({
+            color: type === 'rain' ? 0x8888ff : 0xffffff,
+            size: type === 'rain' ? 0.3 : 0.5,
+            transparent: true,
+            opacity: type === 'rain' ? 0.6 : 0.8
+        });
+        window._weatherMesh = new THREE.Points(geo, mat);
+        scene.add(window._weatherMesh);
+    }
+
+    if (type === 'rain') {
+        scene.fog = new THREE.Fog(0x444444, 0, 200);
+        scene.background = new THREE.Color(0x444444);
+        if (typeof showToast === 'function') showToast('🌧️ 비가 내립니다', '#64748b');
+    } else if (type === 'snow') {
+        scene.fog = new THREE.Fog(0xcccccc, 0, 250);
+        scene.background = new THREE.Color(0xaaaaaa);
+        if (typeof showToast === 'function') showToast('❄️ 눈이 내립니다', '#e2e8f0');
+    } else if (type === 'fog') {
+        scene.fog = new THREE.Fog(0x666666, 0, 80);
+        scene.background = new THREE.Color(0x666666);
+        if (typeof showToast === 'function') showToast('🌫️ 짙은 안개', '#94a3b8');
+    } else if (type === 'storm') {
+        scene.fog = new THREE.Fog(0x222222, 0, 120);
+        scene.background = new THREE.Color(0x222222);
+        if (typeof showToast === 'function') showToast('⛈️ 폭풍이 몰아칩니다!', '#475569');
+    }
+};
+
+window.updateWeather = () => {
+    if (!window._weatherMesh) return;
+    const positions = window._weatherMesh.geometry.attributes.position.array;
+    const speed = window.currentWeather === 'rain' ? 2.0 : 0.3;
+    const drift = window.currentWeather === 'snow' ? 0.2 : 0;
+    for (let i = 0; i < positions.length; i += 3) {
+        positions[i+1] -= speed;
+        positions[i] += (Math.random() - 0.5) * drift;
+        if (positions[i+1] < -5) {
+            positions[i+1] = 200;
+            positions[i] = (typeof camera !== 'undefined' ? camera.position.x : 0) + (Math.random() - 0.5) * 400;
+            positions[i+2] = (typeof camera !== 'undefined' ? camera.position.z : 0) + (Math.random() - 0.5) * 400;
+        }
+    }
+    window._weatherMesh.geometry.attributes.position.needsUpdate = true;
+    if (typeof camera !== 'undefined') {
+        window._weatherMesh.position.x = camera.position.x;
+        window._weatherMesh.position.z = camera.position.z;
+    }
+};
+
+// Random weather changes
+setInterval(() => {
+    if (typeof scene === 'undefined' || !scene) return;
+    if (window.teamBattleActive) return;
+    const weathers = ['clear','clear','clear','rain','snow','fog','storm'];
+    const next = weathers[Math.floor(Math.random() * weathers.length)];
+    if (next !== window.currentWeather) window.setWeather(next);
+}, 180000);
+
+// ============================================================
+// MODULE 5: BUILDING INTERIORS
+// ============================================================
+window.buildingInteriors = {};
+
+window.createInteriors = () => {
+    if (typeof scene === 'undefined' || !scene) return;
+
+    const interiorDefs = {
+        '생활관': { x: -60, z: 0, w: 28, d: 48, h: 9, color: 0x3a4a2a, items: [
+            { type: 'bunk', positions: [[-8,0,-15],[-8,0,-5],[-8,0,5],[-8,0,15],[8,0,-15],[8,0,5],[8,0,15]] },
+            { type: 'locker', positions: [[13,0,-18],[13,0,-12],[13,0,-6],[13,0,0],[13,0,6],[13,0,12]] }
+        ]},
+        '병영식당': { x: 60, z: 0, w: 28, d: 38, h: 7, color: 0x4a5a2f, items: [
+            { type: 'table', positions: [[-8,0,-10],[-8,0,0],[-8,0,10],[8,0,-10],[8,0,0],[8,0,10]] },
+            { type: 'counter', positions: [[0,0,-17]] }
+        ]},
+        'PX': { x: 30, z: 80, w: 18, d: 18, h: 7, color: 0x2a2a6a, items: [
+            { type: 'shelf', positions: [[-6,0,-5],[-6,0,5],[6,0,-5],[6,0,5]] },
+            { type: 'counter', positions: [[0,0,-7]] }
+        ]},
+        '체력단련실': { x: -30, z: 80, w: 18, d: 18, h: 9, color: 0x6a4a0a, items: [
+            { type: 'equipment', positions: [[-5,0,-5],[-5,0,5],[5,0,-5],[5,0,5],[0,0,0]] }
+        ]}
+    };
+
+    Object.entries(interiorDefs).forEach(([name, def]) => {
+        const floorGeo = new THREE.PlaneGeometry(def.w, def.d);
+        const floorMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.set(def.x, 0.05, def.z);
+        scene.add(floor);
+
+        def.items.forEach(itemGroup => {
+            itemGroup.positions.forEach(pos => {
+                let mesh;
+                const mat = new THREE.MeshLambertMaterial({ color: def.color });
+                if (itemGroup.type === 'bunk') {
+                    mesh = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 3), mat);
+                } else if (itemGroup.type === 'locker') {
+                    mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1), new THREE.MeshLambertMaterial({ color: 0x444444 }));
+                } else if (itemGroup.type === 'table') {
+                    mesh = new THREE.Mesh(new THREE.BoxGeometry(4, 0.8, 2), new THREE.MeshLambertMaterial({ color: 0x8b6914 }));
+                } else if (itemGroup.type === 'counter') {
+                    mesh = new THREE.Mesh(new THREE.BoxGeometry(10, 1.2, 1.5), new THREE.MeshLambertMaterial({ color: 0x666666 }));
+                } else if (itemGroup.type === 'shelf') {
+                    mesh = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 1), new THREE.MeshLambertMaterial({ color: 0x8b6914 }));
+                } else if (itemGroup.type === 'equipment') {
+                    mesh = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.5, 1.5), new THREE.MeshLambertMaterial({ color: 0x333333 }));
+                }
+                if (mesh) {
+                    mesh.position.set(def.x + pos[0], (mesh.geometry.parameters.height || 1) / 2 + pos[1], def.z + pos[2]);
+                    scene.add(mesh);
+                }
+            });
+        });
+
+        window.buildingInteriors[name] = def;
+    });
+};
+
+// ============================================================
+// MODULE 6: SOUND EFFECTS SYSTEM
+// ============================================================
+window.SFX = {
+    ctx: null,
+    getCtx() {
+        if (!this.ctx) {
+            try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+        }
+        return this.ctx;
+    },
+
+    play(type) {
+        const ctx = this.getCtx();
+        if (!ctx) return;
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        const now = ctx.currentTime;
+
+        if (type === 'gunshot') {
+            const noise = ctx.createBufferSource();
+            const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.03));
+            noise.buffer = buffer;
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.setValueAtTime(0.4, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            noise.connect(noiseGain);
+            noiseGain.connect(ctx.destination);
+            noise.start(now);
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.15);
+        } else if (type === 'footstep') {
+            osc.frequency.setValueAtTime(80 + Math.random() * 40, now);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+            osc.start(now);
+            osc.stop(now + 0.08);
+        } else if (type === 'hit') {
+            osc.frequency.setValueAtTime(400, now);
+            osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+        } else if (type === 'reload') {
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.setValueAtTime(800, now + 0.1);
+            osc.frequency.setValueAtTime(500, now + 0.2);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        } else if (type === 'explosion') {
+            const noise = ctx.createBufferSource();
+            const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.15));
+            noise.buffer = buffer;
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.setValueAtTime(0.6, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            noise.connect(noiseGain);
+            noiseGain.connect(ctx.destination);
+            noise.start(now);
+            osc.frequency.setValueAtTime(60, now);
+            osc.frequency.exponentialRampToValueAtTime(20, now + 0.4);
+            gain.gain.setValueAtTime(0.5, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            osc.start(now);
+            osc.stop(now + 0.5);
+        } else if (type === 'ambient_wind') {
+            const noise = ctx.createBufferSource();
+            const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.02;
+            noise.buffer = buffer;
+            noise.loop = true;
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.setValueAtTime(0.03, now);
+            noise.connect(noiseGain);
+            noiseGain.connect(ctx.destination);
+            noise.start(now);
+            window._ambientWind = { source: noise, gain: noiseGain };
+            osc.disconnect();
+            return;
+        }
+    },
+
+    stopAmbient() {
+        if (window._ambientWind) {
+            try { window._ambientWind.source.stop(); } catch(e) {}
+            window._ambientWind = null;
+        }
+    }
+};
+
+// Footstep sound tied to movement
+window._lastFootstep = 0;
+window._footstepInterval = setInterval(() => {
+    if (typeof camera === 'undefined' || !camera) return;
+    if (typeof keys === 'undefined') return;
+    const moving = keys['KeyW'] || keys['KeyA'] || keys['KeyS'] || keys['KeyD'] ||
+                   keys['ArrowUp'] || keys['ArrowDown'] || keys['ArrowLeft'] || keys['ArrowRight'];
+    if (moving && !window.isLocalPlayerDead && Date.now() - window._lastFootstep > 400) {
+        window.SFX.play('footstep');
+        window._lastFootstep = Date.now();
+    }
+}, 100);
+
+// Hook weather update into render loop
+const _origRAF = window.requestAnimationFrame;
+if (typeof _origRAF === 'function') {
+    let _weatherHooked = false;
+    const hookWeather = () => {
+        if (!_weatherHooked && typeof scene !== 'undefined' && scene) {
+            _weatherHooked = true;
+            const origAnimate = window.animate;
+            if (typeof origAnimate === 'function') {
+                window.animate = function() {
+                    origAnimate.apply(this, arguments);
+                    window.updateWeather();
+                };
+            }
+        }
+    };
+    setTimeout(hookWeather, 5000);
+}
+
+// Add chat commands for new features
+const _origInitChat = window.initChat;
+if (typeof _origInitChat !== 'function') {
+    // Chat commands for weather/battle added to existing command parser via chat
+}
+
+// Initialize interiors when game starts
+const _waitForScene = setInterval(() => {
+    if (typeof scene !== 'undefined' && scene && !window._interiorsCreated) {
+        window._interiorsCreated = true;
+        window.createInteriors();
+        clearInterval(_waitForScene);
+    }
+}, 2000);
 
