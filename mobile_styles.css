@@ -1,0 +1,385 @@
+/* --- MOBILE RESPONSIVE JURAM OS (v164) --- */
+#android-nav-bar { display: none; }
+@media (max-width: 768px) {
+    /* OS Container & Window Rules */
+    .os-container { background-size: cover !important; background-position: center !important; }
+    .window { 
+        width: 100% !important; 
+        height: calc(100% - 55px) !important; 
+        top: 0 !important; 
+        left: 0 !important; 
+        border-radius: 0 !important; 
+        box-shadow: none !important;
+        transform: none !important;
+    }
+    .window-header { height: 45px; padding: 0 10px; }
+    
+    /* Android Style Navigation Bar */
+    .taskbar { display: none !important; }
+    #android-nav-bar { 
+        display: flex; 
+        position: fixed; 
+        bottom: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 50px; 
+        background: #f1f1f1; 
+        color: #9aa0a6; 
+        z-index: 10000; 
+        justify-content: space-around; 
+        align-items: center; 
+        border-top: 1px solid #dfe1e5;
+    }
+    .os-container.dark-mode #android-nav-bar { background: #000; color: #5f6368; border-top: 1px solid #202124; }
+    #android-nav-bar .nav-key { 
+        flex: 1; 
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        height: 100%; 
+        cursor: pointer; 
+    }
+    #android-nav-bar .nav-key svg { width: 20px; height: 20px; opacity: 0.8; }
+    #android-nav-bar .nav-key:active { background: rgba(0,0,0,0.1); }
+    
+    /* Make desktop avoid the bottom bar */
+    .desktop { padding-bottom: 60px !important; }
+    
+    /* Desktop Area (Smartphone App Grid Style) */
+    .desktop { 
+        grid-template-columns: repeat(4, 1fr) !important; /* 4 icons per row like a real phone */
+        grid-template-rows: auto; 
+        align-content: start !important;
+        padding: 30px 15px; 
+        gap: 25px 15px; 
+        flex: 1;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    .desktop-icon { width: auto; height: auto; min-height: 80px; }
+    .desktop-icon .icon { font-size: 2.2rem; }
+    .desktop-icon .label { font-size: 0.75rem; margin-top: 5px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+    
+    /* Global Control Refinement for Mobile */
+    .window-ctrl {
+        width: 35px !important;
+        height: 35px !important;
+        font-size: 1.2rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    .window-header {
+        height: 50px !important;
+    }
+    .window-title {
+        font-size: 0.95rem !important;
+    }
+
+    /* Taskbar */
+    .taskbar { height: 55px; padding: 0 10px; }
+    .taskbar-clock { display: none; }
+    /* Android App Drawer (Start Menu Overhaul) */
+    .start-menu { 
+        width: 100% !important; 
+        left: 0 !important; 
+        bottom: -100% !important; /* Start off-screen for swipe up effect */
+        height: 75vh !important; 
+        max-height: 85vh !important;
+        border-radius: 24px 24px 0 0 !important;
+        background: rgba(18, 18, 18, 0.9) !important;
+        backdrop-filter: blur(25px) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-bottom: none !important;
+        transition: bottom 0.4s cubic-bezier(0.1, 0.7, 0.1, 1) !important;
+        z-index: 10001 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        visibility: visible !important;
+    }
+    .start-menu.active { 
+        bottom: 50px !important; /* Align with nav bar */
+        box-shadow: 0 -10px 40px rgba(0,0,0,0.5) !important;
+    }
+    
+    /* Swipe Indicator Handle */
+    .start-menu::before {
+        content: '';
+        display: block;
+        width: 40px;
+        height: 4px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 2px;
+        margin: 12px auto;
+        flex-shrink: 0;
+    }
+    
+    /* Login & Register Screens */
+    .login-panel { width: 95%; max-width: 400px; padding: 2rem 1.5rem; border-radius: 20px; }
+    .logo { font-size: 2.2rem; }
+    #store-register-form .glass-panel { padding: 20px !important; border-radius: 15px !important; }
+
+    /* Menu / Lobby Screen */
+    #menu-screen header { flex-direction: column !important; gap: 10px; padding: 15px !important; align-items: flex-start !important; height: auto !important; }
+    #menu-screen header > div { width: 100%; justify-content: space-between; margin-bottom: 10px; }
+    #menu-screen .resources { width: 100%; justify-content: space-between; margin-left: 0 !important; gap: 5px; }
+    #lobby-visit-badge { display: none; } /* Hide on mobile to save space */
+    
+    .menu-grid { padding: 15px; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .menu-card { padding: 1.5rem 1rem; }
+    .menu-card h3 { font-size: 1.1rem; }
+
+    /* Settings Screen overhaul (Fast & Fluid Mobile UI) */
+    .settings-screen { 
+        flex-direction: column !important; 
+        background: #000 !important; /* True black for OLED mobile screens */
+    }
+    .settings-sidebar { 
+        width: 100% !important; 
+        height: 55px !important;
+        min-height: 55px !important;
+        flex-direction: row !important; 
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important; 
+        overflow-y: hidden !important;
+        padding: 5px 10px !important;
+        background: rgba(255,255,255,0.03) !important;
+        border-right: none !important;
+        border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+        gap: 5px !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    .settings-sidebar::-webkit-scrollbar { display: none; }
+    
+    .settings-sidebar > div:first-child { display: none !important; } 
+    
+    .settings-sidebar .settings-item { 
+        flex: 0 0 auto !important;
+        padding: 6px 14px !important; 
+        border-radius: 20px !important; /* Pill style buttons for mobile */
+        font-size: 0.85rem !important;
+        background: rgba(255,255,255,0.05) !important;
+        color: #ddd !important;
+        margin-right: 5px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .settings-sidebar .settings-item.active {
+        background: #64b5f6 !important;
+        color: #000 !important;
+        font-weight: 800 !important;
+    }
+    
+    .settings-content { 
+        padding: 20px 15px !important; 
+        flex: 1 !important; 
+        background: transparent !important;
+        overflow-y: auto !important;
+    }
+    .settings-content h1 { 
+        font-size: 1.5rem !important; 
+        margin-bottom: 25px !important; 
+        margin-top: 0 !important;
+        font-weight: 900 !important;
+    }
+    
+    /* Responsive Settings Grids */
+    .settings-content .settings-tab > div { 
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important; 
+    }
+    .settings-content .settings-tab > div > div {
+        width: 100% !important;
+        padding: 15px !important;
+        border-radius: 12px !important;
+    }
+    .settings-content input[type="range"] { margin-top: 10px; }
+
+    /* Store Screen */
+    #store-list-view > div:first-child { flex-direction: column; text-align: center; gap: 15px; padding: 20px !important; }
+    #store-buy-perk-panel { flex-direction: column; gap: 10px; text-align: center; font-size: 0.85rem; padding: 15px !important; }
+    #store-app-list > div { grid-template-columns: 1fr !important; }
+    
+    /* Browser Screen */
+    #browser-screen > div:first-child { padding: 10px !important; gap: 5px; }
+    #browser-address { padding: 8px 12px !important; font-size: 0.9rem !important; }
+    #browser-screen button.primary { padding: 8px 15px !important; }
+    #browser-home h1 { font-size: 2.5rem !important; margin-bottom: 20px !important; }
+    #browser-home-search { padding: 12px 12px 12px 40px !important; }
+    
+    .btn-group { flex-direction: column; gap: 5px; }
+    .btn-group button { width: 100% !important; margin: 0 !important; }
+
+    /* --- ADMIN CENTER MOBILE REFINEMENT --- */
+    #admin-screen { height: calc(100% - 50px) !important; }
+    #admin-screen > div:first-child { 
+        height: auto !important;
+        flex-direction: column !important; 
+        padding: 0 !important;
+        background: #111 !important;
+        align-items: stretch !important;
+    }
+    
+    /* Center Title Section */
+    #admin-screen > div:first-child > div:first-child { 
+        padding: 20px !important; 
+        height: auto !important;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        justify-content: center !important;
+    }
+    #admin-screen > div:first-child > div:first-child span { font-size: 1.5rem !important; }
+    #admin-screen > div:first-child > div:first-child div div { font-size: 1.2rem !important; }
+
+    /* Admin Tabs Scroll */
+    #admin-screen > div:first-child > div:nth-child(2) {
+        width: 100%;
+        overflow-x: auto !important;
+        white-space: nowrap;
+        padding: 5px 10px !important;
+        gap: 0 !important;
+        background: rgba(0,0,0,0.2);
+    }
+    .admin-tab-btn { padding: 10px 15px !important; }
+    .admin-tab-btn span { font-size: 1.2rem !important; }
+    .admin-tab-btn div { font-size: 0.7rem !important; }
+
+    /* Status & Refresh Section */
+    #admin-screen > div:first-child > div:last-child {
+        padding: 10px 20px !important;
+        justify-content: space-between !important;
+        background: rgba(0,0,0,0.4);
+    }
+    #admin-db-status { padding: 8px 15px !important; font-size: 0.7rem !important; }
+    #admin-screen button[onclick="app.loadAdminUsers()"] { 
+        width: 45px !important; 
+        height: 45px !important; 
+        padding: 0 !important;
+    }
+    #admin-screen button[onclick="app.loadAdminUsers()"] span:last-child { display: none; }
+
+    /* User Row Mobile Improvement */
+    .admin-user-row { padding: 15px 20px !important; }
+    .admin-user-name-title { font-size: 1.1rem !important; }
+    .admin-user-stats-row { 
+        display: flex; 
+        flex-wrap: wrap; 
+        gap: 5px; 
+        font-size: 0.8rem !important; 
+        margin-top: 5px;
+        align-items: center;
+    }
+    .stat-sep { display: none; }
+    .role-badge { color: #60a5fa; }
+    .admin-user-gear { font-size: 1.2rem !important; }
+
+    #admin-main-view { padding: 15px !important; }
+    #admin-tab-users > div:first-child { padding: 15px !important; margin-bottom: 15px !important; }
+    #admin-tab-users h2 { font-size: 1rem !important; }
+    #admin-user-sort { padding: 5px 10px !important; font-size: 0.8rem !important; }
+
+    /* Store App Table for Mobile */
+    #admin-tab-store td { border: none; border-bottom: 1px solid rgba(255,255,255,0.05); position: relative; padding-left: 45% !important; padding-top: 12px !important; padding-bottom: 12px !important; }
+    #admin-tab-store td:before { position: absolute; left: 15px; width: 40%; font-weight: 800; color: #ff5252; }
+    #admin-tab-store td:nth-of-type(1):before { content: "이름"; }
+    #admin-tab-store td:nth-of-type(2):before { content: "제작자"; }
+    #admin-tab-store td:nth-of-type(3):before { content: "상태"; }
+    #admin-tab-store td:nth-of-type(4):before { content: "동작"; }
+
+    /* Security Console Fix */
+    #admin-log-console { font-size: 0.75rem !important; height: 300px !important; }
+
+    /* --- NEW APP MOBILE STYLES --- */
+    /* JuRam-gram Mobile */
+    #gram-feed div { max-width: 100% !important; margin: 0 !important; border-radius: 0 !important; }
+
+    /* Open Chat Mobile (Stack sidebar and message area) */
+    #openchat-screen { flex-direction: column !important; }
+    #openchat-screen > div:first-child { 
+        width: 100% !important; 
+        height: 60px !important; 
+        flex-direction: row !important; 
+        overflow-x: auto; 
+        overflow-y: hidden;
+        display: flex !important;
+        border-bottom: 2px solid rgba(0,0,0,0.1);
+    }
+    #openchat-room-list { display: flex !important; flex-direction: row !important; height: 100% !important; }
+    #openchat-room-list .chat-room-item { 
+        padding: 5px 15px !important; 
+        font-size: 0.8rem !important; 
+        white-space: nowrap !important; 
+        display: flex !important;
+        align-items: center !important;
+        border-right: 1px solid rgba(255,255,255,0.05);
+    }
+    #openchat-screen > div:first-child > div:first-child { display: none !important; } /* Hide 'Room List' title */
+
+    /* Painting Canvas Mobile Fix */
+    #paint-canvas { width: 100% !important; height: auto !important; max-height: 80vh; }
+    #paint-screen > div:first-child { overflow-x: auto; gap: 10px; }
+
+    /* AI Chatbot Mobile */
+    #ai-messages { padding: 15px !important; }
+    #ai-messages > div { max-width: 90% !important; font-size: 0.85rem !important; }
+    /* --- NEW ADMIN CENTER MOBILE REFINEMENT --- */
+    .admin-grid-mobile {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 15px !important;
+    }
+    #admin-editor-panel {
+        width: 100% !important;
+        margin-top: 10px;
+    }
+    #admin-user-list {
+        max-height: 500px;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* --- PRODUCTIVITY APP MOBILE FIXES --- */
+    /* JuRam Note Mobile */
+    #note-screen { padding: 10px !important; align-items: stretch !important; }
+    #note-content-input { 
+        width: 100% !important; 
+        max-width: 100% !important; 
+        margin: 0 !important; 
+        box-shadow: none !important; 
+        padding: 20px !important;
+        min-height: calc(100vh - 200px) !important;
+    }
+    #note-screen > div:first-child { flex-wrap: wrap; gap: 5px; padding: 10px !important; }
+
+    /* JuRam Excel Mobile */
+    #excel-screen { height: calc(100% - 45px) !important; }
+    #excel-screen > div:first-child > div:nth-child(2) { overflow-x: auto; white-space: nowrap; padding-bottom: 5px; }
+    #excel-screen > div:first-child > div:nth-child(3) { overflow-x: auto; white-space: nowrap; padding: 5px 10px !important; gap: 10px !important; }
+    #excel-table { table-layout: auto !important; }
+    #excel-formula-input { font-size: 0.8rem !important; }
+
+    /* Play Store Mobile */
+    #playstore-screen > div:first-child { padding: 20px 15px !important; }
+    #playstore-screen h1 { font-size: 1.4rem !important; }
+    #playstore-app-list { 
+        grid-template-columns: 1fr !important; /* Single column for clarity */
+        padding: 15px !important; 
+        gap: 15px !important;
+    }
+
+    /* System Monitor Mobile */
+    #monitor-screen .grid { grid-template-columns: 1fr !important; }
+    #monitor-screen .card-value { font-size: 1.4rem !important; }
+
+    /* Calculator Mobile */
+    #calc-screen body { padding: 0 !important; }
+    #calc-screen .calc { width: 90% !important; max-width: 320px; margin: auto; }
+
+    /* Terminal Mobile */
+    #term-screen #output { font-size: 12px !important; }
+    #term-screen #cmd-input { font-size: 12px !important; }
+
+    /* Quick Share Mobile */
+    #share-screen .radar { width: 100px !important; height: 100px !important; }
+    #share-screen .user-list { padding: 0 10px; }
+}
