@@ -1365,6 +1365,20 @@ const initChat = () => {
                     '  /점령전 - 거점 점령전 시작',
                     '  /미션 - 미션 패널 열기',
                     '  /무기정보 - 현재 무기 스탯 보기',
+                    '',
+                    '🎲 미니게임:',
+                    '  /타임어택 - 사격 타임어택',
+                    '  /장애물 - 장애물 코스',
+                    '  /슬롯 - PX 슬롯머신 (100G)',
+                    '',
+                    '🛡️ 시스템:',
+                    '  /장비 - 장비 관리 패널',
+                    '  /부대 - 부대 시스템',
+                    '  /부대창설 [이름] - 부대 생성',
+                    '',
+                    '🚗 조작키:',
+                    '  E: 차량 탑승/하차',
+                    '  G: NPC 대화',
                 ].join('\n');
                 const helpDiv = document.getElementById('chat-messages');
                 if (helpDiv) {
@@ -1610,6 +1624,40 @@ const initChat = () => {
                 } else {
                     showToast("무기를 장착한 상태에서 사용하세요.", "#ffaa00");
                 }
+                input.value = ''; return;
+            }
+
+            // --- Mini-game Commands ---
+            if (cmd === '/타임어택') {
+                window.MINIGAMES.shootingTimeAttack.start();
+                input.value = ''; return;
+            }
+            if (cmd === '/장애물') {
+                window.MINIGAMES.obstacleCourse.start();
+                input.value = ''; return;
+            }
+            if (cmd === '/슬롯' || cmd === '/슬롯머신') {
+                window.MINIGAMES.slotMachine.show();
+                input.value = ''; return;
+            }
+
+            // --- Equipment & Guild Commands ---
+            if (cmd === '/장비') {
+                window.showEquipmentPanel();
+                input.value = ''; return;
+            }
+            if (cmd === '/부대') {
+                window.showGuildPanel();
+                input.value = ''; return;
+            }
+            if (cmd.startsWith('/부대창설 ')) {
+                const guildName = cmd.substring(6).trim();
+                if (guildName) window.createGuild(guildName);
+                else showToast('사용법: /부대창설 [부대 이름]', '#ffaa00');
+                input.value = ''; return;
+            }
+            if (cmd === '/부대탈퇴') {
+                window.leaveGuild();
                 input.value = ''; return;
             }
 
@@ -14263,4 +14311,834 @@ const _waitForScene = setInterval(() => {
         clearInterval(_waitForScene);
     }
 }, 2000);
+
+// ============================================================
+// MODULE 7: MINI-GAME SYSTEM
+// ============================================================
+window.MINIGAMES = {};
+
+// 7-1: Shooting Range Time Attack
+window.MINIGAMES.shootingTimeAttack = {
+    active: false,
+    score: 0,
+    timeLeft: 30,
+    targets: [],
+    timer: null,
+
+    start() {
+        if (this.active) return;
+        this.active = true;
+        this.score = 0;
+        this.timeLeft = 30;
+        this.targets = [];
+        if (typeof showToast === 'function') showToast('🎯 사격 타임어택 시작! 30초!', '#f59e0b');
+
+        const panel = document.createElement('div');
+        panel.id = 'minigame-shooting-hud';
+        panel.style.cssText = 'position:fixed;top:80px;right:20px;z-index:9999;background:rgba(0,0,0,0.85);border:2px solid #f59e0b;border-radius:14px;padding:14px 20px;text-align:center;min-width:140px;';
+        panel.innerHTML = `<div style="color:#f59e0b;font-weight:900;font-size:0.85rem;">🎯 타임어택</div>
+            <div id="sta-score" style="color:#fff;font-size:2rem;font-weight:900;">0</div>
+            <div id="sta-time" style="color:#ef4444;font-size:1rem;font-weight:700;">30s</div>`;
+        document.body.appendChild(panel);
+
+        if (typeof scene !== 'undefined' && scene) {
+            for (let i = 0; i < 5; i++) this._spawnTarget();
+        }
+
+        this.timer = setInterval(() => {
+            this.timeLeft--;
+            const timeEl = document.getElementById('sta-time');
+            if (timeEl) timeEl.textContent = this.timeLeft + 's';
+            if (this.timeLeft <= 0) this.end();
+        }, 1000);
+    },
+
+    _spawnTarget() {
+        if (typeof scene === 'undefined' || !scene) return;
+        const geo = new THREE.SphereGeometry(1.2, 12, 12);
+        const mat = new THREE.MeshLambertMaterial({ color: 0xff4444 });
+        const mesh = new THREE.Mesh(geo, mat);
+        const sx = LOCATIONS['사격장'] ? LOCATIONS['사격장'].x : 100;
+        const sz = LOCATIONS['사격장'] ? LOCATIONS['사격장'].z : -100;
+        mesh.position.set(sx + (Math.random()-0.5)*30, 2 + Math.random()*4, sz + (Math.random()-0.5)*60);
+        mesh.userData.isTimeAttackTarget = true;
+        scene.add(mesh);
+        this.targets.push(mesh);
+    },
+
+    hitTarget(mesh) {
+        if (!this.active) return false;
+        const idx = this.targets.indexOf(mesh);
+        if (idx === -1) return false;
+        scene.remove(mesh);
+        this.targets.splice(idx, 1);
+        this.score += 10;
+        const scoreEl = document.getElementById('sta-score');
+        if (scoreEl) scoreEl.textContent = this.score;
+        if (window.SFX) window.SFX.play('hit');
+        this._spawnTarget();
+        return true;
+    },
+
+    end() {
+        this.active = false;
+        clearInterval(this.timer);
+        this.targets.forEach(t => { if (typeof scene !== 'undefined' && scene) scene.remove(t); });
+        this.targets = [];
+        const panel = document.getElementById('minigame-shooting-hud');
+        if (panel) panel.remove();
+        const reward = this.score * 5;
+        if (STATE.currentUser) {
+            STATE.currentUser.money = (STATE.currentUser.money || 0) + reward;
+            if (db && STATE.currentUser.uid) db.ref('users/' + STATE.currentUser.uid + '/money').set(STATE.currentUser.money);
+        }
+        if (typeof showToast === 'function') showToast(`🎯 타임어택 종료! 점수: ${this.score} | 보상: +${reward}G`, '#22c55e');
+    }
+};
+
+// 7-2: Obstacle Course
+window.MINIGAMES.obstacleCourse = {
+    active: false,
+    checkpoints: [],
+    currentCP: 0,
+    startTime: 0,
+    obstacles: [],
+
+    start() {
+        if (this.active) return;
+        this.active = true;
+        this.currentCP = 0;
+        this.startTime = Date.now();
+        if (typeof showToast === 'function') showToast('🏃 장애물 코스 시작! 체크포인트를 순서대로 통과하세요!', '#38bdf8');
+
+        this.checkpoints = [
+            { x: -100, z: 50 }, { x: -100, z: 80 }, { x: -80, z: 100 },
+            { x: -50, z: 100 }, { x: -30, z: 80 }, { x: 0, z: 60 }
+        ];
+
+        if (typeof scene !== 'undefined' && scene) {
+            this.checkpoints.forEach((cp, i) => {
+                const geo = new THREE.CylinderGeometry(2, 2, 6, 16);
+                const mat = new THREE.MeshBasicMaterial({ color: i === 0 ? 0x00ff00 : 0xffaa00, transparent: true, opacity: 0.4 });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(cp.x, 3, cp.z);
+                scene.add(mesh);
+                cp.mesh = mesh;
+            });
+
+            for (let i = 0; i < 8; i++) {
+                const geo = new THREE.BoxGeometry(2 + Math.random()*3, 3, 2);
+                const mat = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+                const obs = new THREE.Mesh(geo, mat);
+                const idx = Math.floor(Math.random() * this.checkpoints.length);
+                const cp = this.checkpoints[idx];
+                obs.position.set(cp.x + (Math.random()-0.5)*15, 1.5, cp.z + (Math.random()-0.5)*15);
+                scene.add(obs);
+                this.obstacles.push(obs);
+            }
+        }
+
+        const panel = document.createElement('div');
+        panel.id = 'obstacle-hud';
+        panel.style.cssText = 'position:fixed;top:80px;left:20px;z-index:9999;background:rgba(0,0,0,0.85);border:2px solid #38bdf8;border-radius:14px;padding:12px 18px;';
+        panel.innerHTML = `<div style="color:#38bdf8;font-weight:900;">🏃 장애물 코스</div>
+            <div id="obs-cp" style="color:#fff;font-weight:700;">체크포인트: 0/${this.checkpoints.length}</div>
+            <div id="obs-time" style="color:#fbbf24;font-size:0.9rem;">0.0s</div>`;
+        document.body.appendChild(panel);
+
+        this._updateTimer = setInterval(() => {
+            const el = document.getElementById('obs-time');
+            if (el) el.textContent = ((Date.now() - this.startTime) / 1000).toFixed(1) + 's';
+        }, 100);
+    },
+
+    checkPosition(px, pz) {
+        if (!this.active || this.currentCP >= this.checkpoints.length) return;
+        const cp = this.checkpoints[this.currentCP];
+        const dist = Math.sqrt((px - cp.x)**2 + (pz - cp.z)**2);
+        if (dist < 4) {
+            if (cp.mesh && typeof scene !== 'undefined') { scene.remove(cp.mesh); cp.mesh = null; }
+            this.currentCP++;
+            const el = document.getElementById('obs-cp');
+            if (el) el.textContent = `체크포인트: ${this.currentCP}/${this.checkpoints.length}`;
+            if (this.currentCP >= this.checkpoints.length) {
+                this.end();
+            } else {
+                if (this.checkpoints[this.currentCP].mesh) {
+                    this.checkpoints[this.currentCP].mesh.material.color.setHex(0x00ff00);
+                }
+                if (typeof showToast === 'function') showToast(`✅ 체크포인트 ${this.currentCP} 통과!`, '#22c55e');
+            }
+        }
+    },
+
+    end() {
+        this.active = false;
+        clearInterval(this._updateTimer);
+        const elapsed = ((Date.now() - this.startTime) / 1000).toFixed(1);
+        this.obstacles.forEach(o => { if (typeof scene !== 'undefined' && scene) scene.remove(o); });
+        this.checkpoints.forEach(cp => { if (cp.mesh && typeof scene !== 'undefined') scene.remove(cp.mesh); });
+        this.obstacles = [];
+        this.checkpoints = [];
+        const panel = document.getElementById('obstacle-hud');
+        if (panel) panel.remove();
+        const reward = Math.max(100, Math.floor(2000 - parseFloat(elapsed) * 30));
+        if (STATE.currentUser) {
+            STATE.currentUser.money = (STATE.currentUser.money || 0) + reward;
+            if (db && STATE.currentUser.uid) db.ref('users/' + STATE.currentUser.uid + '/money').set(STATE.currentUser.money);
+        }
+        if (typeof showToast === 'function') showToast(`🏃 코스 완료! 시간: ${elapsed}s | 보상: +${reward}G`, '#22c55e');
+    }
+};
+
+// 7-3: PX Slot Machine
+window.MINIGAMES.slotMachine = {
+    show() {
+        const cost = 100;
+        if (!STATE.currentUser || (STATE.currentUser.money || 0) < cost) {
+            if (typeof showToast === 'function') showToast('💰 소지금이 부족합니다! (100G 필요)', '#ef4444');
+            return;
+        }
+        STATE.currentUser.money -= cost;
+        if (db && STATE.currentUser.uid) db.ref('users/' + STATE.currentUser.uid + '/money').set(STATE.currentUser.money);
+
+        const symbols = ['🍒','🍋','🔔','⭐','💎','7️⃣'];
+        const r = () => symbols[Math.floor(Math.random() * symbols.length)];
+        const s1 = r(), s2 = r(), s3 = r();
+        let reward = 0, msg = '';
+
+        if (s1 === s2 && s2 === s3) {
+            if (s1 === '7️⃣') { reward = 5000; msg = '🎰 JACKPOT!!! 7️⃣7️⃣7️⃣'; }
+            else if (s1 === '💎') { reward = 3000; msg = '💎 다이아몬드!'; }
+            else { reward = 1000; msg = '🎉 트리플!'; }
+        } else if (s1 === s2 || s2 === s3 || s1 === s3) {
+            reward = 300; msg = '👍 페어!';
+        } else {
+            reward = 0; msg = '😢 꽝...';
+        }
+
+        if (reward > 0) {
+            STATE.currentUser.money += reward;
+            if (db && STATE.currentUser.uid) db.ref('users/' + STATE.currentUser.uid + '/money').set(STATE.currentUser.money);
+        }
+
+        const html = `<div style="background:rgba(0,0,0,0.9);position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">
+            <div style="background:rgba(20,10,40,0.95);border:2px solid #fbbf24;border-radius:16px;padding:24px;max-width:340px;width:90%;text-align:center;">
+                <div style="color:#fbbf24;font-size:1.3rem;font-weight:900;margin-bottom:16px;">🎰 PX 슬롯머신</div>
+                <div style="display:flex;justify-content:center;gap:12px;margin:20px 0;">
+                    <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:16px 20px;font-size:2.5rem;">${s1}</div>
+                    <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:16px 20px;font-size:2.5rem;">${s2}</div>
+                    <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:16px 20px;font-size:2.5rem;">${s3}</div>
+                </div>
+                <div style="color:${reward > 0 ? '#22c55e' : '#ef4444'};font-size:1.2rem;font-weight:900;margin:12px 0;">${msg}</div>
+                ${reward > 0 ? `<div style="color:#fbbf24;font-weight:700;">+${reward}G</div>` : ''}
+                <div style="color:#888;font-size:0.8rem;margin-top:12px;">잔액: ${STATE.currentUser.money}G | 클릭하여 닫기</div>
+                <button onclick="window.MINIGAMES.slotMachine.show();this.closest('[style*=position]').remove();" style="margin-top:10px;padding:10px 20px;background:rgba(251,191,36,0.2);border:1px solid #fbbf24;color:#fbbf24;border-radius:8px;cursor:pointer;font-weight:700;width:100%;">🎰 다시 돌리기 (100G)</button>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+};
+
+// ============================================================
+// MODULE 8: VEHICLE SYSTEM
+// ============================================================
+window.VEHICLES = {
+    types: {
+        jeep: { name: '군용 지프', emoji: '🚙', speed: 1.8, hp: 200, seats: 4, color: 0x4b5320 },
+        truck: { name: '군용 트럭', emoji: '🚛', speed: 1.2, hp: 500, seats: 10, color: 0x556b2f },
+        tank: { name: '전차', emoji: '🪖', speed: 0.8, hp: 1000, seats: 3, color: 0x333333 },
+        bike: { name: '오토바이', emoji: '🏍️', speed: 2.5, hp: 80, seats: 1, color: 0x222222 }
+    },
+    spawned: [],
+    currentVehicle: null,
+    meshes: []
+};
+
+window.spawnVehicle = (type, x, z) => {
+    const vDef = window.VEHICLES.types[type];
+    if (!vDef || typeof scene === 'undefined' || !scene) return;
+
+    const body = new THREE.Group();
+    const bodyMat = new THREE.MeshLambertMaterial({ color: vDef.color });
+
+    if (type === 'jeep' || type === 'bike') {
+        const chassis = new THREE.Mesh(new THREE.BoxGeometry(3, 1.5, 5), bodyMat);
+        chassis.position.y = 1;
+        body.add(chassis);
+        const roof = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.8, 3), bodyMat);
+        roof.position.set(0, 2.2, -0.5);
+        body.add(roof);
+    } else if (type === 'truck') {
+        const cab = new THREE.Mesh(new THREE.BoxGeometry(3.5, 2, 3), bodyMat);
+        cab.position.set(0, 1.5, 2.5);
+        body.add(cab);
+        const cargo = new THREE.Mesh(new THREE.BoxGeometry(3.5, 2.5, 7), new THREE.MeshLambertMaterial({ color: 0x444444 }));
+        cargo.position.set(0, 1.75, -2.5);
+        body.add(cargo);
+    } else if (type === 'tank') {
+        const hull = new THREE.Mesh(new THREE.BoxGeometry(4, 1.5, 7), bodyMat);
+        hull.position.y = 1;
+        body.add(hull);
+        const turret = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 1.2, 8), bodyMat);
+        turret.position.set(0, 2.5, 0);
+        body.add(turret);
+        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 5, 6), new THREE.MeshLambertMaterial({ color: 0x222222 }));
+        barrel.rotation.x = Math.PI / 2;
+        barrel.position.set(0, 2.5, -3.5);
+        body.add(barrel);
+    }
+
+    // Wheels
+    const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 8);
+    const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+    [[-1.5, 0.5, 2], [1.5, 0.5, 2], [-1.5, 0.5, -2], [1.5, 0.5, -2]].forEach(p => {
+        const w = new THREE.Mesh(wheelGeo, wheelMat);
+        w.rotation.z = Math.PI / 2;
+        w.position.set(...p);
+        body.add(w);
+    });
+
+    body.position.set(x || 0, 0, z || 0);
+    body.userData = { vehicleType: type, vehicleData: { ...vDef, hp: vDef.hp, maxHp: vDef.hp }, isVehicle: true };
+    scene.add(body);
+    window.VEHICLES.spawned.push(body);
+    window.VEHICLES.meshes.push(body);
+    return body;
+};
+
+window.enterVehicle = (vehicleMesh) => {
+    if (window.VEHICLES.currentVehicle) return;
+    window.VEHICLES.currentVehicle = vehicleMesh;
+    if (typeof showToast === 'function') showToast(`🚗 ${vehicleMesh.userData.vehicleData.name}에 탑승!`, '#38bdf8');
+    const vhud = document.getElementById('vehicle-hud');
+    if (vhud) {
+        vhud.style.display = 'block';
+        vhud.innerHTML = `${vehicleMesh.userData.vehicleData.emoji} ${vehicleMesh.userData.vehicleData.name} | HP: ${vehicleMesh.userData.vehicleData.hp} | F: 하차`;
+    }
+};
+
+window.exitVehicle = () => {
+    if (!window.VEHICLES.currentVehicle) return;
+    if (typeof showToast === 'function') showToast('🚗 하차!', '#888');
+    window.VEHICLES.currentVehicle = null;
+    const vhud = document.getElementById('vehicle-hud');
+    if (vhud) vhud.style.display = 'none';
+};
+
+window.checkVehicleProximity = (px, pz) => {
+    if (window.VEHICLES.currentVehicle) return;
+    for (const v of window.VEHICLES.spawned) {
+        const dx = px - v.position.x, dz = pz - v.position.z;
+        if (Math.sqrt(dx*dx + dz*dz) < 5) {
+            if (typeof showToast === 'function') showToast(`${v.userData.vehicleData.emoji} [E] ${v.userData.vehicleData.name} 탑승`, '#38bdf8');
+            window._nearbyVehicle = v;
+            return;
+        }
+    }
+    window._nearbyVehicle = null;
+};
+
+// Spawn default vehicles
+const _waitForSceneVehicles = setInterval(() => {
+    if (typeof scene !== 'undefined' && scene && !window._vehiclesSpawned) {
+        window._vehiclesSpawned = true;
+        window.spawnVehicle('jeep', 10, 190);
+        window.spawnVehicle('truck', -20, 190);
+        window.spawnVehicle('tank', 200, 50);
+        window.spawnVehicle('bike', 35, 85);
+        clearInterval(_waitForSceneVehicles);
+    }
+}, 2000);
+
+// E key to enter/exit vehicle
+document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if ((e.key === 'e' || e.key === 'E') && !e.repeat) {
+        if (window.VEHICLES.currentVehicle) {
+            window.exitVehicle();
+        } else if (window._nearbyVehicle) {
+            window.enterVehicle(window._nearbyVehicle);
+        }
+    }
+    if ((e.key === 'f' || e.key === 'F') && !e.repeat && window.VEHICLES.currentVehicle) {
+        window.exitVehicle();
+    }
+});
+
+// ============================================================
+// MODULE 9: NPC SYSTEM
+// ============================================================
+window.NPC_DEFS = [
+    { id: 'instructor', name: '교관', emoji: '👨‍✈️', x: 5, z: -95, dialogue: ['차렷! 오늘 훈련 준비됐나?', '사격장으로 이동하라!', '전투 태세 갖춰!', '구보 시작!'], color: 0x2f4f4f },
+    { id: 'guard', name: '보초병', emoji: '💂', x: 2, z: 195, dialogue: ['통행증을 보여주십시오.', '경계 근무 중입니다.', '부대 외곽을 순찰하세요.'], color: 0x556b2f },
+    { id: 'medic', name: '군의관', emoji: '👨‍⚕️', x: -118, z: -18, dialogue: ['부상은 없습니까?', '체력이 낮으면 치료해 드리겠습니다.', '건강 관리 잘 하십시오.'], color: 0xb91c1c },
+    { id: 'cook', name: '취사병', emoji: '👨‍🍳', x: 58, z: 5, dialogue: ['오늘 메뉴는 불고기입니다!', '밥은 맛있게 드셔야죠.', '간식 드릴까요?'], color: 0xf59e0b },
+    { id: 'mechanic', name: '정비병', emoji: '🔧', x: 118, z: 82, dialogue: ['장비 점검 중입니다.', '차량 수리가 필요하면 말씀하세요.', '오늘도 열심히 정비 중!'], color: 0x444444 },
+    { id: 'px_clerk', name: 'PX 직원', emoji: '🛒', x: 32, z: 78, dialogue: ['어서오세요!', '오늘 신상 과자 들어왔어요.', '카드 결제 가능합니다.'], color: 0x0000ff },
+    { id: 'trainer', name: '체력단련 교관', emoji: '💪', x: -28, z: 78, dialogue: ['팔굽혀펴기 50개!', '체력이 국력이다!', '오늘 운동 했나?'], color: 0xff8c00 }
+];
+
+window.npcs = [];
+window.npcMeshes = [];
+
+window.createNPCs = () => {
+    if (typeof scene === 'undefined' || !scene) return;
+
+    window.NPC_DEFS.forEach(npcDef => {
+        const group = new THREE.Group();
+
+        // Body
+        const bodyGeo = new THREE.BoxGeometry(1.2, 2, 0.8);
+        const bodyMat = new THREE.MeshLambertMaterial({ color: npcDef.color });
+        const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+        bodyMesh.position.y = 1.5;
+        group.add(bodyMesh);
+
+        // Head
+        const headGeo = new THREE.SphereGeometry(0.5, 8, 8);
+        const headMat = new THREE.MeshLambertMaterial({ color: 0xffdbac });
+        const headMesh = new THREE.Mesh(headGeo, headMat);
+        headMesh.position.y = 3;
+        group.add(headMesh);
+
+        // Name label
+        const canvas = document.createElement('canvas');
+        canvas.width = 256; canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(0, 0, 256, 64);
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 28px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${npcDef.emoji} ${npcDef.name}`, 128, 40);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas) }));
+        sprite.position.y = 4.2;
+        sprite.scale.set(4, 1, 1);
+        group.add(sprite);
+
+        group.position.set(npcDef.x, 0, npcDef.z);
+        group.userData = { npcId: npcDef.id, npcData: npcDef, isNPC: true };
+        scene.add(group);
+        window.npcs.push(group);
+        window.npcMeshes.push(group);
+    });
+};
+
+window.interactNPC = (npcGroup) => {
+    const data = npcGroup.userData.npcData;
+    const line = data.dialogue[Math.floor(Math.random() * data.dialogue.length)];
+
+    // Special NPC actions
+    if (data.id === 'medic' && STATE.currentUser) {
+        STATE.currentUser.hp = 100;
+        if (db && STATE.currentUser.uid) db.ref('users/' + STATE.currentUser.uid + '/hp').set(100);
+        if (typeof showToast === 'function') showToast(`${data.emoji} ${data.name}: "${line}" | HP 회복!`, '#22c55e');
+    } else if (data.id === 'cook') {
+        if (STATE.currentUser) STATE.currentUser.hunger = 100;
+        if (typeof showToast === 'function') showToast(`${data.emoji} ${data.name}: "${line}" | 허기 회복!`, '#f59e0b');
+    } else if (data.id === 'px_clerk') {
+        if (typeof showToast === 'function') showToast(`${data.emoji} ${data.name}: "${line}"`, '#38bdf8');
+        window.MINIGAMES.slotMachine.show();
+    } else if (data.id === 'trainer') {
+        if (STATE.currentUser) STATE.currentUser.stamina = 100;
+        if (typeof showToast === 'function') showToast(`${data.emoji} ${data.name}: "${line}" | 체력 회복!`, '#ff8c00');
+    } else {
+        if (typeof showToast === 'function') showToast(`${data.emoji} ${data.name}: "${line}"`, '#deb887');
+    }
+};
+
+window.checkNPCProximity = (px, pz) => {
+    for (const npc of window.npcs) {
+        const dx = px - npc.position.x, dz = pz - npc.position.z;
+        if (Math.sqrt(dx*dx + dz*dz) < 4) {
+            window._nearbyNPC = npc;
+            return;
+        }
+    }
+    window._nearbyNPC = null;
+};
+
+// G key to interact with NPC
+document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if ((e.key === 'g' || e.key === 'G') && !e.repeat && window._nearbyNPC) {
+        window.interactNPC(window._nearbyNPC);
+    }
+});
+
+// Initialize NPCs
+const _waitForSceneNPC = setInterval(() => {
+    if (typeof scene !== 'undefined' && scene && !window._npcsCreated) {
+        window._npcsCreated = true;
+        window.createNPCs();
+        clearInterval(_waitForSceneNPC);
+    }
+}, 2000);
+
+// NPC idle animation
+setInterval(() => {
+    window.npcs.forEach(npc => {
+        if (npc.children[0]) {
+            npc.children[0].rotation.y = Math.sin(Date.now() * 0.001 + npc.position.x) * 0.3;
+        }
+    });
+}, 50);
+
+// ============================================================
+// MODULE 10: INVENTORY & EQUIPMENT SYSTEM
+// ============================================================
+window.EQUIPMENT_SLOTS = ['head', 'body', 'weapon', 'accessory'];
+
+window.EQUIPMENT_ITEMS = {
+    helmet_basic: { name: '기본 전투 헬멧', slot: 'head', emoji: '🪖', stats: { defense: 5 }, rarity: 'common' },
+    helmet_advanced: { name: '방탄 헬멧', slot: 'head', emoji: '⛑️', stats: { defense: 15 }, rarity: 'rare' },
+    helmet_special: { name: '특수작전 헬멧', slot: 'head', emoji: '🎖️', stats: { defense: 25, accuracy: 10 }, rarity: 'epic' },
+    vest_basic: { name: '기본 방탄조끼', slot: 'body', emoji: '🦺', stats: { defense: 10 }, rarity: 'common' },
+    vest_tactical: { name: '전술 방탄복', slot: 'body', emoji: '🛡️', stats: { defense: 25, speed: -5 }, rarity: 'rare' },
+    vest_heavy: { name: '중방탄복', slot: 'body', emoji: '🔰', stats: { defense: 50, speed: -15 }, rarity: 'epic' },
+    scope: { name: '전술 조준경', slot: 'accessory', emoji: '🔭', stats: { accuracy: 20 }, rarity: 'rare' },
+    gloves: { name: '전투 장갑', slot: 'accessory', emoji: '🧤', stats: { accuracy: 5, defense: 3 }, rarity: 'common' },
+    boots: { name: '전투화', slot: 'accessory', emoji: '🥾', stats: { speed: 10 }, rarity: 'common' },
+    boots_special: { name: '특수전 부츠', slot: 'accessory', emoji: '👢', stats: { speed: 20, defense: 5 }, rarity: 'epic' },
+    nv_goggles: { name: '야간투시경', slot: 'accessory', emoji: '🥽', stats: { accuracy: 15, nightVision: true }, rarity: 'legendary' }
+};
+
+window.playerEquipment = { head: null, body: null, weapon: null, accessory: null };
+window.playerInventory = [];
+
+window.equipItem = (itemId) => {
+    const item = window.EQUIPMENT_ITEMS[itemId];
+    if (!item) return;
+    const prev = window.playerEquipment[item.slot];
+    if (prev) window.playerInventory.push(prev);
+    window.playerEquipment[item.slot] = itemId;
+    const idx = window.playerInventory.indexOf(itemId);
+    if (idx > -1) window.playerInventory.splice(idx, 1);
+    window.applyEquipmentStats();
+    if (typeof showToast === 'function') showToast(`${item.emoji} ${item.name} 장착!`, '#38bdf8');
+    if (db && STATE.currentUser && STATE.currentUser.uid) {
+        db.ref('users/' + STATE.currentUser.uid + '/equipment').set(window.playerEquipment);
+        db.ref('users/' + STATE.currentUser.uid + '/inventory').set(window.playerInventory);
+    }
+};
+
+window.unequipItem = (slot) => {
+    const itemId = window.playerEquipment[slot];
+    if (!itemId) return;
+    window.playerInventory.push(itemId);
+    window.playerEquipment[slot] = null;
+    window.applyEquipmentStats();
+    const item = window.EQUIPMENT_ITEMS[itemId];
+    if (typeof showToast === 'function') showToast(`${item.emoji} ${item.name} 해제`, '#888');
+    if (db && STATE.currentUser && STATE.currentUser.uid) {
+        db.ref('users/' + STATE.currentUser.uid + '/equipment').set(window.playerEquipment);
+        db.ref('users/' + STATE.currentUser.uid + '/inventory').set(window.playerInventory);
+    }
+};
+
+window.applyEquipmentStats = () => {
+    window._equipBonus = { defense: 0, accuracy: 0, speed: 0 };
+    Object.values(window.playerEquipment).forEach(itemId => {
+        if (!itemId) return;
+        const item = window.EQUIPMENT_ITEMS[itemId];
+        if (!item) return;
+        Object.entries(item.stats).forEach(([key, val]) => {
+            if (typeof val === 'number') window._equipBonus[key] = (window._equipBonus[key] || 0) + val;
+        });
+    });
+};
+
+window.showEquipmentPanel = () => {
+    const rarityColor = { common: '#aaa', rare: '#38bdf8', epic: '#a78bfa', legendary: '#fbbf24' };
+
+    let eqHtml = window.EQUIPMENT_SLOTS.map(slot => {
+        const itemId = window.playerEquipment[slot];
+        const item = itemId ? window.EQUIPMENT_ITEMS[itemId] : null;
+        const slotNames = { head: '머리', body: '상체', weapon: '무기', accessory: '장신구' };
+        return `<div style="background:rgba(255,255,255,0.04);border:1px solid ${item ? rarityColor[item.rarity] || '#555' : 'rgba(255,255,255,0.08)'};border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
+            <div><span style="color:#888;font-size:0.8rem;">[${slotNames[slot]}]</span> ${item ? `${item.emoji} <strong style="color:${rarityColor[item.rarity]}">${item.name}</strong>` : '<span style="color:#555;">비어있음</span>'}</div>
+            ${item ? `<button onclick="window.unequipItem('${slot}');this.closest('[style*=position]').remove();window.showEquipmentPanel();" style="padding:4px 10px;background:rgba(239,68,68,0.2);border:1px solid #ef4444;color:#ef4444;border-radius:6px;cursor:pointer;font-size:0.75rem;">해제</button>` : ''}
+        </div>`;
+    }).join('');
+
+    let invHtml = window.playerInventory.length > 0 ? window.playerInventory.map(itemId => {
+        const item = window.EQUIPMENT_ITEMS[itemId];
+        if (!item) return '';
+        const statStr = Object.entries(item.stats).filter(([,v]) => typeof v === 'number').map(([k,v]) => `${k}:${v > 0 ? '+' : ''}${v}`).join(' ');
+        return `<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;">
+            <div>${item.emoji} <span style="color:${rarityColor[item.rarity]}">${item.name}</span> <span style="color:#888;font-size:0.75rem;">${statStr}</span></div>
+            <button onclick="window.equipItem('${itemId}');this.closest('[style*=position]').remove();window.showEquipmentPanel();" style="padding:4px 10px;background:rgba(34,197,94,0.2);border:1px solid #22c55e;color:#22c55e;border-radius:6px;cursor:pointer;font-size:0.75rem;">장착</button>
+        </div>`;
+    }).join('') : '<div style="color:#555;text-align:center;padding:20px;">인벤토리가 비어있습니다</div>';
+
+    const bonus = window._equipBonus || { defense: 0, accuracy: 0, speed: 0 };
+    const html = `<div style="background:rgba(0,0,0,0.9);position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">
+        <div style="background:#1e293b;border-radius:16px;padding:24px;max-width:420px;width:92%;max-height:80vh;overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h3 style="color:#deb887;margin:0;">🎖️ 장비 관리</h3>
+                <span style="color:#888;font-size:0.8rem;">방어:+${bonus.defense} 정확:+${bonus.accuracy} 속도:+${bonus.speed}</span>
+            </div>
+            <div style="color:#fff;font-weight:700;margin-bottom:8px;">장착 중</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">${eqHtml}</div>
+            <div style="color:#fff;font-weight:700;margin-bottom:8px;">인벤토리</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">${invHtml}</div>
+            <div style="text-align:center;color:#666;font-size:0.75rem;margin-top:12px;">클릭하여 닫기</div>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+};
+
+// Load equipment from Firebase on login
+const _origFinalize = window.finalizeLogin;
+if (typeof _origFinalize === 'function') {
+    window.finalizeLogin = function() {
+        _origFinalize.apply(this, arguments);
+        if (db && STATE.currentUser && STATE.currentUser.uid && !STATE.currentUser.isGuest) {
+            db.ref('users/' + STATE.currentUser.uid + '/equipment').once('value', s => {
+                if (s.val()) window.playerEquipment = s.val();
+                window.applyEquipmentStats();
+            });
+            db.ref('users/' + STATE.currentUser.uid + '/inventory').once('value', s => {
+                if (s.val()) window.playerInventory = Array.isArray(s.val()) ? s.val() : Object.values(s.val());
+            });
+            // Also load daily reward data
+            window.checkDailyReward();
+        }
+    };
+}
+
+// ============================================================
+// MODULE 11: DAILY REWARD SYSTEM
+// ============================================================
+window.DAILY_REWARDS = [
+    { day: 1, reward: 200, emoji: '📦', desc: '1일차 보급품' },
+    { day: 2, reward: 300, emoji: '💰', desc: '2일차 급여' },
+    { day: 3, reward: 500, emoji: '🎁', desc: '3일차 선물' },
+    { day: 4, reward: 700, emoji: '⭐', desc: '4일차 훈장' },
+    { day: 5, reward: 1000, emoji: '🏆', desc: '5일차 특별 보상' },
+    { day: 6, reward: 1500, emoji: '💎', desc: '6일차 프리미엄' },
+    { day: 7, reward: 3000, emoji: '👑', desc: '7일차 주간 보너스' }
+];
+
+window.checkDailyReward = () => {
+    if (!db || !STATE.currentUser || !STATE.currentUser.uid || STATE.currentUser.isGuest) return;
+
+    db.ref('users/' + STATE.currentUser.uid + '/dailyReward').once('value', snap => {
+        const data = snap.val() || { lastClaim: 0, streak: 0 };
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const lastDate = new Date(data.lastClaim);
+        const lastDay = new Date(lastDate.getFullYear(), lastDate.getMonth(), lastDate.getDate()).getTime();
+
+        if (today > lastDay) {
+            const diff = (today - lastDay) / (1000 * 60 * 60 * 24);
+            const streak = diff <= 1 ? (data.streak || 0) + 1 : 1;
+            window._pendingDailyReward = { streak, today };
+            setTimeout(() => window.showDailyRewardPopup(streak), 2000);
+        }
+    });
+};
+
+window.showDailyRewardPopup = (streak) => {
+    const dayIdx = ((streak - 1) % 7);
+    const todayReward = window.DAILY_REWARDS[dayIdx];
+
+    let rewardGrid = window.DAILY_REWARDS.map((r, i) => {
+        const isToday = i === dayIdx;
+        const isPast = i < dayIdx;
+        return `<div style="background:${isToday ? 'rgba(251,191,36,0.2)' : isPast ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.03)'};border:2px solid ${isToday ? '#fbbf24' : isPast ? '#22c55e' : 'rgba(255,255,255,0.1)'};border-radius:10px;padding:10px;text-align:center;${isToday ? 'animation:pulse 1s infinite alternate;' : ''}">
+            <div style="font-size:1.5rem;">${r.emoji}</div>
+            <div style="font-size:0.7rem;color:${isToday ? '#fbbf24' : '#888'};font-weight:700;">${r.day}일</div>
+            <div style="color:${isToday ? '#fbbf24' : '#aaa'};font-weight:900;font-size:0.85rem;">+${r.reward}G</div>
+        </div>`;
+    }).join('');
+
+    const html = `<div id="daily-reward-popup" style="background:rgba(0,0,0,0.9);position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;">
+        <div style="background:#1e293b;border:2px solid #fbbf24;border-radius:20px;padding:28px;max-width:400px;width:92%;text-align:center;">
+            <div style="color:#fbbf24;font-size:1.4rem;font-weight:900;margin-bottom:4px;">📋 출석 체크</div>
+            <div style="color:#888;font-size:0.85rem;margin-bottom:16px;">연속 ${streak}일째 출석!</div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:18px;">${rewardGrid}</div>
+            <div style="color:#fbbf24;font-size:1.1rem;font-weight:900;margin:10px 0;">${todayReward.emoji} ${todayReward.desc}: +${todayReward.reward}G</div>
+            <button onclick="window.claimDailyReward(${streak},${todayReward.reward})" style="width:100%;padding:14px;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:none;border-radius:12px;color:#000;font-weight:900;font-size:1.1rem;cursor:pointer;">🎁 보상 받기</button>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+};
+
+window.claimDailyReward = (streak, reward) => {
+    if (!STATE.currentUser) return;
+    STATE.currentUser.money = (STATE.currentUser.money || 0) + reward;
+    if (db && STATE.currentUser.uid) {
+        db.ref('users/' + STATE.currentUser.uid + '/money').set(STATE.currentUser.money);
+        db.ref('users/' + STATE.currentUser.uid + '/dailyReward').set({
+            lastClaim: Date.now(),
+            streak: streak
+        });
+    }
+    const popup = document.getElementById('daily-reward-popup');
+    if (popup) popup.remove();
+    if (typeof showToast === 'function') showToast(`🎁 출석 보상 획득: +${reward}G (${streak}일 연속)`, '#fbbf24');
+};
+
+// ============================================================
+// MODULE 12: GUILD/UNIT SYSTEM
+// ============================================================
+window.GUILD = {
+    current: null,
+    members: [],
+    rank: null
+};
+
+window.createGuild = (name) => {
+    if (!db || !STATE.currentUser || STATE.currentUser.isGuest) {
+        if (typeof showToast === 'function') showToast('로그인이 필요합니다', '#ef4444');
+        return;
+    }
+    if (window.GUILD.current) {
+        if (typeof showToast === 'function') showToast('이미 부대에 소속되어 있습니다', '#ef4444');
+        return;
+    }
+    const guildId = 'guild_' + Date.now();
+    const guildData = {
+        name: name,
+        leader: STATE.currentUser.uid,
+        leaderName: STATE.currentUser.name,
+        members: { [STATE.currentUser.uid]: { name: STATE.currentUser.name, rank: STATE.currentUser.rank, role: 'leader', joined: Date.now() } },
+        created: Date.now(),
+        wins: 0, losses: 0, totalKills: 0
+    };
+    db.ref('guilds/' + guildId).set(guildData).then(() => {
+        db.ref('users/' + STATE.currentUser.uid + '/guild').set(guildId);
+        window.GUILD.current = guildId;
+        window.GUILD.rank = 'leader';
+        if (typeof showToast === 'function') showToast(`⚔️ 부대 "${name}" 창설 완료!`, '#22c55e');
+        if (typeof sendMessage === 'function') sendMessage(`⚔️ [부대] ${STATE.currentUser.name}님이 "${name}" 부대를 창설했습니다!`);
+    });
+};
+
+window.joinGuild = (guildId) => {
+    if (!db || !STATE.currentUser || STATE.currentUser.isGuest) return;
+    if (window.GUILD.current) {
+        if (typeof showToast === 'function') showToast('이미 부대에 소속되어 있습니다', '#ef4444');
+        return;
+    }
+    db.ref('guilds/' + guildId).once('value', snap => {
+        const guild = snap.val();
+        if (!guild) return;
+        const memberCount = guild.members ? Object.keys(guild.members).length : 0;
+        if (memberCount >= 20) {
+            if (typeof showToast === 'function') showToast('부대 인원이 가득 찼습니다 (20/20)', '#ef4444');
+            return;
+        }
+        db.ref('guilds/' + guildId + '/members/' + STATE.currentUser.uid).set({
+            name: STATE.currentUser.name, rank: STATE.currentUser.rank, role: 'member', joined: Date.now()
+        });
+        db.ref('users/' + STATE.currentUser.uid + '/guild').set(guildId);
+        window.GUILD.current = guildId;
+        window.GUILD.rank = 'member';
+        if (typeof showToast === 'function') showToast(`⚔️ "${guild.name}" 부대에 입대했습니다!`, '#22c55e');
+    });
+};
+
+window.leaveGuild = () => {
+    if (!db || !STATE.currentUser || !window.GUILD.current) return;
+    const guildId = window.GUILD.current;
+    db.ref('guilds/' + guildId + '/members/' + STATE.currentUser.uid).remove();
+    db.ref('users/' + STATE.currentUser.uid + '/guild').remove();
+    if (typeof showToast === 'function') showToast('부대를 탈퇴했습니다', '#888');
+    window.GUILD.current = null;
+    window.GUILD.rank = null;
+};
+
+window.showGuildPanel = () => {
+    if (!db) return;
+
+    if (window.GUILD.current) {
+        db.ref('guilds/' + window.GUILD.current).once('value', snap => {
+            const g = snap.val();
+            if (!g) { window.GUILD.current = null; window.showGuildPanel(); return; }
+
+            const members = g.members ? Object.entries(g.members) : [];
+            const memberHtml = members.map(([uid, m]) => {
+                const roleEmoji = m.role === 'leader' ? '👑' : m.role === 'officer' ? '⭐' : '🪖';
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px;">
+                    <span>${roleEmoji} ${m.name} <span style="color:#888;font-size:0.8rem;">(${m.rank})</span></span>
+                </div>`;
+            }).join('');
+
+            const isLeader = window.GUILD.rank === 'leader';
+            const html = `<div style="background:rgba(0,0,0,0.9);position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">
+                <div style="background:#1e293b;border-radius:16px;padding:24px;max-width:420px;width:92%;max-height:80vh;overflow-y:auto;">
+                    <h3 style="color:#deb887;margin:0 0 8px;">⚔️ ${g.name}</h3>
+                    <div style="color:#888;font-size:0.8rem;margin-bottom:12px;">부대장: ${g.leaderName} | 인원: ${members.length}/20 | 승: ${g.wins || 0} 패: ${g.losses || 0}</div>
+                    <div style="font-weight:700;color:#fff;margin-bottom:6px;">부대원</div>
+                    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:16px;">${memberHtml}</div>
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="window.leaveGuild();this.closest('[style*=position]').remove();" style="flex:1;padding:10px;background:rgba(239,68,68,0.15);border:1px solid #ef4444;color:#ef4444;border-radius:8px;cursor:pointer;font-weight:700;">탈퇴</button>
+                    </div>
+                    <div style="text-align:center;color:#666;font-size:0.75rem;margin-top:10px;">클릭하여 닫기</div>
+                </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', html);
+        });
+    } else {
+        db.ref('guilds').orderByChild('created').limitToLast(10).once('value', snap => {
+            const guilds = [];
+            snap.forEach(child => guilds.push({ id: child.key, ...child.val() }));
+            guilds.reverse();
+
+            const listHtml = guilds.length > 0 ? guilds.map(g => {
+                const mc = g.members ? Object.keys(g.members).length : 0;
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;">
+                    <div><strong style="color:#fff;">⚔️ ${g.name}</strong><div style="color:#888;font-size:0.75rem;">부대장: ${g.leaderName} | ${mc}/20명</div></div>
+                    <button onclick="window.joinGuild('${g.id}');this.closest('[style*=position]').remove();" style="padding:6px 14px;background:rgba(34,197,94,0.15);border:1px solid #22c55e;color:#22c55e;border-radius:8px;cursor:pointer;font-weight:700;font-size:0.8rem;">입대</button>
+                </div>`;
+            }).join('') : '<div style="color:#555;text-align:center;padding:20px;">생성된 부대가 없습니다</div>';
+
+            const html = `<div style="background:rgba(0,0,0,0.9);position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">
+                <div style="background:#1e293b;border-radius:16px;padding:24px;max-width:420px;width:92%;max-height:80vh;overflow-y:auto;">
+                    <h3 style="color:#deb887;margin:0 0 16px;">⚔️ 부대 시스템</h3>
+                    <div style="margin-bottom:14px;">
+                        <input id="guild-name-input" type="text" placeholder="부대 이름 입력" style="width:100%;box-sizing:border-box;padding:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:8px;margin-bottom:8px;">
+                        <button onclick="const n=document.getElementById('guild-name-input').value.trim();if(n){window.createGuild(n);this.closest('[style*=position]').remove();}" style="width:100%;padding:10px;background:rgba(34,197,94,0.15);border:1px solid #22c55e;color:#22c55e;border-radius:8px;cursor:pointer;font-weight:700;">⚔️ 부대 창설</button>
+                    </div>
+                    <div style="font-weight:700;color:#fff;margin-bottom:8px;">모집 중인 부대</div>
+                    <div style="display:flex;flex-direction:column;gap:6px;">${listHtml}</div>
+                    <div style="text-align:center;color:#666;font-size:0.75rem;margin-top:12px;">클릭하여 닫기</div>
+                </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', html);
+        });
+    }
+};
+
+// Load guild on login
+const _origFinalize2 = window.finalizeLogin;
+if (typeof _origFinalize2 === 'function') {
+    window.finalizeLogin = function() {
+        _origFinalize2.apply(this, arguments);
+        if (db && STATE.currentUser && STATE.currentUser.uid && !STATE.currentUser.isGuest) {
+            db.ref('users/' + STATE.currentUser.uid + '/guild').once('value', s => {
+                if (s.val()) {
+                    window.GUILD.current = s.val();
+                    db.ref('guilds/' + s.val() + '/members/' + STATE.currentUser.uid + '/role').once('value', rs => {
+                        window.GUILD.rank = rs.val() || 'member';
+                    });
+                }
+            });
+        }
+    };
+}
+
+// Proximity check loop for vehicles, NPCs, and obstacle course
+setInterval(() => {
+    if (typeof camera === 'undefined' || !camera) return;
+    const px = camera.position.x, pz = camera.position.z;
+    window.checkVehicleProximity(px, pz);
+    window.checkNPCProximity(px, pz);
+    if (window.MINIGAMES.obstacleCourse.active) {
+        window.MINIGAMES.obstacleCourse.checkPosition(px, pz);
+    }
+}, 500);
 
