@@ -2033,6 +2033,286 @@
                 filter: brightness(1.15);
             }
         }
+
+        /* ===================================================================
+           COMPREHENSIVE RESPONSIVE UI
+           =================================================================== */
+
+        /* ---- Large Desktop (1920+) ---- */
+        @media (min-width: 1920px) {
+            #hud { padding: 20px 28px; min-width: 220px; }
+            #hud div { font-size: 1.1rem; }
+            #minimap { width: 200px; height: 200px; }
+            #exp-bar-wrap { width: 400px; }
+            #chat-container { width: 400px; height: 300px; }
+            #chat-messages { font-size: 1rem; }
+            .action-btn { width: 90px; height: 90px; font-size: 1rem; }
+            #menu-toggle-btn { width: 90px; height: 90px; font-size: 1.1rem; }
+            #btn-jump { width: 90px; height: 90px; }
+            .big-modal-box { max-width: 750px; padding: 40px; }
+            .big-modal-box h2 { font-size: 1.8rem; }
+            .toast { min-width: 280px; font-size: 1rem; padding: 16px 22px; }
+            #weather-hud { font-size: 1.4rem; padding: 10px 20px; }
+            #discipline-hud { font-size: 1rem; }
+            #shooting-hud .score { font-size: 2.4rem; }
+        }
+
+        /* ---- Standard Desktop (1024-1919) ---- */
+        @media (min-width: 1024px) and (max-width: 1919px) {
+            #hud { min-width: 180px; }
+            #minimap { width: 160px; height: 160px; }
+            #chat-container { width: 320px; height: 250px; }
+        }
+
+        /* ---- Tablet Landscape (769-1023) ---- */
+        @media (min-width: 769px) and (max-width: 1023px) {
+            #hud {
+                top: 15px; left: 15px;
+                padding: 10px 14px;
+                min-width: 140px;
+            }
+            #hud div { font-size: 0.9rem; }
+            #minimap { width: 120px; height: 120px; top: 15px; right: 15px; }
+            #exp-bar-wrap { width: 240px; }
+            #chat-container { width: 280px; height: 200px; bottom: 130px; left: 15px; }
+            #chat-messages { font-size: 0.85rem; }
+            #discipline-hud { right: 150px; font-size: 0.8rem; top: 15px; }
+            #weather-hud { font-size: 1rem; top: 15px; }
+            #toast-container { top: 60px; right: 15px; }
+            .toast { min-width: 180px; font-size: 0.85rem; padding: 10px 14px; }
+            .action-btn { width: 65px; height: 65px; font-size: 0.8rem; border-radius: 14px; }
+            #action-buttons { padding: 14px; gap: 10px; bottom: 110px; right: 15px; }
+            #menu-toggle-btn { width: 65px; height: 65px; bottom: 30px; right: 30px; }
+            #btn-jump { width: 65px; height: 65px; bottom: 30px; right: 110px; }
+            #joystick-container { width: 130px; height: 130px; bottom: 30px; left: 25px; }
+            #joystick-knob { width: 50px; height: 50px; }
+            .big-modal-box { padding: 20px; width: 92%; }
+            #shooting-hud { right: 20px; padding: 10px 14px; }
+            .branch-grid { gap: 12px; }
+            .branch-card { padding: 18px; }
+            .branch-card span { font-size: 2rem; }
+            h1 { font-size: 1.8rem; }
+            .screen .panel { padding: 30px 35px !important; }
+        }
+
+        /* ---- Tablet Portrait & Large Phone (481-768) ---- */
+        @media (min-width: 481px) and (max-width: 768px) {
+            h1 { font-size: 1.6rem; letter-spacing: 2px; }
+            .subtitle { font-size: 0.8rem; }
+            .panel { padding: 30px; max-width: 400px; }
+            .screen .panel { padding: 25px 20px !important; }
+
+            #hud {
+                top: 10px; left: 10px;
+                padding: 8px 12px;
+                min-width: 110px;
+                border-radius: 10px;
+            }
+            #hud div { font-size: 0.85rem; }
+            .stat-bar-bg { height: 6px; }
+            .stat-bar-label { font-size: 0.65rem; }
+
+            #minimap { width: 90px; height: 90px; top: 10px; right: 10px; }
+            #exp-bar-wrap { width: 55%; bottom: 10px; }
+            #exp-bar-bg { height: 8px; }
+            #exp-bar-label { font-size: 0.7rem; }
+            #discipline-hud { display: none !important; }
+
+            #chat-container {
+                bottom: 120px; left: 10px;
+                width: 240px; height: 150px;
+                border-radius: 10px;
+                font-size: 0.8rem;
+            }
+            #chat-messages { padding: 8px; font-size: 0.8rem; gap: 5px; }
+            #chat-input-wrapper { padding: 6px; gap: 5px; }
+            #chat-input { padding: 6px 10px; font-size: 0.8rem; }
+
+            #weather-hud { top: 10px; font-size: 0.9rem; padding: 5px 12px; }
+            #toast-container { top: 50px; right: 10px; }
+            .toast { min-width: 160px; font-size: 0.8rem; padding: 8px 12px; }
+
+            .action-btn { width: 55px; height: 55px; font-size: 0.7rem; border-radius: 12px; }
+            #action-buttons {
+                padding: 10px; gap: 8px;
+                grid-template-columns: repeat(3, 1fr);
+                bottom: 85px; right: 15px;
+            }
+            #menu-toggle-btn { width: 55px; height: 55px; bottom: 20px; right: 20px; font-size: 0.8rem; }
+            #btn-jump { display: flex !important; width: 55px; height: 55px; bottom: 20px; right: 85px; font-size: 0.8rem; }
+            #joystick-container { width: 110px; height: 110px; bottom: 20px; left: 15px; }
+            #joystick-knob { width: 42px; height: 42px; }
+
+            #vehicle-hud { bottom: 150px; font-size: 0.9rem; padding: 8px 18px; }
+            #shooting-hud { right: 15px; padding: 10px 14px; }
+            #shooting-hud .score { font-size: 1.5rem; }
+            #shooting-hud .ammo { font-size: 0.85rem; }
+
+            .big-modal-box { padding: 15px; width: 94%; max-height: 88vh; }
+            .big-modal-box h2 { font-size: 1.3rem; }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .stat-card { padding: 10px; }
+            .stat-card .stat-value { font-size: 1.3rem; }
+            .lb-tab { padding: 6px 10px; font-size: 0.8rem; }
+            .mission-item { padding: 10px 14px; gap: 10px; }
+            .rank-item .rank-pos { font-size: 1.2rem; min-width: 32px; }
+        }
+
+        /* ---- Small Phone (max 480) ---- */
+        @media (max-width: 480px) {
+            h1 { font-size: 1.3rem; letter-spacing: 1px; }
+            .subtitle { font-size: 0.7rem; margin-bottom: 15px; }
+
+            #hud {
+                top: 5px; left: 5px;
+                padding: 5px 8px;
+                min-width: 85px;
+                border-radius: 8px;
+                background: rgba(0, 0, 0, 0.5);
+            }
+            #hud div { font-size: 0.7rem; margin: 2px 0; }
+            .stat-bar-bg { height: 5px; }
+            .stat-bar-label { font-size: 0.6rem; }
+
+            #minimap { width: 65px; height: 65px; top: 5px; right: 5px; border-width: 1px; }
+            #exp-bar-wrap { width: 50%; bottom: 8px; }
+            #exp-bar-bg { height: 6px; }
+            #exp-bar-label { font-size: 0.65rem; }
+            #discipline-hud { display: none !important; }
+
+            #chat-container {
+                bottom: 90px; left: 5px;
+                width: 180px; height: 100px;
+                border-radius: 8px;
+                background: rgba(0, 0, 0, 0.5);
+            }
+            #chat-container.minimized { height: 25px; }
+            #chat-messages { padding: 5px; font-size: 0.65rem; gap: 3px; }
+            #chat-input-wrapper { padding: 4px; gap: 4px; }
+            #chat-input { padding: 4px 8px; font-size: 0.7rem; border-radius: 6px; }
+            #btn-chat-send { padding: 3px 8px !important; font-size: 0.65rem !important; }
+
+            #weather-hud { top: 8px; font-size: 0.7rem; padding: 4px 10px; border-radius: 8px; }
+            #toast-container { top: 40px; right: 5px; }
+            .toast { min-width: 140px; font-size: 0.7rem; padding: 8px 10px; border-radius: 8px; }
+
+            .action-btn { width: 42px; height: 42px; font-size: 0.55rem; border-radius: 8px; }
+            #action-buttons {
+                padding: 8px; gap: 5px;
+                grid-template-columns: repeat(3, 1fr);
+                bottom: 70px; right: 10px;
+                border-radius: 12px;
+                background: rgba(0, 0, 0, 0.9);
+            }
+            #menu-toggle-btn { width: 44px; height: 44px; bottom: 15px; right: 12px; font-size: 0.6rem; border-width: 1px; }
+            #btn-jump { display: flex !important; width: 44px; height: 44px; bottom: 15px; right: 65px; font-size: 0.6rem; border-width: 1px; }
+            #joystick-container { width: 85px; height: 85px; bottom: 15px; left: 10px; border-width: 1px; }
+            #joystick-knob { width: 34px; height: 34px; }
+
+            #vehicle-hud { bottom: 120px; font-size: 0.8rem; padding: 6px 14px; border-radius: 8px; }
+            #shooting-hud { right: 10px; padding: 8px 12px; border-radius: 8px; }
+            #shooting-hud .score { font-size: 1.2rem; }
+            #shooting-hud .ammo { font-size: 0.75rem; }
+
+            #crosshair { font-size: 1.1rem; }
+
+            .big-modal-box { padding: 12px; width: 96%; max-height: 92vh; border-radius: 14px; }
+            .big-modal-box h2 { font-size: 1.1rem; margin-bottom: 12px; }
+            .big-modal .close-btn { font-size: 1.2rem; }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+            .stat-card { padding: 8px; border-radius: 8px; }
+            .stat-card .stat-value { font-size: 1.1rem; }
+            .stat-card .stat-label { font-size: 0.65rem; }
+            .stats-section-title { font-size: 0.85rem; margin: 10px 0 8px; }
+            .lb-tab { padding: 5px 8px; font-size: 0.7rem; border-radius: 6px; }
+            .mission-item { padding: 8px 10px; gap: 8px; border-radius: 8px; }
+            .mission-item .mi-title { font-size: 0.85rem; }
+            .mission-item .mi-desc { font-size: 0.7rem; }
+            .rank-item { padding: 8px 10px; border-radius: 8px; }
+            .rank-item .rank-pos { font-size: 1.1rem; min-width: 30px; }
+            .badge-item .badge-icon { font-size: 1.5rem; }
+
+            .discord-container { width: 98%; height: 90vh; }
+            .discord-sidebar { height: 80px; }
+            .discord-channels { padding: 5px; gap: 5px; }
+            .discord-channel { padding: 4px 8px; font-size: 0.8rem; }
+            .discord-messages { padding: 10px; gap: 10px; }
+            .discord-avatar { width: 30px; height: 30px; font-size: 0.7rem; }
+            .discord-msg-name { font-size: 0.85rem; }
+            .discord-msg-text { font-size: 0.85rem; }
+            .discord-input { font-size: 0.85rem; }
+
+            #admin-panel { top: 10px; right: 10px; padding: 12px; border-radius: 12px; }
+        }
+
+        /* ---- Ultra-small screens (max 360) ---- */
+        @media (max-width: 360px) {
+            h1 { font-size: 1.1rem; }
+            .screen .panel { padding: 15px 10px !important; width: 95% !important; }
+            #hud { padding: 4px 6px; min-width: 70px; }
+            #hud div { font-size: 0.6rem; }
+            #minimap { width: 50px; height: 50px; }
+            #chat-container { width: 150px; height: 80px; bottom: 75px; }
+            #chat-messages { font-size: 0.6rem; }
+            .action-btn { width: 36px; height: 36px; font-size: 0.5rem; }
+            #menu-toggle-btn { width: 38px; height: 38px; font-size: 0.5rem; }
+            #btn-jump { width: 38px; height: 38px; }
+            #joystick-container { width: 70px; height: 70px; }
+            #joystick-knob { width: 28px; height: 28px; }
+        }
+
+        /* ---- Landscape Phone ---- */
+        @media (max-height: 500px) and (orientation: landscape) {
+            #hud {
+                top: 5px; left: 5px;
+                padding: 4px 8px; min-width: 80px;
+                transform: scale(0.8); transform-origin: top left;
+            }
+            #minimap { width: 70px; height: 70px; top: 5px; right: 5px; }
+            #exp-bar-wrap { bottom: 5px; width: 40%; }
+            #chat-container { bottom: 60px; left: 5px; width: 200px; height: 80px; }
+            #chat-messages { font-size: 0.65rem; }
+            #weather-hud { top: 5px; font-size: 0.7rem; }
+            #discipline-hud { display: none !important; }
+
+            #joystick-container { width: 80px; height: 80px; bottom: 10px; left: 10px; }
+            #joystick-knob { width: 30px; height: 30px; }
+            #menu-toggle-btn { width: 44px; height: 44px; bottom: 10px; right: 10px; }
+            #btn-jump { width: 44px; height: 44px; bottom: 10px; right: 60px; }
+            #action-buttons {
+                bottom: 55px; right: 10px;
+                padding: 6px; gap: 4px;
+                grid-template-columns: repeat(4, 1fr);
+            }
+            .action-btn { width: 38px; height: 38px; font-size: 0.5rem; }
+            #vehicle-hud { bottom: 80px; font-size: 0.75rem; }
+            .big-modal-box { max-height: 95vh; padding: 10px; }
+
+            .screen .panel { padding: 15px 20px !important; max-width: 380px; }
+            h1 { font-size: 1.2rem; }
+        }
+
+        /* ---- Dynamic game HUD elements created by JS ---- */
+        @media (max-width: 768px) {
+            [id$="-overlay"][style*="position: fixed"],
+            [id$="-panel"][style*="position: fixed"] {
+                width: 92% !important;
+                max-width: 400px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                right: auto !important;
+            }
+        }
+
+        /* ---- Safe area for notched phones ---- */
+        @supports (padding: env(safe-area-inset-bottom)) {
+            #joystick-container { bottom: calc(15px + env(safe-area-inset-bottom)); }
+            #menu-toggle-btn { bottom: calc(15px + env(safe-area-inset-bottom)); }
+            #btn-jump { bottom: calc(15px + env(safe-area-inset-bottom)); }
+            #chat-container { bottom: calc(90px + env(safe-area-inset-bottom)); }
+            #action-buttons { bottom: calc(70px + env(safe-area-inset-bottom)); }
+            #exp-bar-wrap { bottom: calc(8px + env(safe-area-inset-bottom)); }
+        }
     </style>
 
 </head>
