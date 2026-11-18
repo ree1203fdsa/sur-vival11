@@ -2727,6 +2727,11 @@
         <!-- Weather Overlay -->
         <div id="weather-hud">🌤️ 날이 맑습니다</div>
 
+        <!-- Online Players Button -->
+        <button id="btn-online-players" onclick="window.showOnlinePlayers()" style="position:absolute;top:16px;right:16px;z-index:30;padding:8px 16px;background:rgba(30,41,59,0.9);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);border-radius:12px;color:#fff;font-size:0.85rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;pointer-events:auto;">
+            👥 <span id="online-count-badge" style="background:#22c55e;color:#000;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:900;">0</span>
+        </button>
+
         <!-- Military ID Card Modal -->
         <div id="id-card-modal" class="modal-overlay">
             <div class="big-modal-box"
@@ -4200,7 +4205,7 @@
 
         <script src="config.js?v=106"></script>
 
-        <script src="military_game.js?v=120"></script>
+        <script src="military_game.js?v=132"></script>
 
         <!-- 보상형 광고 시뮬레이터 모달 -->
         <div id="ad-player-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 30000; align-items: center; justify-content: center; backdrop-filter: blur(15px); font-family: 'Pretendard', sans-serif;">

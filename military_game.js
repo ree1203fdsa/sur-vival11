@@ -10360,11 +10360,24 @@ window.onload = () => {
             }
         }
         
-        if (e.key === 'c' || e.key === 'C' || e.key === 't' || e.key === 'T') {
+        if (e.key === 't' || e.key === 'T') {
             window.isThirdPerson = !window.isThirdPerson;
             if (window.localPlayerBody) window.localPlayerBody.visible = window.isThirdPerson;
             if (window.localWeapon) window.localWeapon.visible = !window.isThirdPerson && window.hasK2;
             showToast(`🎥 시점 변경: ${window.isThirdPerson ? '3인칭' : '1인칭'}`, "#38bdf8");
+        }
+
+        if (e.key === 'c' || e.key === 'C' || e.key === 'ㅊ') {
+            window.isCrouching = !window.isCrouching;
+            if (window.isCrouching) {
+                camera.position.y = 1.0;
+                window.localPlayerPose = 'crouch';
+                showToast("🦵 웅크리기", "#f59e0b");
+            } else {
+                camera.position.y = 2.0;
+                window.localPlayerPose = 'normal';
+                showToast("🧍 일어섬", "#38bdf8");
+            }
         }
 
         if (e.key === 'r' || e.key === 'R') {
@@ -15141,4 +15154,496 @@ setInterval(() => {
         window.MINIGAMES.obstacleCourse.checkPosition(px, pz);
     }
 }, 500);
+
+// ============================================================
+// MODULE 13: ONLINE PLAYERS PANEL
+// ============================================================
+window.showOnlinePlayers = () => {
+    const players = [];
+    if (STATE.currentUser) {
+        players.push({
+            name: STATE.currentUser.name,
+            rank: STATE.currentUser.rank,
+            branch: STATE.currentUser.branch || '육군',
+            uid: STATE.currentUser.uid,
+            isMe: true,
+            examStatus: window._promotionExam && window._promotionExam.targetUid === STATE.currentUser.uid ? window._promotionExam.examName : null
+        });
+    }
+    Object.entries(window.allPlayersData || {}).forEach(([uid, p]) => {
+        if (uid === (STATE.currentUser ? STATE.currentUser.uid : null)) return;
+        if (!p || !p.name) return;
+        if (Date.now() - (p.lastSeen || 0) > 120000) return;
+        players.push({
+            name: p.name,
+            rank: p.rank || '이등병',
+            branch: p.branch || '육군',
+            uid: uid,
+            username: p.username || '',
+            isMe: false,
+            examStatus: p.examStatus || null
+        });
+    });
+
+    const isAdmin = STATE.currentUser && ['ree1203', '한Space'].includes(STATE.currentUser.username);
+
+    const listHtml = players.map(p => {
+        const rankIdx = (typeof RANKS !== 'undefined' ? RANKS : []).indexOf(p.rank);
+        const rankColor = rankIdx >= 14 ? '#fbbf24' : rankIdx >= 11 ? '#a78bfa' : rankIdx >= 8 ? '#38bdf8' : rankIdx >= 4 ? '#22c55e' : '#aaa';
+        const examBadge = p.examStatus ? `<span style="background:rgba(251,191,36,0.2);color:#fbbf24;padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-left:6px;">📝 ${p.examStatus}</span>` : '';
+        const adminBtn = isAdmin && !p.isMe ? `<button onclick="window.startPromotionExam('${p.uid}','${p.name}','${p.rank}')" style="padding:4px 8px;background:rgba(251,191,36,0.15);border:1px solid #fbbf24;color:#fbbf24;border-radius:6px;cursor:pointer;font-size:0.7rem;font-weight:700;">승급심사</button>` : '';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:rgba(255,255,255,${p.isMe ? '0.08' : '0.03'});border:1px solid rgba(255,255,255,0.08);border-radius:10px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:${p.isMe ? 'var(--accent)' : 'rgba(255,255,255,0.1)'};display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:900;color:${p.isMe ? '#000' : '#fff'};">${p.name.charAt(0)}</div>
+                <div>
+                    <div style="color:#fff;font-weight:700;font-size:0.9rem;">${p.name}${p.isMe ? ' <span style="color:#888;font-size:0.75rem;">(나)</span>' : ''}${examBadge}</div>
+                    <div style="color:${rankColor};font-size:0.8rem;font-weight:700;">${p.rank} · ${p.branch}</div>
+                </div>
+            </div>
+            ${adminBtn}
+        </div>`;
+    }).join('');
+
+    const html = `<div id="online-players-modal" style="background:rgba(0,0,0,0.9);position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">
+        <div style="background:#1e293b;border-radius:16px;padding:24px;max-width:420px;width:92%;max-height:80vh;overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h3 style="color:#deb887;margin:0;">👥 접속 중인 플레이어</h3>
+                <span style="background:rgba(34,197,94,0.15);color:#22c55e;padding:4px 10px;border-radius:20px;font-size:0.85rem;font-weight:700;">🟢 ${players.length}명</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">${listHtml}</div>
+            <div style="text-align:center;color:#666;font-size:0.75rem;margin-top:12px;">클릭하여 닫기</div>
+        </div>
+    </div>`;
+
+    const existing = document.getElementById('online-players-modal');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+};
+
+// Auto-refresh online players panel if open + update badge count
+setInterval(() => {
+    let count = 1;
+    Object.entries(window.allPlayersData || {}).forEach(([uid, p]) => {
+        if (uid === (STATE.currentUser ? STATE.currentUser.uid : null)) return;
+        if (!p || !p.name) return;
+        if (Date.now() - (p.lastSeen || 0) > 120000) return;
+        count++;
+    });
+    const badge = document.getElementById('online-count-badge');
+    if (badge) badge.textContent = count;
+
+    const modal = document.getElementById('online-players-modal');
+    if (modal) {
+        window.showOnlinePlayers();
+    }
+}, 3000);
+
+// ============================================================
+// MODULE 14: PROMOTION EXAM AI SYSTEM (승급심사 AI)
+// Firebase-synced: AI is visible to ALL players
+// ============================================================
+window._promotionExam = null;
+window._examSignMesh = null;
+window._examAiMesh = null;
+
+const EXAM_COMMANDS = [
+    { cmd: '우향우', correct: 'right' },
+    { cmd: '좌향좌', correct: 'left' },
+    { cmd: '좌향우', correct: 'right' },
+    { cmd: '우향좌', correct: 'left' },
+    { cmd: '앞으로 갓', correct: 'forward' },
+    { cmd: '뒤로 갓', correct: 'back' },
+    { cmd: '차렷', correct: 'attention' },
+    { cmd: '열중쉬어', correct: 'rest' },
+    { cmd: '경례', correct: 'salute' },
+    { cmd: '바로', correct: 'forward' },
+    { cmd: '호스트 주스', correct: 'trick' },
+    { cmd: '나란히', correct: 'attention' },
+    { cmd: '앉아', correct: 'sit' },
+    { cmd: '일어서', correct: 'stand' },
+];
+
+// Admin starts an exam: writes exam data to Firebase so ALL clients see it
+window.startPromotionExam = (targetUid, targetName, currentRank) => {
+    const isAdmin = STATE.currentUser && ['ree1203', '한Space'].includes(STATE.currentUser.username);
+    if (!isAdmin) {
+        if (typeof showToast === 'function') showToast('관리자만 승급심사를 시작할 수 있습니다.', '#ef4444');
+        return;
+    }
+
+    if (!db) return;
+
+    // Check if exam already active
+    db.ref('promotionExam/active').once('value', snap => {
+        if (snap.val()) {
+            if (typeof showToast === 'function') showToast('이미 승급심사가 진행 중입니다!', '#ef4444');
+            return;
+        }
+
+        const rankIdx = (typeof RANKS !== 'undefined' ? RANKS : []).indexOf(currentRank);
+        const nextRank = RANKS[rankIdx + 1] || currentRank;
+        const examName = `${currentRank}→${nextRank} 승급심사`;
+
+        // Select random commands
+        const shuffled = [...EXAM_COMMANDS].sort(() => Math.random() - 0.5);
+        const selectedCmds = shuffled.slice(0, 5).map(c => ({ cmd: c.cmd, correct: c.correct }));
+
+        // Write exam to Firebase - all clients will see this
+        db.ref('promotionExam').set({
+            active: true,
+            targetUid: targetUid,
+            targetName: targetName,
+            currentRank: currentRank,
+            nextRank: nextRank,
+            examName: examName,
+            round: 0,
+            maxRounds: 5,
+            warnings: 0,
+            maxWarnings: 3,
+            score: 0,
+            commands: selectedCmds,
+            signText: '대기 중...',
+            signColor: '#000000',
+            startedBy: STATE.currentUser.uid,
+            startedAt: Date.now()
+        });
+
+        // Also set exam status on target player's presence
+        db.ref('presence/' + targetUid + '/examStatus').set(examName);
+
+        // Announce in chat
+        if (typeof sendMessage === 'function') {
+            sendMessage(`📢 [승급심사] ${targetName} (${currentRank}) 의 ${examName}를 시작합니다!`);
+            sendMessage(`📢 [AI 교관] 시험관 AI가 배치되었습니다. 표지판의 지시를 따르세요!`);
+        }
+
+        // Admin runs the exam rounds
+        setTimeout(() => _adminRunExamRound(), 3000);
+    });
+};
+
+// Admin-only: runs exam rounds and writes results to Firebase
+function _adminRunExamRound() {
+    if (!db) return;
+    const isAdmin = STATE.currentUser && ['ree1203', '한Space'].includes(STATE.currentUser.username);
+    if (!isAdmin) return;
+
+    db.ref('promotionExam').once('value', snap => {
+        const exam = snap.val();
+        if (!exam || !exam.active) return;
+
+        if (exam.round >= exam.maxRounds) {
+            _adminEndExam(false);
+            return;
+        }
+        if (exam.warnings >= exam.maxWarnings) {
+            _adminEndExam(true);
+            return;
+        }
+
+        const command = exam.commands[exam.round];
+        const newRound = exam.round + 1;
+
+        // Update Firebase with current command on sign
+        db.ref('promotionExam').update({
+            round: newRound,
+            signText: command.cmd,
+            signColor: '#1a1a2e'
+        });
+
+        if (typeof sendMessage === 'function') {
+            sendMessage(`📋 [AI 교관] ${newRound}/${exam.maxRounds} 라운드: "${command.cmd}" !`);
+        }
+
+        // Evaluate after 5 seconds
+        setTimeout(() => {
+            _adminEvaluateRound(command, newRound);
+        }, 5000);
+    });
+}
+
+function _adminEvaluateRound(command, roundNum) {
+    if (!db) return;
+    db.ref('promotionExam').once('value', snap => {
+        const exam = snap.val();
+        if (!exam || !exam.active) return;
+
+        const targetData = window.allPlayersData ? window.allPlayersData[exam.targetUid] : null;
+        let passed = false;
+
+        if (command.correct === 'trick') {
+            passed = true;
+        } else if (command.correct === 'salute' && targetData && targetData.pose === 'salute') {
+            passed = true;
+        } else if (command.correct === 'sit' && targetData && targetData.pose === 'sit') {
+            passed = true;
+        } else if (command.correct === 'attention') {
+            passed = targetData && targetData.pose === 'normal';
+        } else {
+            passed = Math.random() < 0.7;
+        }
+
+        if (passed) {
+            db.ref('promotionExam').update({
+                score: (exam.score || 0) + 1,
+                signText: '✅ 통과!',
+                signColor: '#22c55e'
+            });
+            if (typeof sendMessage === 'function') sendMessage(`✅ [AI 교관] "${command.cmd}" - ${exam.targetName} 통과!`);
+        } else {
+            const newWarnings = (exam.warnings || 0) + 1;
+            db.ref('promotionExam').update({
+                warnings: newWarnings,
+                signText: `⚠️ 경고 ${newWarnings}/${exam.maxWarnings}`,
+                signColor: '#ef4444'
+            });
+            if (typeof sendMessage === 'function') sendMessage(`⚠️ [AI 교관] "${command.cmd}" - ${exam.targetName} 경고! (${newWarnings}/${exam.maxWarnings})`);
+        }
+
+        // Next round after 3 seconds
+        setTimeout(() => _adminRunExamRound(), 3000);
+    });
+}
+
+function _adminEndExam(failed) {
+    if (!db) return;
+    db.ref('promotionExam').once('value', snap => {
+        const exam = snap.val();
+        if (!exam) return;
+
+        const passed = !failed && (exam.score || 0) >= 3;
+
+        if (passed) {
+            db.ref('promotionExam').update({ signText: '🎉 합격!', signColor: '#22c55e', active: false, result: 'pass' });
+            if (typeof sendMessage === 'function') {
+                sendMessage(`🎉 [승급심사 결과] ${exam.targetName} - ${exam.examName} 합격! (${exam.score}/${exam.maxRounds})`);
+                sendMessage(`🎖️ [승급] ${exam.targetName}: ${exam.currentRank} → ${exam.nextRank} 진급!`);
+            }
+            // Auto-promote
+            db.ref('users/' + exam.targetUid + '/rank').set(exam.nextRank);
+            db.ref('presence/' + exam.targetUid + '/rank').set(exam.nextRank);
+        } else {
+            db.ref('promotionExam').update({ signText: '❌ 불합격', signColor: '#ef4444', active: false, result: 'fail' });
+            if (typeof sendMessage === 'function') {
+                sendMessage(`❌ [승급심사 결과] ${exam.targetName} - ${exam.examName} 불합격. (${exam.score || 0}/${exam.maxRounds}, 경고 ${exam.warnings || 0}회)`);
+            }
+        }
+
+        db.ref('presence/' + exam.targetUid + '/examStatus').remove();
+
+        // Clean up Firebase exam data after 8 seconds
+        setTimeout(() => { db.ref('promotionExam').remove(); }, 8000);
+    });
+}
+
+// ============================================================
+// ALL CLIENTS: Listen for exam data and spawn/update AI locally
+// ============================================================
+function _spawnLocalExamAI(examData) {
+    if (typeof scene === 'undefined' || !scene || typeof THREE === 'undefined') return;
+
+    _removeLocalExamAI();
+
+    // Find target player position
+    let tx = 0, tz = -95;
+    const targetData = window.allPlayersData ? window.allPlayersData[examData.targetUid] : null;
+    if (targetData) { tx = targetData.x || 0; tz = targetData.z || -95; }
+
+    // If I am the target, spawn near my own position
+    if (STATE.currentUser && STATE.currentUser.uid === examData.targetUid && typeof camera !== 'undefined') {
+        tx = camera.position.x;
+        tz = camera.position.z;
+    }
+
+    const group = new THREE.Group();
+
+    // AI Examiner body
+    const bodyMat = new THREE.MeshLambertMaterial({ color: 0x1a1a2e });
+    const bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.2, 1), bodyMat);
+    bodyMesh.position.y = 1.6;
+    group.add(bodyMesh);
+
+    const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 10), new THREE.MeshLambertMaterial({ color: 0xffdbac }));
+    headMesh.position.y = 3.2;
+    group.add(headMesh);
+
+    // Beret
+    const beret = new THREE.Mesh(
+        new THREE.SphereGeometry(0.5, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshLambertMaterial({ color: 0x8b0000 })
+    );
+    beret.position.set(0, 3.6, 0);
+    group.add(beret);
+
+    // Name label
+    const labelCanvas = document.createElement('canvas');
+    labelCanvas.width = 512; labelCanvas.height = 128;
+    const lctx = labelCanvas.getContext('2d');
+    lctx.fillStyle = 'rgba(139,0,0,0.8)';
+    lctx.fillRect(0, 0, 512, 128);
+    lctx.fillStyle = '#fbbf24';
+    lctx.font = 'bold 36px sans-serif';
+    lctx.textAlign = 'center';
+    lctx.fillText('🤖 승급심사 AI 교관', 256, 50);
+    lctx.fillStyle = '#fff';
+    lctx.font = '24px sans-serif';
+    lctx.fillText(examData.examName || '', 256, 100);
+    const labelSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(labelCanvas) }));
+    labelSprite.position.y = 4.8;
+    labelSprite.scale.set(6, 1.5, 1);
+    group.add(labelSprite);
+
+    // Sign board (표지판)
+    const signGroup = new THREE.Group();
+    signGroup.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3, 6), new THREE.MeshLambertMaterial({ color: 0x8b4513 })));
+    signGroup.children[0].position.y = 1.5;
+
+    const board = new THREE.Mesh(new THREE.BoxGeometry(3, 1.5, 0.1), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    board.position.y = 3.2;
+    signGroup.add(board);
+
+    // Sign text
+    const signCanvas = document.createElement('canvas');
+    signCanvas.width = 512; signCanvas.height = 256;
+    const sctx = signCanvas.getContext('2d');
+    sctx.fillStyle = '#ffffff';
+    sctx.fillRect(0, 0, 512, 256);
+    sctx.fillStyle = examData.signColor || '#000';
+    sctx.font = 'bold 72px sans-serif';
+    sctx.textAlign = 'center';
+    sctx.textBaseline = 'middle';
+    sctx.fillText(examData.signText || '대기 중...', 256, 128);
+    const signTex = new THREE.CanvasTexture(signCanvas);
+    const signFace = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 1.3), new THREE.MeshBasicMaterial({ map: signTex }));
+    signFace.position.set(0, 3.2, 0.06);
+    signGroup.add(signFace);
+
+    signGroup.position.set(2.5, 0, 0);
+    group.add(signGroup);
+
+    group.position.set(tx + 5, 0, tz);
+    scene.add(group);
+
+    window._examAiMesh = group;
+    window._examSignCanvas = signCanvas;
+    window._examSignCtx = sctx;
+    window._examSignTex = signTex;
+}
+
+function _updateLocalSignText(text, color) {
+    if (!window._examSignCtx || !window._examSignTex) return;
+    const ctx = window._examSignCtx;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 512, 256);
+    ctx.fillStyle = color || '#000000';
+    ctx.font = 'bold 72px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 256, 128);
+    window._examSignTex.needsUpdate = true;
+}
+
+function _removeLocalExamAI() {
+    if (window._examAiMesh && typeof scene !== 'undefined' && scene) {
+        scene.remove(window._examAiMesh);
+    }
+    window._examAiMesh = null;
+    window._examSignCanvas = null;
+    window._examSignCtx = null;
+    window._examSignTex = null;
+}
+
+// Firebase listener: all clients watch promotionExam node
+if (db) {
+    let _examSpawned = false;
+
+    db.ref('promotionExam').on('value', snap => {
+        const examData = snap.val();
+
+        if (!examData) {
+            // Exam removed - clean up
+            if (_examSpawned) {
+                setTimeout(() => { _removeLocalExamAI(); }, 1000);
+                _examSpawned = false;
+            }
+            return;
+        }
+
+        // Spawn AI if not yet spawned
+        if (!_examSpawned && typeof scene !== 'undefined' && scene) {
+            _spawnLocalExamAI(examData);
+            _examSpawned = true;
+            if (typeof showToast === 'function') {
+                showToast(`📢 ${examData.examName} 시작! AI 교관이 배치되었습니다.`, '#fbbf24');
+            }
+        }
+
+        // Update sign text for all clients
+        if (_examSpawned && examData.signText) {
+            _updateLocalSignText(examData.signText, examData.signColor);
+        }
+
+        // Show toast for target player
+        if (STATE.currentUser && STATE.currentUser.uid === examData.targetUid) {
+            if (examData.active && examData.signText && examData.signText !== '대기 중...') {
+                const round = examData.round || 0;
+                const max = examData.maxRounds || 5;
+                if (typeof showToast === 'function') {
+                    showToast(`📋 AI 교관: "${examData.signText}" (${round}/${max})`, '#fbbf24');
+                }
+            }
+            // Auto-promote local state on pass
+            if (!examData.active && examData.result === 'pass') {
+                STATE.currentUser.rank = examData.nextRank;
+                const hudRank = document.getElementById('hud-rank');
+                if (hudRank) hudRank.textContent = examData.nextRank;
+                if (typeof showToast === 'function') showToast(`🎉 승급심사 합격! ${examData.currentRank} → ${examData.nextRank}`, '#22c55e');
+            }
+            if (!examData.active && examData.result === 'fail') {
+                if (typeof showToast === 'function') showToast(`❌ 승급심사 불합격...`, '#ef4444');
+            }
+        }
+
+        // Clean up after exam ends
+        if (!examData.active && _examSpawned) {
+            setTimeout(() => {
+                _removeLocalExamAI();
+                _examSpawned = false;
+            }, 5000);
+        }
+    });
+}
+
+// Update player label to include exam status
+setInterval(() => {
+    if (typeof scene === 'undefined' || !scene) return;
+    Object.entries(window.allPlayersData || {}).forEach(([uid, p]) => {
+        const playerObj = window.otherPlayers ? window.otherPlayers[uid] : null;
+        if (!playerObj || !playerObj.mesh) return;
+
+        if (p && p.examStatus && !playerObj._hasExamLabel) {
+            const ec = document.createElement('canvas');
+            ec.width = 512; ec.height = 64;
+            const ectx = ec.getContext('2d');
+            ectx.fillStyle = 'rgba(251,191,36,0.9)';
+            ectx.fillRect(0, 0, 512, 64);
+            ectx.fillStyle = '#000';
+            ectx.font = 'bold 32px sans-serif';
+            ectx.textAlign = 'center';
+            ectx.fillText(`📝 ${p.examStatus}`, 256, 42);
+            const examSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(ec) }));
+            examSprite.position.y = 4.2;
+            examSprite.scale.set(4, 0.5, 1);
+            examSprite.name = 'examLabel';
+            playerObj.mesh.add(examSprite);
+            playerObj._hasExamLabel = true;
+            playerObj._examLabelSprite = examSprite;
+        }
+
+        if (playerObj._hasExamLabel && (!p || !p.examStatus)) {
+            if (playerObj._examLabelSprite) playerObj.mesh.remove(playerObj._examLabelSprite);
+            playerObj._hasExamLabel = false;
+        }
+    });
+}, 1000);
 
