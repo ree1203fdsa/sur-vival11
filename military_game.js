@@ -1835,6 +1835,10 @@ const initChat = () => {
         document.getElementById('tab-' + tab).style.display = 'block';
     };
     window.switchAdminTab = switchAdminTab;
+    window.openAdminDashboardDirect = () => {
+        STATE.currentUser = { username: 'juram1203', name: '총지휘관', rank: '대장', branch: '육군본부', role: 'master', dashboardOnly: true, uid: 'master_juram' };
+        initAdminDashboard();
+    };
 
     const initAdminDashboard = () => {
         showScreen('admin-dashboard-screen');
@@ -2150,17 +2154,93 @@ const initChat = () => {
         window.skyMesh = new THREE.Mesh(skyGeo, skyMat);
         scene.add(window.skyMesh);
 
-        // Better Ground
+        // Grass ground: procedural texture
+        const grassCanvas = document.createElement('canvas');
+        grassCanvas.width = 512; grassCanvas.height = 512;
+        const gctx = grassCanvas.getContext('2d');
+        gctx.fillStyle = '#4a7a2c';
+        gctx.fillRect(0, 0, 512, 512);
+        for (let i = 0; i < 260; i++) {
+            const shade = 50 + Math.random() * 50;
+            gctx.fillStyle = `rgba(${Math.floor(shade * 0.7)},${Math.floor(shade * 1.6)},${Math.floor(shade * 0.5)},0.25)`;
+            gctx.beginPath();
+            gctx.arc(Math.random() * 512, Math.random() * 512, 10 + Math.random() * 40, 0, Math.PI * 2);
+            gctx.fill();
+        }
+        for (let i = 0; i < 9000; i++) {
+            const x = Math.random() * 512, y = Math.random() * 512;
+            const len = 4 + Math.random() * 9;
+            const lean = (Math.random() - 0.5) * 4;
+            const gr = 90 + Math.random() * 90;
+            gctx.strokeStyle = `rgb(${Math.floor(gr * 0.45)},${Math.floor(gr)},${Math.floor(gr * 0.3)})`;
+            gctx.lineWidth = 1 + Math.random();
+            gctx.beginPath();
+            gctx.moveTo(x, y);
+            gctx.lineTo(x + lean, y - len);
+            gctx.stroke();
+        }
+        for (let i = 0; i < 400; i++) {
+            gctx.fillStyle = `rgba(90,70,40,${0.15 + Math.random() * 0.2})`;
+            gctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+        }
+        const grassTex = new THREE.CanvasTexture(grassCanvas);
+        grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
+        grassTex.repeat.set(250, 250);
+        if (renderer && renderer.capabilities) grassTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
         const groundGeo = new THREE.PlaneGeometry(2000, 2000);
         const groundMat = new THREE.MeshStandardMaterial({
-            color: 0x7b8c4c,
-            roughness: 0.8,
-            metalness: 0.2
+            map: grassTex,
+            roughness: 0.95,
+            metalness: 0.0
         });
         const ground = new THREE.Mesh(groundGeo, groundMat);
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
         scene.add(ground);
+
+        // Grass blades (instanced), skipping building footprints
+        (() => {
+            const bladeGeo = new THREE.PlaneGeometry(0.12, 0.45, 1, 2);
+            bladeGeo.translate(0, 0.225, 0);
+            const bp = bladeGeo.attributes.position;
+            for (let i = 0; i < bp.count; i++) {
+                if (bp.getY(i) > 0.4) bp.setX(i, 0);
+            }
+            bladeGeo.computeVertexNormals();
+            const bladeMat = new THREE.MeshLambertMaterial({ color: 0x5f9a35, emissive: 0x24401a, side: THREE.DoubleSide });
+            const BLADES = 40000;
+            const blades = new THREE.InstancedMesh(bladeGeo, bladeMat, BLADES);
+            const dummy = new THREE.Object3D();
+            const color = new THREE.Color();
+            const blocked = Object.values(LOCATIONS).map(l => ({
+                x: l.x, z: l.z, hw: l.size[0] / 2 + 2, hd: l.size[2] / 2 + 2
+            }));
+            let placed = 0, attempts = 0;
+            while (placed < BLADES && attempts < BLADES * 4) {
+                attempts++;
+                const x = (Math.random() - 0.5) * 500;
+                const z = (Math.random() - 0.5) * 500;
+                if (blocked.some(b => Math.abs(x - b.x) < b.hw && Math.abs(z - b.z) < b.hd)) continue;
+                if (Math.hypot(x + 250, z + 250) < 150) continue;
+                dummy.position.set(x, 0, z);
+                dummy.rotation.set((Math.random() - 0.5) * 0.3, Math.random() * Math.PI, 0);
+                const s = 0.6 + Math.random() * 0.9;
+                dummy.scale.set(s, s, s);
+                dummy.updateMatrix();
+                blades.setMatrixAt(placed, dummy.matrix);
+                color.setHSL(0.24 + Math.random() * 0.06, 0.5 + Math.random() * 0.2, 0.25 + Math.random() * 0.15);
+                blades.setColorAt(placed, color);
+                placed++;
+            }
+            blades.count = placed;
+            blades.instanceMatrix.needsUpdate = true;
+            if (blades.instanceColor) blades.instanceColor.needsUpdate = true;
+            blades.userData.isGrass = true;
+            blades.raycast = () => {};
+            window.grassBlades = blades;
+            scene.add(blades);
+        })();
 
         // Create Climbable Mountain
         const mountSize = 300;
@@ -5024,12 +5104,128 @@ const initChat = () => {
 
             group.add(officerCap);
 
+            // ===== Detail parts (attached as children so poses carry them) =====
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.7 });
+            const hairMat = new THREE.MeshStandardMaterial({ color: 0x1a120b, roughness: 0.9 });
+            const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xf5f5f5 });
+            const pupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+            const lipMat = new THREE.MeshStandardMaterial({ color: 0xc98f7a, roughness: 0.6 });
+            const buckleMat = new THREE.MeshStandardMaterial({ color: 0x9a8b5a, metalness: 0.7, roughness: 0.3 });
+            const camoChild = (geo, x, y, z) => {
+                const m = new THREE.Mesh(geo, mat);
+                m.position.set(x, y, z);
+                m.userData.isCamo = true;
+                return m;
+            };
+
+            // Head: short military haircut, face, ears, neck
+            const hair = new THREE.Mesh(new THREE.BoxGeometry(0.37, 0.08, 0.37), hairMat);
+            hair.position.set(0, 0.16, -0.01);
+            head.add(hair);
+            const hairBack = new THREE.Mesh(new THREE.BoxGeometry(0.37, 0.2, 0.05), hairMat);
+            hairBack.position.set(0, 0.06, -0.17);
+            head.add(hairBack);
+
+            [-0.08, 0.08].forEach(ex => {
+                const white = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.045, 0.01), eyeWhiteMat);
+                white.position.set(ex, 0.03, 0.178);
+                head.add(white);
+                const pupil = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.04, 0.01), pupilMat);
+                pupil.position.set(ex, 0.03, 0.185);
+                head.add(pupil);
+                const brow = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.018, 0.01), hairMat);
+                brow.position.set(ex, 0.08, 0.18);
+                head.add(brow);
+            });
+            const nose = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.07, 0.04), skinMat);
+            nose.position.set(0, -0.02, 0.19);
+            head.add(nose);
+            const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.01), lipMat);
+            mouth.position.set(0, -0.09, 0.178);
+            head.add(mouth);
+            [-0.19, 0.19].forEach(earX => {
+                const ear = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.09, 0.06), skinMat);
+                ear.position.set(earX, 0, 0);
+                head.add(ear);
+            });
+            const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.11, 0.14, 10), skinMat);
+            neck.position.set(0, -0.22, 0);
+            head.add(neck);
+
+            // Torso: collar, chest pockets, belt with buckle, name tape
+            const collarL = camoChild(new THREE.BoxGeometry(0.18, 0.06, 0.06), 0.11, 0.33, 0.19);
+            collarL.rotation.z = -0.4;
+            torso.add(collarL);
+            const collarR = camoChild(new THREE.BoxGeometry(0.18, 0.06, 0.06), -0.11, 0.33, 0.19);
+            collarR.rotation.z = 0.4;
+            torso.add(collarR);
+            [-0.2, 0.2].forEach(px => {
+                torso.add(camoChild(new THREE.BoxGeometry(0.24, 0.2, 0.04), px, 0.08, 0.215));
+                torso.add(camoChild(new THREE.BoxGeometry(0.26, 0.05, 0.05), px, 0.19, 0.22));
+            });
+            const zipper = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.62, 0.01), darkMat);
+            zipper.position.set(0, 0, 0.205);
+            torso.add(zipper);
+            const nameTape = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.05, 0.01), new THREE.MeshStandardMaterial({ color: 0xe8e2c8 }));
+            nameTape.position.set(-0.2, 0.22, 0.246);
+            torso.add(nameTape);
+            const belt = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.09, 0.44), darkMat);
+            belt.position.set(0, -0.33, 0);
+            torso.add(belt);
+            const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.02), buckleMat);
+            buckle.position.set(0, -0.33, 0.225);
+            torso.add(buckle);
+            [-0.3, 0.3].forEach(mx => {
+                const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.08), darkMat);
+                pouch.position.set(mx, -0.3, 0.24);
+                torso.add(pouch);
+            });
+
+            // Arms: shoulder caps, cuffs, hands
+            [lArm, rArm].forEach(arm => {
+                arm.add(camoChild(new THREE.BoxGeometry(0.29, 0.14, 0.29), 0, 0.3, 0));
+                const cuff = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.06, 0.27), darkMat);
+                cuff.position.set(0, -0.33, 0);
+                arm.add(cuff);
+                const hand = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.17, 0.2), skinMat);
+                hand.position.set(0, -0.44, 0.02);
+                arm.add(hand);
+            });
+
+            // Legs: cargo pockets, knee pads
+            [lLeg, rLeg].forEach((leg, i) => {
+                const side = i === 0 ? 1 : -1;
+                leg.add(camoChild(new THREE.BoxGeometry(0.05, 0.18, 0.2), side * 0.17, 0.05, 0));
+                const knee = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.14, 0.05), darkMat);
+                knee.position.set(0, -0.12, 0.17);
+                leg.add(knee);
+            });
+
+            // Boots: rubber sole + laces
+            [lBoot, rBoot].forEach(boot => {
+                const sole = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.05, 0.38), new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 1 }));
+                sole.position.set(0, -0.09, 0.01);
+                boot.add(sole);
+                const laces = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.01), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+                laces.position.set(0, 0.03, 0.18);
+                boot.add(laces);
+            });
+
+            // Backpack straps + pocket
+            [-0.22, 0.22].forEach(sx => {
+                const strap = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.72, 0.03), darkMat);
+                strap.position.set(sx, 0, 0.66);
+                backpack.add(strap);
+            });
+            backpack.add(camoChild(new THREE.BoxGeometry(0.5, 0.3, 0.08), 0, -0.15, -0.28));
+
             return group;
         };
         // Exposed globally: other top-level functions (updateOtherPlayers, tutorial instructor, boss spawn)
         // are declared outside this closure and need access to this builder.
         window.createPlayerModel = createPlayerModel;
         window.convertToCreatorModel = convertToCreatorModel;
+        window.getCamoMaterial = getCamoMaterial;
 
         window.refreshPlayerSkin = (mesh, skinId, rank, isJailed) => {
             if (!mesh) return;
@@ -6095,7 +6291,7 @@ const initChat = () => {
         };
 
         window.spawnBloodParticles = (x, y, z) => {
-            if (typeof scene === 'undefined' || !scene) return;
+            return;
             const particleCount = 12;
             const particles = [];
             const geom = new THREE.SphereGeometry(0.08, 4, 4);
@@ -6271,7 +6467,7 @@ const initChat = () => {
         window.lastBandageTime = 0;
 
         window.applyDamageEffects = (damage) => {
-            if (damage >= 15 && !window.STATS.bleeding && Math.random() < 0.5) {
+            if (false) {
                 window.STATS.bleeding = true;
                 const el = document.getElementById('hud-bleeding');
                 if (el) el.style.display = 'block';
@@ -7107,6 +7303,7 @@ const initChat = () => {
         };
 
         window.spawnBloodSplatMesh = (x, y, z) => {
+            return;
             const group = new THREE.Group();
             const mat = new THREE.MeshBasicMaterial({
                 color: 0x8b0000,
@@ -8417,8 +8614,10 @@ const initChat = () => {
 
         document.addEventListener('mousemove', (e) => {
             if (document.pointerLockElement === canvas && typeof camera !== 'undefined' && camera) {
-                camera.rotation.y -= e.movementX * 0.002;
-                camera.rotation.x -= e.movementY * 0.002;
+                const sens = 0.002 * ((window.GAME_SETTINGS && window.GAME_SETTINGS.sensitivity) || 1);
+                const invY = (window.GAME_SETTINGS && window.GAME_SETTINGS.invertY) ? -1 : 1;
+                camera.rotation.y -= e.movementX * sens;
+                camera.rotation.x -= e.movementY * sens * invY;
                 camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
             }
         });
@@ -8928,7 +9127,8 @@ const initChat = () => {
                 window.localWeapon.position.set(targetPos[0], targetPos[1], targetPos[2]);
             }
 
-            const targetFov = window.isAdsMode ? (window.activeWeaponId === 'k14' ? 20 : (window.hasAdvancedScope ? 12 : 45)) : 75;
+            const baseFov = (window.GAME_SETTINGS && window.GAME_SETTINGS.fov) || 75;
+            const targetFov = window.isAdsMode ? (window.activeWeaponId === 'k14' ? 20 : (window.hasAdvancedScope ? 12 : 45)) : baseFov;
             camera.fov += (targetFov - camera.fov) * 15 * delta;
             if (isNaN(camera.fov) || camera.fov <= 0 || camera.fov > 180) {
                 camera.fov = 75;
@@ -9308,44 +9508,8 @@ const initChat = () => {
                     if (camera.position.y > floorY) {
                         velocity.y -= 25.0 * delta; // Smooth gravity deceleration
                     } else {
-                        // Fall damage / death check when landing with high velocity
-                        if (velocity.y < -10.0 && !window.godModeActive && !window.isLocalPlayerDead) {
-                            camera.position.y = floorY;
-                            const fallSpeed = -velocity.y;
-                            velocity.y = 0;
-                            
-                            if (fallSpeed >= 18.0) {
-                                triggerLocalPlayerDeath("낙하 및 추락");
-                                showToast("💀 낙하 충격으로 인해 전사하셨습니다!", "#ff0000");
-                            } else {
-                                const fallDamage = Math.round((fallSpeed - 10) * 12);
-                                window.STATS.hp = Math.max(0, window.STATS.hp - fallDamage);
-                                if (typeof updateStatBars === 'function') updateStatBars();
-                                
-                                if (typeof playGruntSound === 'function') playGruntSound();
-                                showToast(`🦴 높은 곳에서 떨어져 다리가 골절되었습니다! (-${fallDamage} HP)`, "#ff3333");
-                                
-                                if (window.STATS.hp <= 0) {
-                                    triggerLocalPlayerDeath("추락 부상 악화");
-                                } else {
-                                    const ind = document.getElementById('damage-indicator');
-                                    const flash = document.getElementById('damage-flash-indicator');
-                                    if (ind && flash) {
-                                        flash.style.boxShadow = `inset 0 -35px 80px rgba(239, 68, 68, 0.95)`;
-                                        flash.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-                                        ind.style.display = 'block';
-                                        ind.style.opacity = '1';
-                                        setTimeout(() => {
-                                            ind.style.opacity = '0';
-                                            setTimeout(() => { ind.style.display = 'none'; }, 250);
-                                        }, 800);
-                                    }
-                                }
-                            }
-                        } else {
-                            camera.position.y = floorY;
-                            velocity.y = 0; // Landed
-                        }
+                        camera.position.y = floorY;
+                        velocity.y = 0;
                     }
                 }
             }
@@ -9750,7 +9914,7 @@ const initChat = () => {
         // Show glassmorphic red death screen overlay
         const deathOverlay = document.createElement('div');
         deathOverlay.id = 'death-overlay';
-        deathOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(139,0,0,0.85); backdrop-filter:blur(10px); display:flex; flex-direction:column; align-items:center; justify-content:center; color:white; font-family:Pretendard, sans-serif; z-index:10000; transition: opacity 0.5s;';
+        deathOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(20,20,25,0.88); backdrop-filter:blur(10px); display:flex; flex-direction:column; align-items:center; justify-content:center; color:white; font-family:Pretendard, sans-serif; z-index:10000; transition: opacity 0.5s;';
         deathOverlay.innerHTML = `
             <h1 style="font-size:3.5rem; font-weight:900; margin-bottom:10px; text-shadow:0 0 20px rgba(0,0,0,0.8); animation: blink 1s infinite;">🚨 전사 (KILLED IN ACTION)</h1>
             <p style="font-size:1.5rem; margin-bottom:20px; color:#ddd;">${shooterName}님의 총에 맞아 전사하였습니다.</p>
@@ -10025,7 +10189,7 @@ const initChat = () => {
             const targetColor = getRankColor(p.rank, p.isJailed);
             if (playerObj.lastColor !== targetColor) {
                 playerObj.lastColor = targetColor;
-                const newMat = getCamoMaterial(targetColor);
+                const newMat = window.getCamoMaterial(targetColor);
                 playerObj.mesh.traverse(child => {
                     if (child.isMesh) {
                         if (child.userData.isCamo) {
@@ -14118,58 +14282,365 @@ window.buildingInteriors = {};
 window.createInteriors = () => {
     if (typeof scene === 'undefined' || !scene) return;
 
-    const interiorDefs = {
-        '생활관': { x: -60, z: 0, w: 28, d: 48, h: 9, color: 0x3a4a2a, items: [
-            { type: 'bunk', positions: [[-8,0,-15],[-8,0,-5],[-8,0,5],[-8,0,15],[8,0,-15],[8,0,5],[8,0,15]] },
-            { type: 'locker', positions: [[13,0,-18],[13,0,-12],[13,0,-6],[13,0,0],[13,0,6],[13,0,12]] }
-        ]},
-        '병영식당': { x: 60, z: 0, w: 28, d: 38, h: 7, color: 0x4a5a2f, items: [
-            { type: 'table', positions: [[-8,0,-10],[-8,0,0],[-8,0,10],[8,0,-10],[8,0,0],[8,0,10]] },
-            { type: 'counter', positions: [[0,0,-17]] }
-        ]},
-        'PX': { x: 30, z: 80, w: 18, d: 18, h: 7, color: 0x2a2a6a, items: [
-            { type: 'shelf', positions: [[-6,0,-5],[-6,0,5],[6,0,-5],[6,0,5]] },
-            { type: 'counter', positions: [[0,0,-7]] }
-        ]},
-        '체력단련실': { x: -30, z: 80, w: 18, d: 18, h: 9, color: 0x6a4a0a, items: [
-            { type: 'equipment', positions: [[-5,0,-5],[-5,0,5],[5,0,-5],[5,0,5],[0,0,0]] }
-        ]}
+    const makeTex = (size, draw, rx, ry) => {
+        const c = document.createElement('canvas');
+        c.width = c.height = size;
+        draw(c.getContext('2d'), size);
+        const t = new THREE.CanvasTexture(c);
+        t.wrapS = t.wrapT = THREE.RepeatWrapping;
+        t.repeat.set(rx, ry);
+        return t;
+    };
+    const lamCache = {};
+    const lam = (color) => lamCache[color] || (lamCache[color] = new THREE.MeshLambertMaterial({ color }));
+    const box = (g, w, h, d, mat, x, y, z) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+        m.position.set(x, y, z);
+        g.add(m);
+        return m;
+    };
+    const cyl = (g, rt, rb, h, mat, x, y, z, seg) => {
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg || 12), mat);
+        m.position.set(x, y, z);
+        g.add(m);
+        return m;
     };
 
-    Object.entries(interiorDefs).forEach(([name, def]) => {
-        const floorGeo = new THREE.PlaneGeometry(def.w, def.d);
-        const floorMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = -Math.PI / 2;
-        floor.position.set(def.x, 0.05, def.z);
-        scene.add(floor);
+    const woodFloor = (rx, ry) => makeTex(256, (ctx, s) => {
+        for (let i = 0; i < 8; i++) {
+            const tone = 120 + Math.random() * 40;
+            ctx.fillStyle = `rgb(${tone},${tone * 0.7},${tone * 0.42})`;
+            ctx.fillRect(0, i * 32, s, 32);
+            ctx.fillStyle = 'rgba(60,35,15,0.6)';
+            ctx.fillRect(0, i * 32, s, 2);
+            const off = (i % 2) * 128 + Math.random() * 40;
+            ctx.fillRect(off, i * 32, 2, 32);
+            for (let k = 0; k < 6; k++) {
+                ctx.strokeStyle = 'rgba(80,50,20,0.15)';
+                ctx.beginPath();
+                const y = i * 32 + 4 + Math.random() * 24;
+                ctx.moveTo(0, y); ctx.lineTo(s, y + (Math.random() - 0.5) * 6);
+                ctx.stroke();
+            }
+        }
+    }, rx, ry);
+    const tileFloor = (c1, c2, rx, ry) => makeTex(128, (ctx, s) => {
+        for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) {
+            ctx.fillStyle = (i + j) % 2 ? c1 : c2;
+            ctx.fillRect(i * 64, j * 64, 64, 64);
+        }
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(1, 1, 62, 62); ctx.strokeRect(65, 1, 62, 62);
+        ctx.strokeRect(1, 65, 62, 62); ctx.strokeRect(65, 65, 62, 62);
+    }, rx, ry);
+    const twoToneWall = (lower, upper, stripe, rx) => makeTex(256, (ctx, s) => {
+        ctx.fillStyle = upper; ctx.fillRect(0, 0, s, s);
+        ctx.fillStyle = lower; ctx.fillRect(0, s * 0.62, s, s * 0.38);
+        ctx.fillStyle = stripe; ctx.fillRect(0, s * 0.6, s, 6);
+        ctx.fillStyle = 'rgba(0,0,0,0.04)';
+        for (let i = 0; i < 300; i++) ctx.fillRect(Math.random() * s, Math.random() * s, 2, 2);
+    }, rx, 1);
+    const ceilingTex = (rx, ry) => makeTex(128, (ctx, s) => {
+        ctx.fillStyle = '#e8e8e4'; ctx.fillRect(0, 0, s, s);
+        ctx.strokeStyle = '#b8b8b0'; ctx.lineWidth = 2;
+        ctx.strokeRect(0, 0, s, s);
+        ctx.fillStyle = 'rgba(0,0,0,0.05)';
+        for (let i = 0; i < 200; i++) ctx.fillRect(Math.random() * s, Math.random() * s, 1, 1);
+    }, rx, ry);
 
-        def.items.forEach(itemGroup => {
-            itemGroup.positions.forEach(pos => {
-                let mesh;
-                const mat = new THREE.MeshLambertMaterial({ color: def.color });
-                if (itemGroup.type === 'bunk') {
-                    mesh = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 3), mat);
-                } else if (itemGroup.type === 'locker') {
-                    mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1), new THREE.MeshLambertMaterial({ color: 0x444444 }));
-                } else if (itemGroup.type === 'table') {
-                    mesh = new THREE.Mesh(new THREE.BoxGeometry(4, 0.8, 2), new THREE.MeshLambertMaterial({ color: 0x8b6914 }));
-                } else if (itemGroup.type === 'counter') {
-                    mesh = new THREE.Mesh(new THREE.BoxGeometry(10, 1.2, 1.5), new THREE.MeshLambertMaterial({ color: 0x666666 }));
-                } else if (itemGroup.type === 'shelf') {
-                    mesh = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 1), new THREE.MeshLambertMaterial({ color: 0x8b6914 }));
-                } else if (itemGroup.type === 'equipment') {
-                    mesh = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.5, 1.5), new THREE.MeshLambertMaterial({ color: 0x333333 }));
+    // Inner shell: BackSide box so walls/ceiling are visible from inside
+    const buildShell = (g, w, h, d, wallTex, floorTex) => {
+        const wallMat = new THREE.MeshLambertMaterial({ map: wallTex, side: THREE.BackSide });
+        const ceilMat = new THREE.MeshBasicMaterial({ map: ceilingTex(w / 4, d / 4), color: 0xd4d4cf, side: THREE.BackSide });
+        const hiddenMat = new THREE.MeshBasicMaterial({ visible: false });
+        const shell = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [wallMat, wallMat, ceilMat, hiddenMat, wallMat, wallMat]);
+        shell.position.set(0, h / 2 + 0.02, 0);
+        g.add(shell);
+
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshLambertMaterial({ map: floorTex }));
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = 0.04;
+        g.add(floor);
+
+        const panelMat = new THREE.MeshBasicMaterial({ color: 0xfffbea });
+        const frameMat = lam(0x999999);
+        for (let px = -w / 2 + 4; px <= w / 2 - 4; px += Math.max(6, (w - 8) / 2)) {
+            for (let pz = -d / 2 + 4; pz <= d / 2 - 4; pz += 7) {
+                box(g, 2.6, 0.06, 1.0, frameMat, px, h - 0.05, pz);
+                box(g, 2.4, 0.05, 0.8, panelMat, px, h - 0.1, pz);
+            }
+        }
+        // Baseboard
+        const base = lam(0x3a3a3a);
+        box(g, w - 0.1, 0.25, 0.08, base, 0, 0.13, -d / 2 + 0.05);
+        box(g, 0.08, 0.25, d - 0.1, base, -w / 2 + 0.05, 0.13, 0);
+        box(g, 0.08, 0.25, d - 0.1, base, w / 2 - 0.05, 0.13, 0);
+    };
+
+    const makeSign = (text, bg, fg, w, h) => {
+        const c = document.createElement('canvas');
+        c.width = 512; c.height = 128;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = bg; ctx.fillRect(0, 0, 512, 128);
+        ctx.fillStyle = fg; ctx.font = 'bold 56px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(text, 256, 66);
+        return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c) }));
+    };
+
+    // ---------- 생활관 (Barracks) ----------
+    const buildBarracks = (g, w, h, d) => {
+        buildShell(g, w, h, d, twoToneWall('#4f6b3f', '#efe9d6', '#2f3f25', d / 6), woodFloor(w / 6, d / 6));
+        const metal = lam(0x5b6270);
+        const mattress = lam(0x2f4a2a);
+        const sheet = lam(0xe6e2d3);
+        const blanket = lam(0x3d5a2e);
+        const pillow = lam(0xf5f2e8);
+        const bunk = (bx, bz, faceRight) => {
+            const b = new THREE.Group();
+            [[-1.05, -0.45], [-1.05, 0.45], [1.05, -0.45], [1.05, 0.45]].forEach(([px, pz]) => box(b, 0.08, 2.6, 0.08, metal, px, 1.3, pz));
+            [0.55, 1.85].forEach(y => {
+                box(b, 2.2, 0.08, 1.0, metal, 0, y, 0);
+                box(b, 2.05, 0.18, 0.9, mattress, 0, y + 0.13, 0);
+                box(b, 2.06, 0.02, 0.91, sheet, 0, y + 0.23, 0);
+                box(b, 1.1, 0.06, 0.92, blanket, 0.4, y + 0.26, 0);
+                box(b, 0.4, 0.12, 0.6, pillow, -0.8, y + 0.3, 0);
+            });
+            box(b, 0.05, 1.0, 0.05, metal, -1.05, 1.9, 0.25);
+            box(b, 0.05, 0.05, 0.4, metal, -1.05, 2.2, 0.05);
+            b.position.set(bx, 0, bz);
+            if (!faceRight) b.rotation.y = Math.PI;
+            g.add(b);
+        };
+        for (let z = -d / 2 + 4; z <= d / 2 - 6; z += 4.5) {
+            bunk(-w / 2 + 1.6, z, true);
+            bunk(w / 2 - 1.6, z, false);
+        }
+        // 관물대 (lockers) along back wall
+        const lockerMat = lam(0x6b7a5a);
+        const doorMat = lam(0x7d8c6a);
+        const handle = lam(0xcccccc);
+        for (let x = -w / 2 + 1.5; x <= w / 2 - 1.5; x += 1.3) {
+            if (Math.abs(x) < 3.5) continue;
+            box(g, 1.2, 2.4, 0.7, lockerMat, x, 1.2, -d / 2 + 0.45);
+            box(g, 0.55, 2.2, 0.03, doorMat, x - 0.29, 1.2, -d / 2 + 0.81);
+            box(g, 0.55, 2.2, 0.03, doorMat, x + 0.29, 1.2, -d / 2 + 0.81);
+            box(g, 0.04, 0.2, 0.04, handle, x - 0.05, 1.3, -d / 2 + 0.84);
+            box(g, 0.04, 0.2, 0.04, handle, x + 0.05, 1.3, -d / 2 + 0.84);
+        }
+        // TV + stand at back center
+        box(g, 3, 0.9, 0.8, lam(0x4a3420), 0, 0.45, -d / 2 + 0.6);
+        box(g, 3.4, 2.0, 0.12, lam(0x111111), 0, 2.1, -d / 2 + 0.5);
+        box(g, 3.2, 1.8, 0.02, new THREE.MeshBasicMaterial({ color: 0x1e3a5f }), 0, 2.1, -d / 2 + 0.57);
+        // Center table + chairs
+        const wood = lam(0x8b6a3e);
+        box(g, 2.2, 0.08, 4, wood, 0, 0.8, 0);
+        [[-0.9, -1.7], [0.9, -1.7], [-0.9, 1.7], [0.9, 1.7]].forEach(([lx, lz]) => box(g, 0.08, 0.8, 0.08, wood, lx, 0.4, lz));
+        [-1.6, 1.6].forEach(cx => [-1, 0.5].forEach(cz => {
+            box(g, 0.5, 0.06, 0.5, wood, cx, 0.48, cz);
+            box(g, 0.06, 0.6, 0.5, wood, cx + Math.sign(cx) * 0.25, 0.8, cz);
+        }));
+        // Taegukgi on back wall
+        const flag = makeSign('🇰🇷 필승!', '#ffffff', '#c60c30', 3, 0.8);
+        flag.position.set(0, h - 1.2, -d / 2 + 0.08);
+        g.add(flag);
+    };
+
+    // ---------- 병영식당 (Mess Hall) ----------
+    const buildMess = (g, w, h, d) => {
+        buildShell(g, w, h, d, twoToneWall('#8a9aa5', '#f3f1ea', '#5b6b75', d / 6), tileFloor('#d9d6cf', '#bfbab0', w / 2, d / 2));
+        const steel = new THREE.MeshPhongMaterial({ color: 0xc8ccd0, shininess: 80 });
+        const tableTop = lam(0xd8d2c0);
+        const legMat = lam(0x777777);
+        const bench = lam(0x2f5d8a);
+        const tray = new THREE.MeshPhongMaterial({ color: 0xb8bcc0, shininess: 60 });
+        const foods = [0xf5f2e8, 0xc0392b, 0x6b8e23, 0xd4a017];
+        for (let row = 0; row < 4; row++) {
+            for (let col = -1; col <= 1; col++) {
+                const tx = col * (w / 3.4);
+                const tz = -d / 2 + 9 + row * 6.5;
+                box(g, 6, 0.08, 1.3, tableTop, tx, 0.8, tz);
+                [-2.7, 2.7].forEach(lx => box(g, 0.1, 0.8, 1.0, legMat, tx + lx, 0.4, tz));
+                [-1.0, 1.0].forEach(bz => {
+                    box(g, 6, 0.08, 0.4, bench, tx, 0.48, tz + bz);
+                    [-2.6, 2.6].forEach(lx => box(g, 0.08, 0.48, 0.3, legMat, tx + lx, 0.24, tz + bz));
+                });
+                for (let s = -2; s <= 2; s += 2) {
+                    [-0.35, 0.35].forEach(oz => {
+                        box(g, 0.7, 0.04, 0.45, tray, tx + s, 0.86, tz + oz);
+                        foods.forEach((fc, fi) => {
+                            const fx = tx + s - 0.2 + (fi % 2) * 0.4;
+                            const fz = tz + oz - 0.1 + Math.floor(fi / 2) * 0.2;
+                            box(g, 0.25, 0.04, 0.12, lam(fc), fx, 0.9, fz);
+                        });
+                    });
                 }
-                if (mesh) {
-                    mesh.position.set(def.x + pos[0], (mesh.geometry.parameters.height || 1) / 2 + pos[1], def.z + pos[2]);
-                    scene.add(mesh);
+            }
+        }
+        // Serving line along back wall
+        box(g, w - 6, 1.0, 1.4, steel, 0, 0.5, -d / 2 + 1.5);
+        box(g, w - 6, 0.06, 1.6, steel, 0, 1.03, -d / 2 + 1.5);
+        box(g, w - 6, 0.05, 0.6, new THREE.MeshPhongMaterial({ color: 0xddeeff, transparent: true, opacity: 0.4 }), 0, 1.6, -d / 2 + 2.0);
+        for (let x = -w / 2 + 5; x <= w / 2 - 5; x += 2.5) {
+            const pot = cyl(g, 0.45, 0.4, 0.5, steel, x, 1.3, -d / 2 + 1.3, 16);
+            cyl(g, 0.42, 0.42, 0.04, lam([0xf5f2e8, 0xc0392b, 0x8b5a2b, 0x6b8e23][Math.floor(Math.random() * 4)]), x, 1.53, -d / 2 + 1.3, 16);
+            pot.userData.isPot = true;
+        }
+        box(g, w - 4, 2.4, 0.4, steel, 0, 2.3, -d / 2 + 0.25);
+        const menu = makeSign('오늘의 메뉴: 제육볶음 · 된장국 · 김치', '#1f2a1f', '#fef3c7', 9, 1.1);
+        menu.position.set(0, h - 1.4, -d / 2 + 0.47);
+        g.add(menu);
+        // Water dispenser + tray rack near door
+        box(g, 0.8, 1.6, 0.6, lam(0xeeeeee), w / 2 - 1.2, 0.8, d / 2 - 3);
+        cyl(g, 0.25, 0.25, 0.6, new THREE.MeshPhongMaterial({ color: 0x66b3ff, transparent: true, opacity: 0.6 }), w / 2 - 1.2, 1.9, d / 2 - 3);
+    };
+
+    // ---------- PX ----------
+    const buildPX = (g, w, h, d) => {
+        buildShell(g, w, h, d, twoToneWall('#1e3a8a', '#f8fafc', '#facc15', d / 5), tileFloor('#f1f5f9', '#e2e8f0', w / 2, d / 2));
+        const shelfMat = lam(0xdddddd);
+        const productColors = [0xef4444, 0xf59e0b, 0x22c55e, 0x3b82f6, 0xa855f7, 0xec4899, 0xfacc15, 0x14b8a6, 0xffffff];
+        const shelfUnit = (sx, sz, rotY, len) => {
+            const s = new THREE.Group();
+            box(s, len, 2.2, 0.08, shelfMat, 0, 1.1, -0.35);
+            [0.15, 0.7, 1.25, 1.8].forEach(y => {
+                box(s, len, 0.05, 0.75, shelfMat, 0, y, 0);
+                for (let px = -len / 2 + 0.25; px < len / 2 - 0.15; px += 0.32) {
+                    const ph = 0.2 + Math.random() * 0.25;
+                    const pc = productColors[Math.floor(Math.random() * productColors.length)];
+                    if (Math.random() < 0.3) cyl(s, 0.1, 0.1, ph, lam(pc), px, y + ph / 2 + 0.03, 0.05, 10);
+                    else box(s, 0.24, ph, 0.3, lam(pc), px, y + ph / 2 + 0.03, 0.05);
                 }
             });
-        });
+            s.position.set(sx, 0, sz);
+            s.rotation.y = rotY;
+            g.add(s);
+        };
+        shelfUnit(-w / 2 + 0.5, 0, Math.PI / 2, d - 6);
+        shelfUnit(w / 2 - 0.5, 0, -Math.PI / 2, d - 6);
+        shelfUnit(-3, -1, 0, 6); shelfUnit(-3, -1.8, Math.PI, 6);
+        shelfUnit(3.5, -1, 0, 5); shelfUnit(3.5, -1.8, Math.PI, 5);
+        // Fridges along back wall
+        const fridgeBody = lam(0x334155);
+        const fridgeGlass = new THREE.MeshBasicMaterial({ color: 0xbfe7ff, transparent: true, opacity: 0.55 });
+        for (let fx = -w / 2 + 2.5; fx <= w / 2 - 2.5; fx += 1.6) {
+            box(g, 1.5, 2.6, 0.9, fridgeBody, fx, 1.3, -d / 2 + 0.55);
+            box(g, 1.3, 2.2, 0.03, fridgeGlass, fx, 1.35, -d / 2 + 1.02);
+            for (let r = 0; r < 4; r++) {
+                for (let c = -2; c <= 2; c++) {
+                    cyl(g, 0.07, 0.07, 0.35, lam(productColors[(r + c + 9) % productColors.length]), fx + c * 0.22, 0.55 + r * 0.5, -d / 2 + 0.8, 8);
+                }
+            }
+        }
+        // Checkout counter near front
+        const counterMat = lam(0x1e3a8a);
+        box(g, 4, 1.1, 1.2, counterMat, w / 2 - 3.5, 0.55, d / 2 - 3.5);
+        box(g, 4.1, 0.06, 1.3, lam(0xfacc15), w / 2 - 3.5, 1.12, d / 2 - 3.5);
+        box(g, 0.6, 0.35, 0.45, lam(0x111111), w / 2 - 4.5, 1.33, d / 2 - 3.5);
+        box(g, 0.5, 0.3, 0.03, new THREE.MeshBasicMaterial({ color: 0x22c55e }), w / 2 - 4.5, 1.6, d / 2 - 3.3);
+        const sign = makeSign('WA-MART · 충성 PX', '#1e3a8a', '#facc15', 6, 1.2);
+        sign.position.set(0, h - 1.1, -d / 2 + 0.08);
+        g.add(sign);
+    };
 
-        window.buildingInteriors[name] = def;
+    // ---------- 체력단련실 (Gym) ----------
+    const buildGym = (g, w, h, d) => {
+        const rubber = makeTex(128, (ctx, s) => {
+            ctx.fillStyle = '#2a2a2e'; ctx.fillRect(0, 0, s, s);
+            for (let i = 0; i < 500; i++) {
+                ctx.fillStyle = Math.random() < 0.15 ? 'rgba(255,102,0,0.35)' : 'rgba(255,255,255,0.06)';
+                ctx.fillRect(Math.random() * s, Math.random() * s, 2, 2);
+            }
+            ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 2; ctx.strokeRect(0, 0, s, s);
+        }, w / 2, d / 2);
+        buildShell(g, w, h, d, twoToneWall('#1f2124', '#d4d4d8', '#ff6600', d / 5), rubber);
+        const black = lam(0x18181b);
+        const steel = new THREE.MeshPhongMaterial({ color: 0xa1a1aa, shininess: 90 });
+        const orange = lam(0xff6600);
+        // Mirror wall
+        box(g, w - 4, 2.6, 0.04, new THREE.MeshPhongMaterial({ color: 0xcfe8ff, shininess: 120, specular: 0xffffff }), 0, 1.8, -d / 2 + 0.06);
+        // Treadmills
+        [-w / 2 + 2.5, -w / 2 + 5].forEach(tx => {
+            box(g, 1.0, 0.25, 2.2, black, tx, 0.15, d / 2 - 4);
+            box(g, 0.8, 0.02, 1.8, lam(0x3f3f46), tx, 0.29, d / 2 - 4);
+            box(g, 0.06, 1.2, 0.06, steel, tx - 0.45, 0.85, d / 2 - 5);
+            box(g, 0.06, 1.2, 0.06, steel, tx + 0.45, 0.85, d / 2 - 5);
+            box(g, 1.0, 0.35, 0.25, black, tx, 1.45, d / 2 - 5);
+            box(g, 0.5, 0.25, 0.02, new THREE.MeshBasicMaterial({ color: 0x38bdf8 }), tx, 1.5, d / 2 - 4.87);
+        });
+        // Bench press
+        const bx = 0, bz = -2;
+        box(g, 0.45, 0.12, 1.6, lam(0xb91c1c), bx, 0.5, bz);
+        box(g, 0.1, 0.45, 0.1, steel, bx, 0.22, bz - 0.6);
+        box(g, 0.1, 0.45, 0.1, steel, bx, 0.22, bz + 0.6);
+        [-0.7, 0.7].forEach(ox => box(g, 0.08, 1.3, 0.08, steel, bx + ox, 0.65, bz - 0.7));
+        const bar = cyl(g, 0.03, 0.03, 2.2, steel, bx, 1.25, bz - 0.7, 8);
+        bar.rotation.z = Math.PI / 2;
+        [-0.95, 0.95].forEach(ox => {
+            const plate = cyl(g, 0.3, 0.3, 0.08, black, bx + ox, 1.25, bz - 0.7, 16);
+            plate.rotation.z = Math.PI / 2;
+        });
+        // Dumbbell rack
+        const rx = w / 2 - 1.2;
+        box(g, 0.8, 0.08, 4, steel, rx, 0.5, -1);
+        box(g, 0.8, 0.08, 4, steel, rx, 0.9, -1);
+        [-2.8, 0.8].forEach(oz => box(g, 0.08, 0.95, 0.08, steel, rx, 0.47, oz));
+        for (let i = 0; i < 6; i++) {
+            [0.58, 0.98].forEach(y => {
+                const z = -2.6 + i * 0.6;
+                const handleM = cyl(g, 0.025, 0.025, 0.35, steel, rx, y, z, 6);
+                handleM.rotation.x = Math.PI / 2;
+                [-0.17, 0.17].forEach(o => {
+                    const head = cyl(g, 0.08 + i * 0.008, 0.08 + i * 0.008, 0.08, black, rx, y, z + o, 10);
+                    head.rotation.x = Math.PI / 2;
+                });
+            });
+        }
+        // Pull-up bar
+        [-1, 1].forEach(o => box(g, 0.1, 2.6, 0.1, orange, -w / 2 + 3 + o, 1.3, -d / 2 + 3));
+        const pull = cyl(g, 0.04, 0.04, 2.1, steel, -w / 2 + 3, 2.55, -d / 2 + 3, 8);
+        pull.rotation.z = Math.PI / 2;
+        // Yoga mats
+        [0, 1, 2].forEach(i => box(g, 0.8, 0.02, 2, lam([0x16a34a, 0x2563eb, 0xdb2777][i]), 2 + i * 1.1, 0.06, d / 2 - 4));
+        const sign = makeSign('💪 강한 체력 · 강한 군대', '#ff6600', '#ffffff', 7, 1.2);
+        sign.position.set(0, h - 0.9, -d / 2 + 0.1);
+        g.add(sign);
+    };
+
+    const builders = {
+        '생활관': { fn: buildBarracks, hScale: 0.7 },
+        '병영식당': { fn: buildMess, hScale: 1.0 },
+        'PX': { fn: buildPX, hScale: 1.0 },
+        '체력단련실': { fn: buildGym, hScale: 1.0 }
+    };
+
+    Object.entries(builders).forEach(([name, cfg]) => {
+        const loc = LOCATIONS[name];
+        if (!loc) return;
+        const w = loc.size[0] - 0.5;
+        const d = loc.size[2] - 0.5;
+        const h = loc.size[1] * cfg.hScale - 0.3;
+        const g = new THREE.Group();
+        g.name = 'interior_' + name;
+        cfg.fn(g, w, h, d);
+        g.position.set(loc.x, 0, loc.z);
+        g.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
+        g.visible = false;
+        scene.add(g);
+        window.buildingInteriors[name] = { x: loc.x, z: loc.z, w, d, h, group: g };
     });
+
+    if (!window._interiorCullTimer) {
+        window._interiorCullTimer = setInterval(() => {
+            if (typeof camera === 'undefined' || !camera) return;
+            const px = camera.position.x, pz = camera.position.z;
+            Object.values(window.buildingInteriors).forEach(it => {
+                if (!it.group) return;
+                it.group.visible = Math.abs(px - it.x) < it.w / 2 + 6 && Math.abs(pz - it.z) < it.d / 2 + 6;
+            });
+        }, 300);
+    }
 };
 
 // ============================================================
@@ -15187,38 +15658,83 @@ window.showOnlinePlayers = () => {
 
     const isAdmin = STATE.currentUser && ['ree1203', '한Space'].includes(STATE.currentUser.username);
 
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
     const listHtml = players.map(p => {
         const rankIdx = (typeof RANKS !== 'undefined' ? RANKS : []).indexOf(p.rank);
         const rankColor = rankIdx >= 14 ? '#fbbf24' : rankIdx >= 11 ? '#a78bfa' : rankIdx >= 8 ? '#38bdf8' : rankIdx >= 4 ? '#22c55e' : '#aaa';
-        const examBadge = p.examStatus ? `<span style="background:rgba(251,191,36,0.2);color:#fbbf24;padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-left:6px;">📝 ${p.examStatus}</span>` : '';
-        const adminBtn = isAdmin && !p.isMe ? `<button onclick="window.startPromotionExam('${p.uid}','${p.name}','${p.rank}')" style="padding:4px 8px;background:rgba(251,191,36,0.15);border:1px solid #fbbf24;color:#fbbf24;border-radius:6px;cursor:pointer;font-size:0.7rem;font-weight:700;">승급심사</button>` : '';
-        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:rgba(255,255,255,${p.isMe ? '0.08' : '0.03'});border:1px solid rgba(255,255,255,0.08);border-radius:10px;">
-            <div style="display:flex;align-items:center;gap:10px;">
-                <div style="width:36px;height:36px;border-radius:50%;background:${p.isMe ? 'var(--accent)' : 'rgba(255,255,255,0.1)'};display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:900;color:${p.isMe ? '#000' : '#fff'};">${p.name.charAt(0)}</div>
-                <div>
-                    <div style="color:#fff;font-weight:700;font-size:0.9rem;">${p.name}${p.isMe ? ' <span style="color:#888;font-size:0.75rem;">(나)</span>' : ''}${examBadge}</div>
-                    <div style="color:${rankColor};font-size:0.8rem;font-weight:700;">${p.rank} · ${p.branch}</div>
-                </div>
+        const examBadge = p.examStatus ? `<span style="color:#fbbf24;font-size:0.6rem;margin-left:4px;">📝</span>` : '';
+        const adminBtn = isAdmin && !p.isMe ? `<button class="op-exam-btn" data-uid="${esc(p.uid)}" data-name="${esc(p.name)}" data-rank="${esc(p.rank)}" style="width:auto;margin:0;padding:2px 6px;background:rgba(251,191,36,0.15);border:1px solid #fbbf24;color:#fbbf24;border-radius:5px;cursor:pointer;font-size:0.6rem;font-weight:700;">심사</button>` : '';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:5px 8px;background:rgba(255,255,255,${p.isMe ? '0.08' : '0.03'});border-radius:6px;">
+            <div style="min-width:0;overflow:hidden;">
+                <div style="color:#fff;font-weight:700;font-size:0.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.name)}${p.isMe ? ' <span style="color:#888;">(나)</span>' : ''}${examBadge}</div>
+                <div style="color:${rankColor};font-size:0.65rem;font-weight:700;">${esc(p.rank)}</div>
             </div>
             ${adminBtn}
         </div>`;
     }).join('');
 
-    const html = `<div id="online-players-modal" style="background:rgba(0,0,0,0.9);position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">
-        <div style="background:#1e293b;border-radius:16px;padding:24px;max-width:420px;width:92%;max-height:80vh;overflow-y:auto;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                <h3 style="color:#deb887;margin:0;">👥 접속 중인 플레이어</h3>
-                <span style="background:rgba(34,197,94,0.15);color:#22c55e;padding:4px 10px;border-radius:20px;font-size:0.85rem;font-weight:700;">🟢 ${players.length}명</span>
+    const html = `<div id="online-players-modal" style="position:fixed;top:40px;right:10px;z-index:99999;width:200px;max-height:45vh;overflow-y:auto;background:rgba(15,23,42,0.92);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,0.5);font-family:Pretendard,sans-serif;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding:0 2px;">
+                <span style="color:#deb887;font-size:0.75rem;font-weight:800;">👥 접속자 ${players.length}명</span>
+                <button id="op-close" style="width:auto;margin:0;padding:0 6px;background:transparent;border:none;color:#aaa;cursor:pointer;font-size:0.8rem;">✕</button>
             </div>
-            <div style="display:flex;flex-direction:column;gap:6px;">${listHtml}</div>
-            <div style="text-align:center;color:#666;font-size:0.75rem;margin-top:12px;">클릭하여 닫기</div>
-        </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">${listHtml}</div>
     </div>`;
 
     const existing = document.getElementById('online-players-modal');
+    const scrollTop = existing ? existing.scrollTop : 0;
     if (existing) existing.remove();
     document.body.insertAdjacentHTML('beforeend', html);
+    const panel = document.getElementById('online-players-modal');
+    panel.scrollTop = scrollTop;
+    document.getElementById('op-close').onclick = () => panel.remove();
+    panel.querySelectorAll('.op-exam-btn').forEach(btn => {
+        btn.onclick = () => window.startPromotionExam(btn.dataset.uid, btn.dataset.name, btn.dataset.rank);
+    });
 };
+
+window.toggleOnlinePlayers = () => {
+    const existing = document.getElementById('online-players-modal');
+    if (existing) existing.remove();
+    else window.showOnlinePlayers();
+    _positionTopRightTools();
+};
+
+// Keep the 👥/⚙️ buttons and the player dropdown just below the minimap (its size varies by breakpoint)
+const _positionTopRightTools = () => {
+    const mm = document.getElementById('minimap');
+    const onlineBtn = document.getElementById('btn-online-players');
+    const setBtn = document.getElementById('btn-ingame-settings');
+    if (!onlineBtn) return;
+    onlineBtn.style.setProperty('transition', 'none', 'important');
+    const cs = getComputedStyle(onlineBtn);
+    const br0 = onlineBtn.getBoundingClientRect();
+    const originTop = br0.top - (parseFloat(cs.top) || 0);
+    const originRight = br0.right + (parseFloat(cs.right) || 0);
+    let top = 10, right = 10;
+    if (mm && mm.offsetParent !== null) {
+        const r = mm.getBoundingClientRect();
+        if (r.height > 0) {
+            top = Math.round(r.bottom - originTop + 6);
+            right = Math.max(5, Math.round(originRight - r.right));
+        }
+    }
+    onlineBtn.style.top = top + 'px';
+    onlineBtn.style.right = right + 'px';
+    if (setBtn) {
+        setBtn.style.setProperty('transition', 'none', 'important');
+        setBtn.style.top = top + 'px';
+        setBtn.style.right = (right + onlineBtn.offsetWidth + 6) + 'px';
+    }
+    const panel = document.getElementById('online-players-modal');
+    if (panel) {
+        const br = onlineBtn.getBoundingClientRect();
+        panel.style.top = Math.round(br.bottom + 4) + 'px';
+        panel.style.right = Math.round(window.innerWidth - br.right) + 'px';
+    }
+};
+window.addEventListener('resize', _positionTopRightTools);
 
 // Auto-refresh online players panel if open + update badge count
 setInterval(() => {
@@ -15236,6 +15752,7 @@ setInterval(() => {
     if (modal) {
         window.showOnlinePlayers();
     }
+    _positionTopRightTools();
 }, 3000);
 
 // ============================================================
@@ -15646,4 +16163,229 @@ setInterval(() => {
         }
     });
 }, 1000);
+
+// ============================================================
+// MODULE 15: SETTINGS (설정)
+// ============================================================
+const SETTINGS_DEFAULTS = {
+    sensitivity: 1.0,
+    invertY: false,
+    fov: 75,
+    volume: 80,
+    shadows: true,
+    grass: true,
+    resolution: 'high',
+    showFps: false
+};
+window.GAME_SETTINGS = Object.assign({}, SETTINGS_DEFAULTS);
+try {
+    const saved = JSON.parse(localStorage.getItem('gameSettings') || '{}');
+    Object.assign(window.GAME_SETTINGS, saved);
+} catch (e) {}
+
+const _saveSettings = () => {
+    try { localStorage.setItem('gameSettings', JSON.stringify(window.GAME_SETTINGS)); } catch (e) {}
+};
+
+// Master volume: route every Web Audio destination connection through a per-context gain node
+(() => {
+    const contexts = [];
+    const origConnect = AudioNode.prototype.connect;
+    AudioNode.prototype.connect = function (dest, ...rest) {
+        if (typeof AudioDestinationNode !== 'undefined' && dest instanceof AudioDestinationNode) {
+            const ctx = dest.context;
+            if (!ctx._masterGain) {
+                ctx._masterGain = ctx.createGain();
+                ctx._masterGain.gain.value = window.GAME_SETTINGS.volume / 100;
+                origConnect.call(ctx._masterGain, dest);
+                contexts.push(ctx);
+            }
+            return origConnect.call(this, ctx._masterGain, ...rest);
+        }
+        return origConnect.call(this, dest, ...rest);
+    };
+    window._applyMasterVolume = () => {
+        const v = window.GAME_SETTINGS.volume / 100;
+        contexts.forEach(c => { if (c._masterGain) c._masterGain.gain.value = v; });
+        document.querySelectorAll('audio, video').forEach(el => { el.volume = v; });
+    };
+})();
+
+let _fpsEl = null, _fpsFrames = 0, _fpsLast = performance.now();
+const _fpsLoop = () => {
+    if (!window.GAME_SETTINGS.showFps) { if (_fpsEl) _fpsEl.style.display = 'none'; return; }
+    if (!_fpsEl) {
+        _fpsEl = document.createElement('div');
+        _fpsEl.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:99998;background:rgba(0,0,0,0.6);color:#4ade80;font:700 12px monospace;padding:3px 8px;border-radius:6px;pointer-events:none;';
+        document.body.appendChild(_fpsEl);
+    }
+    _fpsEl.style.display = 'block';
+    _fpsFrames++;
+    const now = performance.now();
+    if (now - _fpsLast >= 500) {
+        _fpsEl.textContent = Math.round(_fpsFrames * 1000 / (now - _fpsLast)) + ' FPS';
+        _fpsFrames = 0; _fpsLast = now;
+    }
+    requestAnimationFrame(_fpsLoop);
+};
+
+window.applyGameSettings = () => {
+    const s = window.GAME_SETTINGS;
+    if (typeof renderer !== 'undefined' && renderer) {
+        const ratio = s.resolution === 'low' ? 0.6 : s.resolution === 'medium' ? 1 : window.devicePixelRatio;
+        renderer.setPixelRatio(ratio);
+        renderer.setSize(window.innerWidth, window.innerHeight, false);
+        if (renderer.shadowMap.enabled !== s.shadows) {
+            renderer.shadowMap.enabled = s.shadows;
+            if (typeof scene !== 'undefined' && scene) {
+                scene.traverse(o => {
+                    if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { m.needsUpdate = true; });
+                });
+            }
+        }
+    }
+    if (window.grassBlades) window.grassBlades.visible = s.grass;
+    if (typeof camera !== 'undefined' && camera && !window.isAdsMode) {
+        camera.fov = s.fov;
+        camera.updateProjectionMatrix();
+    }
+    window._applyMasterVolume();
+    if (s.showFps) { _fpsLast = performance.now(); _fpsFrames = 0; requestAnimationFrame(_fpsLoop); }
+    else if (_fpsEl) _fpsEl.style.display = 'none';
+};
+
+window.openSettingsModal = () => {
+    const existing = document.getElementById('settings-modal');
+    if (existing) existing.remove();
+    if (document.pointerLockElement) document.exitPointerLock();
+    const s = window.GAME_SETTINGS;
+    const row = (label, control) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);"><span style="color:#e2e8f0;font-weight:600;font-size:0.9rem;">${label}</span>${control}</div>`;
+    const slider = (id, min, max, step, val, suffix) => `<span style="display:flex;align-items:center;gap:8px;"><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}" style="width:140px;accent-color:#22c55e;"><b id="${id}-val" style="color:#4ade80;min-width:44px;text-align:right;font-size:0.85rem;">${val}${suffix}</b></span>`;
+    const toggle = (id, on) => `<input type="checkbox" id="${id}" ${on ? 'checked' : ''} style="width:20px;height:20px;accent-color:#22c55e;cursor:pointer;">`;
+    const section = (t) => `<div style="color:#94a3b8;font-size:0.75rem;font-weight:800;letter-spacing:1px;margin:16px 0 2px;">${t}</div>`;
+
+    const html = `<div id="settings-modal" style="position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;font-family:Pretendard,sans-serif;">
+        <div style="background:#0f172a;border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:22px 24px;width:min(440px,92vw);max-height:86vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <h3 style="margin:0;color:#fff;font-size:1.2rem;">⚙️ 설정</h3>
+                <button id="settings-close" style="width:auto;margin:0;padding:4px 10px;background:transparent;border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:8px;cursor:pointer;">✕</button>
+            </div>
+            ${section('조작')}
+            ${row('마우스 감도', slider('set-sens', 0.2, 3, 0.1, s.sensitivity, 'x'))}
+            ${row('상하 반전', toggle('set-invert', s.invertY))}
+            ${section('화면')}
+            ${row('시야각 (FOV)', slider('set-fov', 60, 100, 1, s.fov, '°'))}
+            ${row('해상도', `<select id="set-res" style="background:#1e293b;color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:4px 8px;"><option value="low" ${s.resolution === 'low' ? 'selected' : ''}>낮음 (빠름)</option><option value="medium" ${s.resolution === 'medium' ? 'selected' : ''}>보통</option><option value="high" ${s.resolution === 'high' ? 'selected' : ''}>높음 (선명)</option></select>`)}
+            ${row('그림자', toggle('set-shadows', s.shadows))}
+            ${row('잔디 풀잎 표시', toggle('set-grass', s.grass))}
+            ${row('FPS 표시', toggle('set-fps', s.showFps))}
+            ${section('소리')}
+            ${row('전체 볼륨', slider('set-vol', 0, 100, 1, s.volume, '%'))}
+            <div style="display:flex;gap:10px;margin-top:18px;">
+                <button id="settings-reset" style="flex:1;margin:0;padding:10px;background:transparent;border:1px solid rgba(255,255,255,0.2);color:#cbd5e1;border-radius:10px;cursor:pointer;">기본값으로</button>
+                <button id="settings-done" style="flex:2;margin:0;padding:10px;background:#16a34a;border:none;color:#fff;font-weight:800;border-radius:10px;cursor:pointer;">완료</button>
+            </div>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    const bindSlider = (id, key, suffix, parse) => {
+        const el = document.getElementById(id);
+        el.oninput = () => {
+            s[key] = parse(el.value);
+            document.getElementById(id + '-val').textContent = el.value + suffix;
+            window.applyGameSettings(); _saveSettings();
+        };
+    };
+    const bindToggle = (id, key) => {
+        const el = document.getElementById(id);
+        el.onchange = () => { s[key] = el.checked; window.applyGameSettings(); _saveSettings(); };
+    };
+    bindSlider('set-sens', 'sensitivity', 'x', parseFloat);
+    bindSlider('set-fov', 'fov', '°', v => parseInt(v, 10));
+    bindSlider('set-vol', 'volume', '%', v => parseInt(v, 10));
+    bindToggle('set-invert', 'invertY');
+    bindToggle('set-shadows', 'shadows');
+    bindToggle('set-grass', 'grass');
+    bindToggle('set-fps', 'showFps');
+    document.getElementById('set-res').onchange = (e) => { s.resolution = e.target.value; window.applyGameSettings(); _saveSettings(); };
+
+    const close = () => { const m = document.getElementById('settings-modal'); if (m) m.remove(); };
+    document.getElementById('settings-close').onclick = close;
+    document.getElementById('settings-done').onclick = close;
+    document.getElementById('settings-reset').onclick = () => {
+        window.GAME_SETTINGS = Object.assign({}, SETTINGS_DEFAULTS);
+        _saveSettings();
+        window.applyGameSettings();
+        window.openSettingsModal();
+    };
+    document.getElementById('settings-modal').onclick = (e) => { if (e.target.id === 'settings-modal') close(); };
+};
+
+// Apply saved settings once the renderer exists
+const _settingsWait = setInterval(() => {
+    if (typeof renderer !== 'undefined' && renderer && typeof scene !== 'undefined' && scene) {
+        clearInterval(_settingsWait);
+        window.applyGameSettings();
+    }
+}, 1000);
+
+// ============================================================
+// MODULE 16: ADMIN ACCESS (로고 5번 클릭 → 비밀번호)
+// ============================================================
+(() => {
+    const ADMIN_PASSWORD = 'hjklfdsa1203';
+    let clicks = 0, resetTimer = null;
+
+    const openAdminLogin = () => {
+        const existing = document.getElementById('admin-login-modal');
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML('beforeend', `
+        <div id="admin-login-modal" style="position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;font-family:Pretendard,sans-serif;">
+            <div style="background:#0f172a;border:1px solid #f59e0b;border-radius:16px;padding:26px;width:min(340px,90vw);text-align:center;box-shadow:0 0 40px rgba(245,158,11,0.25);">
+                <div style="font-size:2.4rem;">🛡️</div>
+                <h3 style="color:#f59e0b;margin:6px 0 4px;">관리자 접속</h3>
+                <p style="color:#94a3b8;font-size:0.8rem;margin:0 0 14px;">관리자 비밀번호를 입력하세요</p>
+                <input type="password" id="admin-login-pw" placeholder="비밀번호" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;background:#1e293b;border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:10px;font-size:1rem;">
+                <div id="admin-login-err" style="color:#ef4444;font-size:0.8rem;height:18px;margin-top:6px;"></div>
+                <div style="display:flex;gap:8px;margin-top:6px;">
+                    <button id="admin-login-cancel" style="flex:1;margin:0;padding:10px;background:transparent;border:1px solid rgba(255,255,255,0.2);color:#cbd5e1;border-radius:10px;cursor:pointer;">취소</button>
+                    <button id="admin-login-ok" style="flex:1;margin:0;padding:10px;background:#f59e0b;border:none;color:#000;font-weight:800;border-radius:10px;cursor:pointer;">접속</button>
+                </div>
+            </div>
+        </div>`);
+        const input = document.getElementById('admin-login-pw');
+        const close = () => { const m = document.getElementById('admin-login-modal'); if (m) m.remove(); };
+        const submit = () => {
+            if (input.value === ADMIN_PASSWORD) {
+                close();
+                if (typeof window.openAdminDashboardDirect === 'function') window.openAdminDashboardDirect();
+            } else {
+                document.getElementById('admin-login-err').textContent = '비밀번호가 틀렸습니다.';
+                input.value = '';
+                input.focus();
+            }
+        };
+        document.getElementById('admin-login-ok').onclick = submit;
+        document.getElementById('admin-login-cancel').onclick = close;
+        input.onkeydown = (e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') close(); };
+        setTimeout(() => input.focus(), 50);
+    };
+
+    const bindLogo = () => {
+        const logo = document.getElementById('login-logo');
+        if (!logo) return;
+        logo.addEventListener('click', () => {
+            clicks++;
+            clearTimeout(resetTimer);
+            resetTimer = setTimeout(() => { clicks = 0; }, 2000);
+            if (clicks >= 5) {
+                clicks = 0;
+                openAdminLogin();
+            }
+        });
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindLogo);
+    else bindLogo();
+})();
 
