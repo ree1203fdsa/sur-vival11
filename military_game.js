@@ -1830,9 +1830,26 @@ const initChat = () => {
     window.logAdminAction = logAdminAction;
 
     // --- ADMIN DASHBOARD LOGIC (juram1203) ---
+    const ADMIN_TAB_META = {
+        users: ['유저 · 징계', '전체 유저를 조회하고 정보를 수정합니다'],
+        promotions: ['승급 결재', '대기 중인 진급 요청을 승인하거나 반려합니다'],
+        military: ['부대 · 병사', 'AI 병사와 부대를 생성하고 관리합니다'],
+        economy: ['경제 · 장비', '세금 징수, 보상 지급, 장비를 관리합니다'],
+        system: ['서버 통제', '공지, 서버 전원, 경험치·드랍 배율을 설정합니다'],
+        security: ['보안 · 감시', '이상 행동을 감시하고 유저를 조사합니다'],
+        stats: ['통계 · 로그', '서버 지표와 관리 기록을 확인합니다']
+    };
     const switchAdminTab = (tab) => {
         document.querySelectorAll('.admin-tab').forEach(t => t.style.display = 'none');
         document.getElementById('tab-' + tab).style.display = 'block';
+        document.querySelectorAll('#admin-nav .mc-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+        const meta = ADMIN_TAB_META[tab];
+        const titleEl = document.getElementById('mc-page-title');
+        const subEl = document.getElementById('mc-page-sub');
+        if (meta && titleEl) titleEl.textContent = meta[0];
+        if (meta && subEl) subEl.textContent = meta[1];
+        const main = document.getElementById('admin-main-content');
+        if (main) main.scrollTop = 0;
     };
     window.switchAdminTab = switchAdminTab;
     window.openAdminDashboardDirect = () => {
@@ -1857,69 +1874,141 @@ const initChat = () => {
             }
         }
 
-        // Sync Users
-        db.ref('users').on('value', snap => {
-            const users = snap.val();
+        if (window._mcInitialized) return;
+        window._mcInitialized = true;
+
+        const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+        const rankColor = (rank) => {
+            const idx = (typeof RANKS !== 'undefined' && Array.isArray(RANKS)) ? RANKS.indexOf(rank) : -1;
+            if (idx >= 15) return '#f5b942';
+            if (idx >= 11) return '#a78bfa';
+            if (idx >= 8) return '#38bdf8';
+            if (idx >= 4) return '#4ade80';
+            return '#94a3b8';
+        };
+        const emptyRow = (msg) => `<tr><td colspan="7" class="mc-empty">${msg}</td></tr>`;
+
+        // Users table (filtered client-side by the search box)
+        let usersCache = {};
+        const renderUserTable = () => {
             const table = document.getElementById('admin-user-table');
             if (!table) return;
-            table.innerHTML = '';
-            if (!users) {
-                table.innerHTML = '<tr><td colspan="7" style="padding: 50px; text-align: center; color: #888;">등록된 유저가 없습니다. 신병 등록을 먼저 진행해 주세요.</td></tr>';
+            const q = (document.getElementById('mc-user-search')?.value || '').trim().toLowerCase();
+            const showPw = !!document.getElementById('mc-show-pw')?.checked;
+            const entries = Object.entries(usersCache).filter(([, u]) => u && !u.dashboardOnly);
+            if (entries.length === 0) {
+                table.innerHTML = emptyRow('등록된 유저가 없습니다.');
                 return;
             }
-
-            Object.keys(users).forEach(uid => {
-                const u = users[uid];
-                if (!u) return;
-                const tr = document.createElement('tr');
-                tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
-                tr.innerHTML = `
-                <td style="padding: 15px;">${u.username || ''}</td>
-                <td style="padding: 15px;">${u.name || ''}</td>
-                <td style="padding: 15px;" class="hide-on-mobile">${u.password || ''}</td>
-                <td style="padding: 15px;">${u.rank || ''}</td>
-                <td style="padding: 15px;" class="hide-on-mobile">${u.money || 0}G</td>
-                <td style="padding: 15px;" class="hide-on-mobile">${u.isBanned ? '🚫 밴' : '✅ 정상'}</td>
-                <td style="padding: 15px;">
-                    <button class="btn" onclick="openUserEdit('${uid}')" style="width: auto; padding: 5px 10px; margin: 0; font-size: 0.8rem;">관리</button>
-                </td>
-            `;
-                table.appendChild(tr);
+            const rows = entries
+                .filter(([, u]) => !q || [u.username, u.name, u.rank].some(v => String(v || '').toLowerCase().includes(q)))
+                .sort((a, b) => ((typeof RANKS !== 'undefined' ? RANKS.indexOf(b[1].rank) : 0) - (typeof RANKS !== 'undefined' ? RANKS.indexOf(a[1].rank) : 0)))
+                .map(([uid, u]) => {
+                    const initial = esc(String(u.name || u.username || '?').charAt(0));
+                    const pw = u.password ? (showPw ? esc(u.password) : '••••••') : '<span style="color:#475569;">—</span>';
+                    const money = (Number(u.money) || 0).toLocaleString();
+                    const status = u.isBanned
+                        ? '<span class="mc-badge mc-badge-ban">🚫 정지</span>'
+                        : '<span class="mc-badge mc-badge-ok">정상</span>';
+                    return `<tr>
+                        <td><div class="mc-user-cell"><div class="mc-user-avatar">${initial}</div><div><div class="mc-mono">${esc(u.username)}</div><div class="mc-sub-name">${esc(u.name)}</div></div></div></td>
+                        <td class="hide-on-mobile">${esc(u.name)}</td>
+                        <td class="hide-on-mobile mc-mono">${pw}</td>
+                        <td><span class="mc-badge mc-rank" style="--c:${rankColor(u.rank)};">${esc(u.rank || '-')}</span></td>
+                        <td class="hide-on-mobile mc-mono">${money} G</td>
+                        <td class="hide-on-mobile">${status}</td>
+                        <td style="text-align:right;"><button class="mc-btn mc-btn-ghost mc-btn-sm" data-edit-uid="${esc(uid)}">관리</button></td>
+                    </tr>`;
+                });
+            table.innerHTML = rows.length ? rows.join('') : emptyRow('검색 결과가 없습니다.');
+            table.querySelectorAll('[data-edit-uid]').forEach(btn => {
+                btn.onclick = () => window.openUserEdit(btn.dataset.editUid);
             });
+        };
+        document.getElementById('mc-user-search')?.addEventListener('input', renderUserTable);
+        document.getElementById('mc-show-pw')?.addEventListener('change', renderUserTable);
+
+        db.ref('users').on('value', snap => {
+            usersCache = snap.val() || {};
+            renderUserTable();
+            const list = Object.values(usersCache).filter(u => u && !u.dashboardOnly);
+            const now = Date.now();
+            setText('mc-kpi-users', list.length.toLocaleString());
+            setText('mc-kpi-banned', list.filter(u => u.isBanned).length.toLocaleString());
+            const totalMoney = list.reduce((s, u) => s + (Number(u.money) || 0), 0);
+            const compact = totalMoney >= 1e8 ? (totalMoney / 1e8).toFixed(1) + '억'
+                : totalMoney >= 1e4 ? Math.round(totalMoney / 1e4).toLocaleString() + '만'
+                : totalMoney.toLocaleString();
+            setText('mc-kpi-money', compact + ' G');
+            const moneyEl = document.getElementById('mc-kpi-money');
+            if (moneyEl) moneyEl.title = totalMoney.toLocaleString() + ' G';
+            const dau = list.filter(u => u.lastSeen && now - u.lastSeen < 86400000).length;
+            const mau = list.filter(u => u.lastSeen && now - u.lastSeen < 30 * 86400000).length;
+            setText('stat-active-users', `${dau} / ${mau}`);
+            setText('stat-revenue', list.reduce((s, u) => s + (Number(u.money) || 0), 0).toLocaleString() + ' G');
         });
+
+        // Online players from presence
+        db.ref('presence').on('value', snap => {
+            const now = Date.now();
+            const online = Object.values(snap.val() || {}).filter(p => p && p.lastSeen && now - p.lastSeen < 120000).length;
+            setText('mc-kpi-online', online.toLocaleString());
+            setText('stat-current-online', online + ' 명');
+        });
+
+        // Toggle-state labels
+        db.ref('system/maintenance').on('value', snap => {
+            const btn = document.getElementById('btn-maint');
+            if (!btn) return;
+            btn.textContent = '점검 모드: ' + (snap.val() ? 'ON' : 'OFF');
+            btn.classList.toggle('mc-btn-warn', !!snap.val());
+            btn.classList.toggle('mc-btn-ghost', !snap.val());
+        });
+        db.ref('system/siren').on('value', snap => {
+            setText('btn-global-siren', snap.val() ? '🔕 사이렌 끄기' : '⚠️ 사이렌');
+        });
+
+        // Admin action log
+        db.ref('system/admin_logs').limitToLast(50).on('value', snap => {
+            const box = document.getElementById('admin-action-logs');
+            if (!box) return;
+            const logs = Object.values(snap.val() || {}).reverse();
+            box.innerHTML = logs.length
+                ? logs.map(l => `<div class="mc-list-item"><span>${esc(l.action)}</span><span class="mc-mono" style="color:#64748b;font-size:0.74rem;">${esc(l.date || '')}</span></div>`).join('')
+                : '<div class="mc-empty">기록이 없습니다.</div>';
+        });
+
+        // Clock
+        const tick = () => {
+            const d = new Date();
+            setText('mc-clock', [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':'));
+        };
+        tick();
+        setInterval(tick, 1000);
 
         // Sync AI Soldiers
         db.ref('system/ai_soldiers').on('value', snap => {
-            const ais = snap.val();
             const list = document.getElementById('ai-list');
             if (!list) return;
-            list.innerHTML = '';
-            if (!ais) return;
-            Object.keys(ais).forEach(aid => {
+            const ais = snap.val() || {};
+            const keys = Object.keys(ais).filter(k => ais[k]);
+            list.innerHTML = keys.length ? keys.map(aid => {
                 const a = ais[aid];
-                if (!a) return;
-                const div = document.createElement('div');
-                div.style.cssText = 'padding: 10px; background: rgba(255,255,255,0.05); margin-bottom: 5px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;';
-                div.innerHTML = `<span>[${a.rank || ''}] ${a.name || ''}</span> <button onclick="removeAISoldier('${aid}')" style="width: auto; padding: 5px 10px; background: #8b0000; font-size: 0.7rem; margin:0;">삭제</button>`;
-                list.appendChild(div);
-            });
+                return `<div class="mc-list-item"><span><span class="mc-badge mc-rank" style="--c:${rankColor(a.rank)};">${esc(a.rank)}</span> ${esc(a.name)}</span><button class="mc-btn mc-btn-danger mc-btn-sm" data-ai-id="${esc(aid)}">삭제</button></div>`;
+            }).join('') : '<div class="mc-empty">생성된 AI 병사가 없습니다.</div>';
+            list.querySelectorAll('[data-ai-id]').forEach(b => { b.onclick = () => removeAISoldier(b.dataset.aiId); });
         });
 
         // Sync Units
         db.ref('system/units').on('value', snap => {
-            const units = snap.val();
             const list = document.getElementById('unit-list');
             if (!list) return;
-            list.innerHTML = '';
-            if (!units) return;
-            Object.keys(units).forEach(uid => {
-                const u = units[uid];
-                if (!u) return;
-                const div = document.createElement('div');
-                div.style.cssText = 'padding: 10px; background: rgba(255,255,255,0.05); margin-bottom: 5px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;';
-                div.innerHTML = `<span>🏰 ${u.name || ''}</span> <button onclick="removeUnit('${uid}')" style="width: auto; padding: 5px 10px; background: #8b0000; font-size: 0.7rem; margin:0;">삭제</button>`;
-                list.appendChild(div);
-            });
+            const units = snap.val() || {};
+            const keys = Object.keys(units).filter(k => units[k]);
+            list.innerHTML = keys.length ? keys.map(id => `<div class="mc-list-item"><span>🏰 ${esc(units[id].name)}</span><button class="mc-btn mc-btn-danger mc-btn-sm" data-unit-id="${esc(id)}">삭제</button></div>`).join('')
+                : '<div class="mc-empty">생성된 부대가 없습니다.</div>';
+            list.querySelectorAll('[data-unit-id]').forEach(b => { b.onclick = () => removeUnit(b.dataset.unitId); });
         });
     };
 
@@ -1951,10 +2040,12 @@ const initChat = () => {
         db.ref('users/' + uid).once('value', snap => {
             const u = snap.val();
             document.getElementById('edit-uid').value = uid;
-            document.getElementById('edit-username').value = u.username;
-            document.getElementById('edit-password').value = u.password;
-            document.getElementById('edit-name').value = u.name;
-            document.getElementById('edit-rank').value = u.rank;
+            document.getElementById('edit-username').value = u.username || '';
+            document.getElementById('edit-password').value = u.password || '';
+            document.getElementById('edit-password').placeholder = u.password ? '' : '비밀번호 없음 (Google 로그인 등)';
+            document.getElementById('edit-name').value = u.name || '';
+            document.getElementById('edit-rank').value = u.rank || '';
+            document.getElementById('edit-user-title').textContent = `${u.name || u.username || '유저'} 정보 수정`;
             document.getElementById('user-edit-modal').style.display = 'flex';
         });
     };
@@ -1964,10 +2055,11 @@ const initChat = () => {
         const uid = document.getElementById('edit-uid').value;
         const data = {
             username: document.getElementById('edit-username').value,
-            password: document.getElementById('edit-password').value,
             name: document.getElementById('edit-name').value,
             rank: document.getElementById('edit-rank').value
         };
+        const pw = document.getElementById('edit-password').value;
+        if (pw) data.password = pw;
         db.ref('users/' + uid).update(data).then(() => {
             document.getElementById('user-edit-modal').style.display = 'none';
             alert("수정 완료");
@@ -10531,7 +10623,7 @@ window.onload = () => {
             showToast(`🎥 시점 변경: ${window.isThirdPerson ? '3인칭' : '1인칭'}`, "#38bdf8");
         }
 
-        if (e.key === 'c' || e.key === 'C' || e.key === 'ㅊ') {
+        if ((e.key === 'c' || e.key === 'C' || e.key === 'ㅊ') && !e.ctrlKey && !e.metaKey && typeof camera !== 'undefined' && camera) {
             window.isCrouching = !window.isCrouching;
             if (window.isCrouching) {
                 camera.position.y = 1.0;
@@ -11205,22 +11297,26 @@ const initPromotionApprovalSync = () => {
             listDiv.innerHTML = '';
             const keys = Object.keys(reqs);
             if (keys.length === 0) {
-                listDiv.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">대기 중인 결재 요청이 없습니다.</div>';
+                listDiv.innerHTML = '<div class="mc-empty">대기 중인 결재 요청이 없습니다.</div>';
             } else {
+                const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
                 keys.forEach(uid => {
                     const r = reqs[uid];
                     const div = document.createElement('div');
-                    div.style.cssText = 'background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px;';
+                    div.className = 'mc-list-item';
+                    div.style.padding = '14px 16px';
                     div.innerHTML = `
                         <div>
-                            <div style="font-weight: bold; color: #fff; font-size: 1.05rem;">${r.name} 요원 (${r.username})</div>
-                            <div style="font-size: 0.8rem; color: #aaa; margin-top: 4px;">진급: ${r.currentRank} ➡️ <span style="color: var(--accent); font-weight: bold;">${r.nextRank}</span></div>
+                            <div style="font-weight: 800; color: #fff;">${esc(r.name)} <span style="color:#64748b;font-weight:600;font-size:0.82rem;">@${esc(r.username)}</span></div>
+                            <div style="font-size: 0.82rem; color: #94a3b8; margin-top: 4px;">${esc(r.currentRank)} → <b style="color: #f5b942;">${esc(r.nextRank)}</b></div>
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            <button class="btn" style="background: #059669; width: auto; margin: 0; padding: 8px 15px;" onclick="approvePromotion('${uid}', '${r.nextRank}')">결재 승인</button>
-                            <button class="btn" style="background: #b91c1c; width: auto; margin: 0; padding: 8px 15px;" onclick="rejectPromotion('${uid}')">반려</button>
+                            <button class="mc-btn mc-btn-green mc-btn-sm" data-act="approve">승인</button>
+                            <button class="mc-btn mc-btn-danger mc-btn-sm" data-act="reject">반려</button>
                         </div>
                     `;
+                    div.querySelector('[data-act="approve"]').onclick = () => window.approvePromotion(uid, r.nextRank);
+                    div.querySelector('[data-act="reject"]').onclick = () => window.rejectPromotion(uid);
                     listDiv.appendChild(div);
                 });
             }
@@ -16337,20 +16433,21 @@ const _settingsWait = setInterval(() => {
     const ADMIN_PASSWORD = 'hjklfdsa1203';
     let clicks = 0, resetTimer = null;
 
-    const openAdminLogin = () => {
+    const openAdminPrompt = (title, desc, okLabel, onSuccess) => {
         const existing = document.getElementById('admin-login-modal');
         if (existing) existing.remove();
+        if (document.pointerLockElement) document.exitPointerLock();
         document.body.insertAdjacentHTML('beforeend', `
         <div id="admin-login-modal" style="position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;font-family:Pretendard,sans-serif;">
             <div style="background:#0f172a;border:1px solid #f59e0b;border-radius:16px;padding:26px;width:min(340px,90vw);text-align:center;box-shadow:0 0 40px rgba(245,158,11,0.25);">
                 <div style="font-size:2.4rem;">🛡️</div>
-                <h3 style="color:#f59e0b;margin:6px 0 4px;">관리자 접속</h3>
-                <p style="color:#94a3b8;font-size:0.8rem;margin:0 0 14px;">관리자 비밀번호를 입력하세요</p>
+                <h3 style="color:#f59e0b;margin:6px 0 4px;">${title}</h3>
+                <p style="color:#94a3b8;font-size:0.8rem;margin:0 0 14px;">${desc}</p>
                 <input type="password" id="admin-login-pw" placeholder="비밀번호" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;background:#1e293b;border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:10px;font-size:1rem;">
                 <div id="admin-login-err" style="color:#ef4444;font-size:0.8rem;height:18px;margin-top:6px;"></div>
                 <div style="display:flex;gap:8px;margin-top:6px;">
                     <button id="admin-login-cancel" style="flex:1;margin:0;padding:10px;background:transparent;border:1px solid rgba(255,255,255,0.2);color:#cbd5e1;border-radius:10px;cursor:pointer;">취소</button>
-                    <button id="admin-login-ok" style="flex:1;margin:0;padding:10px;background:#f59e0b;border:none;color:#000;font-weight:800;border-radius:10px;cursor:pointer;">접속</button>
+                    <button id="admin-login-ok" style="flex:1;margin:0;padding:10px;background:#f59e0b;border:none;color:#000;font-weight:800;border-radius:10px;cursor:pointer;">${okLabel}</button>
                 </div>
             </div>
         </div>`);
@@ -16359,7 +16456,7 @@ const _settingsWait = setInterval(() => {
         const submit = () => {
             if (input.value === ADMIN_PASSWORD) {
                 close();
-                if (typeof window.openAdminDashboardDirect === 'function') window.openAdminDashboardDirect();
+                onSuccess();
             } else {
                 document.getElementById('admin-login-err').textContent = '비밀번호가 틀렸습니다.';
                 input.value = '';
@@ -16368,9 +16465,54 @@ const _settingsWait = setInterval(() => {
         };
         document.getElementById('admin-login-ok').onclick = submit;
         document.getElementById('admin-login-cancel').onclick = close;
-        input.onkeydown = (e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') close(); };
+        input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') submit(); if (e.key === 'Escape') close(); };
         setTimeout(() => input.focus(), 50);
     };
+
+    const openAdminLogin = () => openAdminPrompt('관리자 접속', '관리자 비밀번호를 입력하세요', '접속', () => {
+        if (typeof window.openAdminDashboardDirect === 'function') window.openAdminDashboardDirect();
+    });
+
+    // Dev tools / view-source / save-page shortcuts and the right-click menu need the admin password.
+    // Unlock lasts for the current browser tab session.
+    let devUnlocked = false;
+    try { devUnlocked = sessionStorage.getItem('devToolsUnlocked') === '1'; } catch (e) {}
+
+    const isDevShortcut = (e) => {
+        const k = (e.key || '').toLowerCase();
+        const code = e.code || '';
+        const mod = e.ctrlKey || e.metaKey;
+        if (k === 'f12' || code === 'F12') return true;
+        if (mod && (code === 'KeyU' || k === 'u')) return true;                       // view source
+        if (mod && (code === 'KeyS' || k === 's')) return true;                       // save page
+        if (mod && e.shiftKey && ['KeyI', 'KeyJ', 'KeyC', 'KeyK'].includes(code)) return true; // devtools / console / inspect
+        if (e.metaKey && e.altKey && ['KeyI', 'KeyJ', 'KeyC', 'KeyU'].includes(code)) return true; // macOS variants
+        return false;
+    };
+
+    const requestDevUnlock = () => {
+        if (document.getElementById('admin-login-modal')) return;
+        openAdminPrompt('개발자 도구 잠금', '소스 보기 · 개발자 도구를 사용하려면 관리자 비밀번호를 입력하세요', '잠금 해제', () => {
+            devUnlocked = true;
+            try { sessionStorage.setItem('devToolsUnlocked', '1'); } catch (e) {}
+            if (typeof showToast === 'function') showToast('🔓 개발자 단축키가 잠금 해제되었습니다. 다시 눌러주세요.', '#22c55e');
+            else alert('🔓 개발자 단축키가 잠금 해제되었습니다. 다시 눌러주세요.');
+        });
+    };
+
+    window.addEventListener('keydown', (e) => {
+        if (devUnlocked || !isDevShortcut(e)) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        requestDevUnlock();
+    }, true);
+
+    window.addEventListener('contextmenu', (e) => {
+        if (devUnlocked) return;
+        const t = e.target;
+        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+        e.preventDefault();
+    }, true);
 
     const bindLogo = () => {
         const logo = document.getElementById('login-logo');
