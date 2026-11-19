@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 오디오 믹서</title>
+    <style>
+        :root { --p: #10b981; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 30px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        .mixer-desk { flex: 1; background: #000; border: 4px solid #333; border-radius: 24px; padding: 30px; display: flex; gap: 20px; overflow-x: auto; box-shadow: inset 0 0 50px rgba(0,0,0,0.5); }
+        .channel { width: 80px; display: flex; flex-direction: column; align-items: center; gap: 15px; background: linear-gradient(to bottom, #111, #222); padding: 20px 10px; border-radius: 12px; border: 1px solid #333; }
+        .knob { width: 30px; height: 30px; background: #444; border-radius: 50%; border: 2px solid #666; position: relative; }
+        .knob::after { content: ''; position: absolute; top: 5px; left: 14px; width: 2px; height: 10px; background: white; transform-origin: bottom; transform: rotate(0deg); }
+        .fader-slot { width: 10px; height: 200px; background: #000; border-radius: 5px; position: relative; border: 1px solid #444; }
+        .fader-handle { width: 40px; height: 20px; background: #555; position: absolute; left: -16px; bottom: 50%; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.4); cursor: pointer; border: 1px solid #777; transition: bottom 0.1s; }
+        .fader-handle::after { content: ''; position: absolute; top: 9px; left: 0; right: 0; height: 2px; background: white; opacity: 0.5; }
+        .v-meter { width: 4px; height: 40px; display: flex; flex-direction: column-reverse; gap: 2px; }
+        .v-led { height: 4px; background: #1a1a1a; }
+        .v-led.active.green { background: #10b981; }
+        .v-led.active.yellow { background: #fbbf24; }
+        .v-led.active.red { background: #ef4444; }
+        .label { font-size: 0.65rem; font-weight: 800; color: #666; text-transform: uppercase; }
+        .btn-solo { background: #333; color: #888; border: none; padding: 4px 8px; font-size: 0.6rem; border-radius: 4px; cursor: pointer; }
+        .btn-mute { background: #333; color: #888; border: none; padding: 4px 8px; font-size: 0.6rem; border-radius: 4px; cursor: pointer; }
+        .btn-mute.active { background: #ef4444; color: white; }
+    </style>
+</head>
+<body>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h1 style="font-size:1.5rem; margin:0; font-weight:900">🎛️ JuRam Master Mixer</h1>
+        <div style="display:flex; gap:10px;">
+            <button style="padding:10px 20px; border-radius:8px; border:none; background:#10b981; color:white; font-weight:800">마스터 세션 저장</button>
+        </div>
+    </div>
+
+    <div class="mixer-desk" id="desk">
+        <!-- JS will populate channels -->
+    </div>
+
+    <script>
+        const channels = ['MIC 1', 'MIC 2', 'GAME', 'MUSIC', 'SYSTEM', 'CHAT', 'FX 1', 'MASTER'];
+        const desk = document.getElementById('desk');
+
+        channels.forEach((name, i) => {
+            const ch = document.createElement('div');
+            ch.className = 'channel';
+            if(name === 'MASTER') ch.style.border = '2px solid #10b981';
+            
+            ch.innerHTML = `
+                <div class="knob" style="transform: rotate(${Math.random()*240-120}deg)"></div>
+                <div class="v-meter">
+                    ${Array(6).fill(0).map((_,j) => `<div class="v-led active ${j>4?'red':j>3?'yellow':'green'}"></div>`).join('')}
+                </div>
+                <div class="fader-slot">
+                    <div class="fader-handle" style="bottom: ${Math.random()*80}%"></div>
+                </div>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn-solo">S</button>
+                    <button class="btn-mute" onclick="this.classList.toggle('active')">M</button>
+                </div>
+                <div class="label">${name}</div>
+            `;
+            desk.appendChild(ch);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 솔리테어</title>
+    <style>
+        :root { --p: #10b981; --bg: #065f46; --card: #ffffff; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; overflow: hidden; }
+        .board { flex: 1; display: grid; grid-template-rows: 150px 1fr; gap: 20px; }
+        .top-row { display: flex; justify-content: space-between; }
+        .slots { display: flex; gap: 15px; }
+        .slot { width: 100px; height: 140px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; position: relative; }
+        .slot.foundation::after { content: '♠'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 3rem; color: rgba(255,255,255,0.1); }
+        .play-row { display: flex; gap: 20px; justify-content: center; }
+        .column { width: 100px; display: flex; flex-direction: column; align-items: center; }
+        .card { width: 100px; height: 140px; background: white; border-radius: 8px; border: 1px solid #ccc; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; cursor: grab; font-weight: 800; padding: 10px; box-sizing: border-box; margin-top: -110px; transition: transform 0.2s; }
+        @media (max-width: 700px) {
+            .board { grid-template-rows: 100px 1fr; gap: 10px; }
+            .slot, .card, .deck { width: 13vw; height: 18.2vw; font-size: 0.6rem; border-radius: 4px; padding: 2px; }
+            .card { margin-top: -14vw; }
+            .top-row { flex-wrap: wrap; gap: 5px; }
+        }
+        .card:first-child { margin-top: 0; }
+        .card:hover { transform: translateY(-5px); z-index: 10; }
+        .card.red { color: #ef4444; }
+        .deck { width: 100px; height: 140px; border-radius: 8px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: 3px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .btn { padding: 10px 25px; border-radius: 30px; border: none; background: white; color: var(--bg); font-weight: 800; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; color:white;">
+        <h1 style="font-size: 1.5rem; margin:0">🃏 주람 솔리테어</h1>
+        <div style="display:flex; gap:20px; align-items:center;">
+            <span>SCORE: 1,420</span>
+            <button class="btn" onclick="location.reload()">새 게임</button>
+        </div>
+    </div>
+
+    <div class="board">
+        <div class="top-row">
+            <div class="slots">
+                <div class="deck"></div>
+                <div class="slot" style="border:none; background:rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center;">
+                    <div class="card red" style="margin-top:0">Q ♥</div>
+                </div>
+            </div>
+            <div class="slots">
+                <div class="slot foundation"></div>
+                <div class="slot foundation"></div>
+                <div class="slot foundation"></div>
+                <div class="slot foundation"></div>
+            </div>
+        </div>
+        
+        <div class="play-row">
+            <div class="column"><div class="card">A ♠</div></div>
+            <div class="column"><div class="card">K ♣</div><div class="card red">Q ♦</div></div>
+            <div class="column"><div class="card">J ♠</div><div class="card red">10 ♥</div><div class="card">9 ♣</div></div>
+            <div class="column"><div class="card red">7 ♥</div></div>
+            <div class="column"><div class="card">4 ♣</div></div>
+            <div class="column"><div class="card red">5 ♦</div></div>
+            <div class="column"><div class="card">2 ♠</div></div>
+        </div>
+    </div>
+</body>
+</html>

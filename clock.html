@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+    body { background: #0b0f19; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: 'Segoe UI', sans-serif; }
+    .clock-container { position: relative; width: 300px; height: 300px; border-radius: 50%; background: #1e293b; border: 15px solid #334155; box-shadow: 0 0 50px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; }
+    .hand { position: absolute; bottom: 50%; width: 50%; transform-origin: 100% 100%; border-radius: 10px; transition: all 0.05s cubic-bezier(0.1, 2.7, 0.58, 1); }
+    .hour { width: 30%; height: 8px; background: #94a3b8; left: 20%; z-index: 1; }
+    .minute { width: 40%; height: 5px; background: #cbd5e1; left: 10%; z-index: 2; }
+    .second { width: 45%; height: 2px; background: #ef4444; left: 5%; z-index: 3; }
+    .center-dot { position: absolute; width: 15px; height: 15px; background: #ef4444; border-radius: 50%; z-index: 4; }
+    .digital { font-size: 2.5rem; font-weight: 900; margin-top: 30px; letter-spacing: 2px; color: #60a5fa; text-shadow: 0 0 10px rgba(96,165,250,0.5); }
+    .date { color: #94a3b8; font-size: 1.2rem; margin-top: 10px; }
+</style>
+</head>
+<body>
+    <div class="clock-container">
+        <div class="hand hour" id="hour"></div>
+        <div class="hand minute" id="min"></div>
+        <div class="hand second" id="sec"></div>
+        <div class="center-dot"></div>
+    </div>
+    <div class="digital" id="digital">00:00:00</div>
+    <div class="date" id="date">MONDAY, JAN 1</div>
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            const sec = now.getSeconds(); const min = now.getMinutes(); const hour = now.getHours();
+            
+            const secDeg = ((sec / 60) * 360) + 90;
+            const minDeg = ((min / 60) * 360) + ((sec/60)*6) + 90;
+            const hourDeg = ((hour / 12) * 360) + ((min/60)*30) + 90;
+
+            document.getElementById('sec').style.transform = `rotate(${secDeg}deg)`;
+            document.getElementById('min').style.transform = `rotate(${minDeg}deg)`;
+            document.getElementById('hour').style.transform = `rotate(${hourDeg}deg)`;
+
+            document.getElementById('digital').innerText = now.toLocaleTimeString('en-US', { hour12: false });
+            document.getElementById('date').innerText = now.toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body>
+</html>

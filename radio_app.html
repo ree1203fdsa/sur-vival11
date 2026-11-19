@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 온라인 라디오</title>
+    <style>
+        :root { --p: #f59e0b; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; justify-content: center; align-items: center; }
+        .player-box { width: 400px; background: var(--card); border-radius: 30px; padding: 40px; border: 1px solid rgba(255,255,255,0.05); text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.5); }
+        .station-icon { width: 120px; height: 120px; border-radius: 50%; background: #000; margin: 0 auto 30px; display: flex; align-items: center; justify-content: center; font-size: 4rem; border: 5px solid var(--p); box-shadow: 0 0 30px rgba(245, 158, 11, 0.2); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        h1 { font-size: 1.5rem; font-weight: 900; margin: 0 0 10px; }
+        .desc { color: #94a3b8; font-size: 0.9rem; margin-bottom: 40px; }
+        .controls { display: flex; justify-content: center; gap: 30px; align-items: center; }
+        .btn { background: none; border: none; color: white; cursor: pointer; font-size: 2rem; transition: 0.2s; }
+        .btn:hover { color: var(--p); transform: scale(1.1); }
+        .status { margin-top: 40px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 0.8rem; font-weight: 700; color: var(--p); }
+        .v-bar { width: 3px; height: 12px; background: var(--p); animation: grow 1s infinite alternate; }
+        @keyframes grow { from { height: 4px; } to { height: 16px; } }
+    </style>
+</head>
+<body>
+    <div class="player-box">
+        <div class="station-icon">📻</div>
+        <h1>JuRam Jazz Night</h1>
+        <div class="desc">Chilling with smooth jazz on JuRam OS</div>
+        
+        <div class="controls">
+            <button class="btn">⏮</button>
+            <button class="btn" style="font-size: 3.5rem;">⏸</button>
+            <button class="btn">⏭</button>
+        </div>
+
+        <div class="status">
+            <div class="v-bar" style="animation-delay: 0.1s"></div>
+            <div class="v-bar" style="animation-delay: 0.3s"></div>
+            <div class="v-bar" style="animation-delay: 0.2s"></div>
+            <span>NOW ON AIR - [LIVE]</span>
+            <div class="v-bar" style="animation-delay: 0.4s"></div>
+            <div class="v-bar" style="animation-delay: 0.1s"></div>
+            <div class="v-bar" style="animation-delay: 0.3s"></div>
+        </div>
+        
+        <div style="margin-top:30px; border-top:1px solid #334155; padding-top:20px;">
+            <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#64748b;">
+                <span>채널 목록</span>
+                <span style="color:var(--p)">더 보기 ›</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

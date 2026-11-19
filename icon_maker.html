@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 아이콘 제작기</title>
+    <style>
+        :root { --p: #3b82f6; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; box-sizing: border-box; }
+        .editor-box { display: flex; gap: 40px; background: var(--card); padding: 40px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+        .preview-pane { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        .icon-bg { width: 200px; height: 200px; border-radius: 40px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 6rem; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .controls-pane { width: 300px; display: flex; flex-direction: column; gap: 20px; }
+        .ctrl-group label { display: block; font-size: 0.8rem; margin-bottom: 8px; color: #94a3b8; font-weight: 700; text-transform: uppercase; }
+        select, input[type=text] { width: 100%; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 12px; }
+        .color-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+        .color-opt { aspect-ratio: 1; border-radius: 6px; cursor: pointer; border: 2px solid transparent; }
+        .color-opt.active { border-color: white; }
+        .btn { padding: 15px; border-radius: 12px; border: none; background: #22c55e; color: white; font-weight: 800; font-size: 1rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1 style="margin-bottom: 40px; font-weight: 900; font-size: 2rem;">💠 JuRam Icon Studio</h1>
+    
+    <div class="editor-box">
+        <div class="preview-pane">
+            <div class="icon-bg" id="icon-preview">💿</div>
+            <div style="font-size: 0.9rem; color: #64748b;">512 x 512 Vector Preview</div>
+        </div>
+        
+        <div class="controls-pane">
+            <div class="ctrl-group">
+                <label>아이콘 이모지/심볼</label>
+                <input type="text" id="icon-input" value="💿" oninput="document.getElementById('icon-preview').textContent = this.value">
+            </div>
+            <div class="ctrl-group">
+                <label>배경 스타일</label>
+                <div class="color-grid">
+                    <div class="color-opt" style="background: linear-gradient(135deg, #3b82f6, #8b5cf6);" onclick="setBg(this.style.background)"></div>
+                    <div class="color-opt" style="background: linear-gradient(135deg, #f43f5e, #fb923c);" onclick="setBg(this.style.background)"></div>
+                    <div class="color-opt" style="background: linear-gradient(135deg, #10b981, #3b82f6);" onclick="setBg(this.style.background)"></div>
+                    <div class="color-opt" style="background: linear-gradient(135deg, #fbbf24, #f59e0b);" onclick="setBg(this.style.background)"></div>
+                    <div class="color-opt" style="background: #1e293b;" onclick="setBg(this.style.background)"></div>
+                </div>
+            </div>
+            <div class="ctrl-group">
+                <label>곡률 (Corner Radius)</label>
+                <input type="range" min="0" max="100" value="40" oninput="document.getElementById('icon-preview').style.borderRadius = this.value + 'px'">
+            </div>
+            <button class="btn" onclick="alert('아이콘이 시스템 리소스 폴더에 저장되었습니다.')">아이콘 생성 및 저장</button>
+        </div>
+    </div>
+
+    <script>
+        function setBg(bg) {
+            document.getElementById('icon-preview').style.background = bg;
+        }
+    </script>
+</body>
+</html>

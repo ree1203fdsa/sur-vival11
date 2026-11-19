@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>JuRam Code Editor</title>
+    <style>
+        body { margin: 0; background: #1e1e1e; color: #d4d4d4; font-family: 'Consolas', monospace; display: flex; flex-direction: column; height: 100vh; }
+        .toolbar { padding: 10px; background: #333; display: flex; gap: 10px; border-bottom: 1px solid #444; }
+        textarea { flex: 1; background: #1e1e1e; color: #9cdcfe; border: none; padding: 20px; font-size: 16px; outline: none; resize: none; overflow-y: auto; }
+        button { background: #0e639c; color: white; border: none; padding: 5px 15px; border-radius: 3px; cursor: pointer; font-size: 12px; }
+        button:hover { background: #1177bb; }
+        .status { padding: 5px 10px; font-size: 12px; background: #007acc; color: white; }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button onclick="runCode()">▶ 실행 (Run JS)</button>
+        <button onclick="clearAll()">초기화</button>
+        <button style="background:#444;">💾 저장 (데모)</button>
+    </div>
+    <textarea id="editor" spellcheck="false" placeholder="// 코드를 작성하세요..."></textarea>
+    <div class="status" id="status">Ready - JavaScript Engine Connected</div>
+
+    <script>
+        const editor = document.getElementById('editor');
+        const status = document.getElementById('status');
+
+        function runCode() {
+            const code = editor.value;
+            try {
+                status.textContent = "Running...";
+                // OS 컨텍스트에서 실행
+                if (window.parent) {
+                    window.parent.eval(code);
+                } else {
+                    eval(code);
+                }
+                status.textContent = "Done - Execution Successful";
+                status.style.background = "#28a745";
+            } catch (e) {
+                status.textContent = "Error: " + e.message;
+                status.style.background = "#dc3545";
+            }
+        }
+
+        function clearAll() {
+            editor.value = '';
+            status.textContent = "Cleared";
+            status.style.background = "#007acc";
+        }
+    </script>
+</body>
+</html>

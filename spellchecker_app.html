@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 맞춤법 검사기</title>
+    <style>
+        :root { --p: #3b82f6; --bg: #f8fafc; --text: #1e293b; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 30px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        .head { display: flex; align-items: center; gap: 12px; margin-bottom: 25px; }
+        .editor-container { flex: 1; display: flex; gap: 20px; overflow: hidden; }
+        .input-panel { flex: 1; display: flex; flex-direction: column; }
+        .result-panel { width: 300px; background: white; border-radius: 20px; border: 1px solid #e2e8f0; padding: 20px; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        textarea { flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 25px; font-size: 1.1rem; line-height: 1.8; resize: none; outline: none; transition: 0.3s; }
+        textarea:focus { border-color: var(--p); box-shadow: 0 0 20px rgba(59, 130, 246, 0.1); }
+        .suggestion { background: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; border-radius: 8px; margin-bottom: 15px; cursor: pointer; }
+        .suggestion .wrong { color: #ef4444; font-weight: 800; text-decoration: line-through; display: block; font-size: 0.8rem; }
+        .suggestion .right { color: #10b981; font-weight: 800; display: block; font-size: 1rem; margin-top: 5px; }
+        .suggestion .reason { font-size: 0.75rem; color: #64748b; margin-top: 5px; }
+        .btn { padding: 12px 24px; border-radius: 12px; border: none; background: var(--p); color: white; font-weight: 800; cursor: pointer; align-self: flex-end; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="head">
+        <span style="font-size: 1.5rem;">✍️</span>
+        <h1 style="font-size: 1.3rem; margin: 0; font-weight: 900;">주람 맞춤법 검사기</h1>
+    </div>
+
+    <div class="editor-container">
+        <div class="input-panel">
+            <textarea id="text-in" placeholder="검사할 문장을 입력하세요..." oninput="check()">오랬만에 친구를 만났는대 정말 반가웠어요.</textarea>
+            <button class="btn">전체 복사</button>
+        </div>
+        
+        <div class="result-panel">
+            <h3 style="font-size: 0.9rem; margin-top: 0; color: #64748b;">찾은 오류 <span style="color: #ef4444;">2개</span></h3>
+            <div id="results">
+                <div class="suggestion">
+                    <span class="wrong">오랬만에</span>
+                    <span class="right">오랜만에</span>
+                    <p class="reason">'오래간만'의 준말이므로 '오랜만에'가 올바른 표기입니다.</p>
+                </div>
+                <div class="suggestion">
+                    <span class="wrong">만났는대</span>
+                    <span class="right">만났는데</span>
+                    <p class="reason">뒷절과 대조되거나 연결할 때 쓰이는 어미는 '-는데'입니다.</p>
+                </div>
+            </div>
+            <div style="flex:1"></div>
+            <p style="font-size: 0.7rem; color: #94a3b8; text-align: center;">JuRam Spell Engine v5.0</p>
+        </div>
+    </div>
+
+    <script>
+        function check() {
+            // In real app, this would call an API
+        }
+    </script>
+</body>
+</html>

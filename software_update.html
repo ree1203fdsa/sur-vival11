@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 소프트웨어 업데이트</title>
+    <style>
+        :root { --p: #10b981; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; box-sizing: border-box; text-align: center; }
+        .icon { font-size: 5rem; margin-bottom: 20px; animation: rotate 10s linear infinite; }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        h1 { font-size: 2rem; font-weight: 900; margin: 0 0 10px; }
+        .version { font-size: 1.1rem; color: var(--p); font-weight: 700; margin-bottom: 40px; }
+        .status-box { background: var(--card); padding: 30px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); width: 100%; max-width: 500px; }
+        .progress-container { height: 8px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; margin: 20px 0; display: none; }
+        .progress-bar { width: 0%; height: 100%; background: var(--p); box-shadow: 0 0 15px var(--p); transition: 0.3s; }
+        .btn { padding: 15px 40px; border-radius: 15px; border: none; background: var(--p); color: white; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.3s; }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(16, 185, 129, 0.4); }
+        .changelog { margin-top: 30px; text-align: left; font-size: 0.9rem; color: #94a3b8; }
+        .changelog h3 { color: white; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="icon">🔄</div>
+    <h1>소프트웨어 업데이트</h1>
+    <div class="version">최신 상태입니다 (v175.4.2)</div>
+    
+    <div class="status-box">
+        <p id="msg">마지막 확인: 오늘 오후 6:15</p>
+        <div class="progress-container" id="pc">
+            <div class="progress-bar" id="pb"></div>
+        </div>
+        <button class="btn" id="btn" onclick="checkUpdate()">업데이트 확인</button>
+    </div>
+
+    <div class="status-box" style="margin-top: 20px;">
+        <div class="changelog">
+            <h3>패치 노트 (v175.4.2)</h3>
+            <ul style="padding-left: 20px;">
+                <li>앱 호환성 레이어 4.0 적용</li>
+                <li>멀티플 태스킹 성능 20% 최적화</li>
+                <li>보안 커널 패치 (2026-04)</li>
+                <li>시스템 위젯 5종 추가</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function checkUpdate() {
+            const btn = document.getElementById('btn');
+            const pc = document.getElementById('pc');
+            const pb = document.getElementById('pb');
+            const msg = document.getElementById('msg');
+            
+            btn.style.display = 'none';
+            pc.style.display = 'block';
+            msg.textContent = '서버에서 패키지 정보를 가져오는 중...';
+            
+            let p = 0;
+            const iv = setInterval(() => {
+                p += Math.random() * 15;
+                if(p >= 100) {
+                    p = 100;
+                    clearInterval(iv);
+                    setTimeout(() => {
+                        alert('이미 최신 버전이 설치되어 있습니다.');
+                        btn.style.display = 'inline-block';
+                        pc.style.display = 'none';
+                        msg.textContent = '마지막 확인: 방금 전';
+                        pb.style.width = '0%';
+                    }, 500);
+                }
+                pb.style.width = p + '%';
+            }, 500);
+        }
+    </script>
+</body>
+</html>

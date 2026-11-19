@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>3D 군사기지 시뮬레이터</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body,html{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Orbitron',sans-serif;color:#fff;user-select:none;touch-action:none}
+canvas{display:block;width:100%;height:100%}
+
+/* Login Screen */
+#login-screen{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#0a1a0a 0%,#1a2e1a 50%,#0a0f0a 100%)}
+#login-screen::before{content:'';position:absolute;inset:0;background:url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="1" height="1" fill="rgba(255,255,255,0.03)"/></svg>');pointer-events:none}
+.login-panel{background:rgba(20,30,20,0.9);border:1px solid rgba(222,184,135,0.3);backdrop-filter:blur(20px);padding:40px;border-radius:20px;text-align:center;width:90%;max-width:420px;animation:slideUp .6s ease-out}
+.login-panel h1{font-size:1.8rem;color:#deb887;letter-spacing:3px;margin-bottom:5px;text-shadow:0 0 20px rgba(222,184,135,0.3)}
+.login-panel .sub{color:#888;font-size:0.7rem;margin-bottom:25px;letter-spacing:2px}
+.login-panel input{width:100%;padding:14px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:10px;font-size:1rem;font-family:inherit;outline:none;margin-bottom:12px;transition:.3s}
+.login-panel input:focus{border-color:#deb887}
+.login-panel button{width:100%;padding:14px;background:linear-gradient(135deg,#4b5320,#556b2f);border:none;color:#fff;font-weight:700;border-radius:10px;cursor:pointer;font-size:1rem;font-family:inherit;transition:.3s;margin-top:5px}
+.login-panel button:hover{filter:brightness(1.2);transform:translateY(-1px)}
+.branch-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}
+.branch-btn{padding:12px;background:rgba(75,83,32,0.3);border:1px solid rgba(222,184,135,0.2);color:#deb887;border-radius:10px;cursor:pointer;font-family:inherit;font-size:0.85rem;font-weight:700;transition:.3s}
+.branch-btn:hover{background:rgba(75,83,32,0.6);border-color:#deb887}
+@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* Lobby Screen */
+#lobby-screen{position:fixed;inset:0;z-index:90;display:none;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(180deg,#0a1a0a,#1a2e1a)}
+.lobby-panel{background:rgba(20,30,20,0.92);border:1px solid rgba(222,184,135,0.2);padding:30px;border-radius:20px;text-align:center;width:90%;max-width:450px;animation:slideUp .5s ease-out}
+.lobby-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:15px 0;text-align:left;font-size:0.75rem}
+.lobby-stats div{background:rgba(0,0,0,0.3);padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.05)}
+.lobby-stats .label{color:#888;font-size:0.6rem;text-transform:uppercase}
+.lobby-stats .value{color:#deb887;font-weight:700;font-size:0.9rem}
+.deploy-btn{width:100%;padding:16px;background:linear-gradient(135deg,#8b0000,#b91c1c);border:none;color:#fff;font-weight:900;border-radius:12px;cursor:pointer;font-size:1.1rem;font-family:inherit;letter-spacing:2px;transition:.3s;margin-top:10px}
+.deploy-btn:hover{filter:brightness(1.2);transform:translateY(-2px);box-shadow:0 5px 25px rgba(139,0,0,0.5)}
+
+/* HUD */
+#hud{position:fixed;top:15px;left:15px;z-index:50;background:rgba(10,20,10,0.85);backdrop-filter:blur(10px);padding:12px 16px;border-radius:12px;border:1px solid rgba(222,184,135,0.2);pointer-events:none;min-width:160px}
+#hud .row{display:flex;justify-content:space-between;align-items:center;margin:3px 0;font-size:0.7rem}
+#hud .label{color:#888}
+#hud .val{color:#deb887;font-weight:700}
+.bar-bg{width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;margin-top:2px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .3s}
+#hp-bar{background:#ef4444}
+#stamina-bar{background:#22c55e}
+#hunger-bar{background:#f59e0b}
+#exp-bar{background:linear-gradient(90deg,#deb887,#f59e0b)}
+
+/* Crosshair */
+#crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:50;pointer-events:none;display:none}
+#crosshair::before,#crosshair::after{content:'';position:absolute;background:rgba(255,255,255,0.7)}
+#crosshair::before{width:20px;height:2px;top:50%;left:50%;transform:translate(-50%,-50%)}
+#crosshair::after{width:2px;height:20px;top:50%;left:50%;transform:translate(-50%,-50%)}
+
+/* Minimap */
+#minimap{position:fixed;top:15px;right:15px;z-index:50;width:140px;height:140px;border-radius:50%;border:2px solid rgba(222,184,135,0.3);overflow:hidden;background:rgba(0,0,0,0.5);display:none}
+#minimap canvas{width:100%;height:100%}
+
+/* Location Label */
+#location-label{position:fixed;bottom:180px;left:50%;transform:translateX(-50%);z-index:50;background:rgba(10,20,10,0.8);padding:8px 20px;border-radius:8px;border:1px solid rgba(222,184,135,0.3);font-size:0.85rem;color:#deb887;font-weight:700;display:none;pointer-events:none;white-space:nowrap}
+
+/* Mobile Joystick */
+#joystick-zone{position:fixed;bottom:30px;left:30px;z-index:60;width:130px;height:130px;display:none}
+#joystick-base{width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);position:relative}
+#joystick-thumb{width:50px;height:50px;border-radius:50%;background:rgba(222,184,135,0.4);border:2px solid rgba(222,184,135,0.6);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);transition:none}
+
+/* Mobile Action Buttons */
+#mobile-actions{position:fixed;bottom:30px;right:20px;z-index:60;display:none;flex-direction:column;gap:10px;align-items:flex-end}
+.action-btn{width:55px;height:55px;border-radius:50%;border:2px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:#fff;font-size:1.2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.action-btn:active{background:rgba(222,184,135,0.3);border-color:#deb887}
+.action-btn.sprint{background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.3)}
+
+/* Toast */
+#toast-box{position:fixed;top:70px;right:15px;z-index:200;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:rgba(20,30,20,0.95);border:1px solid #deb887;color:#fff;padding:10px 16px;border-radius:10px;font-size:0.8rem;animation:toastIn .3s ease,toastOut .3s ease 3s forwards;max-width:280px}
+@keyframes toastIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+@keyframes toastOut{from{opacity:1}to{opacity:0;transform:translateX(30px)}}
+
+/* Day/Night Overlay */
+#night-overlay{position:fixed;inset:0;z-index:5;pointer-events:none;background:transparent;transition:background 3s}
+
+/* Weather */
+#weather-hud{position:fixed;top:15px;left:50%;transform:translateX(-50%);z-index:50;background:rgba(10,20,10,0.8);padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);font-size:0.75rem;display:none;pointer-events:none}
+
+/* Kill Feed */
+#kill-feed{position:fixed;top:70px;left:15px;z-index:50;display:flex;flex-direction:column;gap:4px;pointer-events:none}
+.kill-entry{background:rgba(0,0,0,0.7);padding:5px 10px;border-radius:5px;font-size:0.7rem;border-left:3px solid #ef4444;animation:toastIn .3s ease}
+
+/* Compass */
+#compass{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:50;display:none;pointer-events:none;font-size:0.7rem;color:rgba(255,255,255,0.6);letter-spacing:4px}
+
+/* Interaction Prompt */
+#interact-prompt{position:fixed;bottom:220px;left:50%;transform:translateX(-50%);z-index:50;display:none;pointer-events:none;background:rgba(0,0,0,0.7);padding:8px 16px;border-radius:8px;border:1px solid rgba(222,184,135,0.4);font-size:0.8rem;color:#deb887}
+
+@media(max-width:768px){
+    #hud{top:10px;left:10px;padding:8px 12px;min-width:130px}
+    #hud .row{font-size:0.6rem}
+    #minimap{width:100px;height:100px;top:10px;right:10px}
+    #location-label{bottom:170px;font-size:0.75rem}
+}
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login-screen">
+    <div class="login-panel">
+        <h1>MILITARY SIM</h1>
+        <div class="sub">3D TACTICAL TRAINING SIMULATOR</div>
+        <input type="text" id="input-name" placeholder="이름 (닉네임)" maxlength="12">
+        <div class="branch-grid" id="branch-select" style="display:none">
+            <div class="branch-btn" data-branch="육군">🪖 육군</div>
+            <div class="branch-btn" data-branch="해군">⚓ 해군</div>
+            <div class="branch-btn" data-branch="공군">✈️ 공군</div>
+            <div class="branch-btn" data-branch="해병대">🔱 해병대</div>
+        </div>
+        <button id="btn-start">입 대</button>
+    </div>
+</div>
+
+<!-- Lobby Screen -->
+<div id="lobby-screen">
+    <div class="lobby-panel">
+        <div style="font-size:2rem;margin-bottom:5px">🎖️</div>
+        <div id="lobby-rank" style="color:#deb887;font-size:1.1rem;font-weight:900"></div>
+        <div id="lobby-name" style="font-size:0.85rem;color:#ccc;margin-bottom:10px"></div>
+        <div class="lobby-stats">
+            <div><div class="label">소속</div><div class="value" id="lobby-branch"></div></div>
+            <div><div class="label">자금</div><div class="value" id="lobby-money">1,000</div></div>
+            <div><div class="label">경험치</div><div class="value"><span id="lobby-exp">0</span> / <span id="lobby-exp-max">100</span></div></div>
+            <div><div class="label">체력</div><div class="value">100 / 100</div></div>
+        </div>
+        <button class="deploy-btn" id="btn-deploy">⚔️ 작전 구역 배치</button>
+    </div>
+</div>
+
+<!-- Game Canvas -->
+<canvas id="game-canvas"></canvas>
+<div id="night-overlay"></div>
+
+<!-- HUD -->
+<div id="hud" style="display:none">
+    <div class="row"><span class="label">이름</span><span class="val" id="hud-name"></span></div>
+    <div class="row"><span class="label">계급</span><span class="val" id="hud-rank"></span></div>
+    <div class="row"><span class="label">소속</span><span class="val" id="hud-branch"></span></div>
+    <div style="margin-top:6px">
+        <div class="row"><span class="label">HP</span><span class="val" id="hud-hp">100</span></div>
+        <div class="bar-bg"><div class="bar-fill" id="hp-bar" style="width:100%"></div></div>
+    </div>
+    <div>
+        <div class="row"><span class="label">스태미나</span><span class="val" id="hud-stamina">100</span></div>
+        <div class="bar-bg"><div class="bar-fill" id="stamina-bar" style="width:100%"></div></div>
+    </div>
+    <div>
+        <div class="row"><span class="label">배고픔</span><span class="val" id="hud-hunger">100</span></div>
+        <div class="bar-bg"><div class="bar-fill" id="hunger-bar" style="width:100%"></div></div>
+    </div>
+    <div style="margin-top:4px">
+        <div class="row"><span class="label">EXP</span><span class="val" id="hud-exp">0 / 100</span></div>
+        <div class="bar-bg"><div class="bar-fill" id="exp-bar" style="width:0%"></div></div>
+    </div>
+</div>
+
+<!-- Crosshair -->
+<div id="crosshair"></div>
+
+<!-- Minimap -->
+<div id="minimap"><canvas id="minimap-canvas" width="140" height="140"></canvas></div>
+
+<!-- Location Label -->
+<div id="location-label"></div>
+
+<!-- Compass -->
+<div id="compass">N</div>
+
+<!-- Interaction Prompt -->
+<div id="interact-prompt">[E] 상호작용</div>
+
+<!-- Weather HUD -->
+<div id="weather-hud"></div>
+
+<!-- Kill Feed -->
+<div id="kill-feed"></div>
+
+<!-- Toast -->
+<div id="toast-box"></div>
+
+<!-- Mobile Controls -->
+<div id="joystick-zone">
+    <div id="joystick-base"><div id="joystick-thumb"></div></div>
+</div>
+<div id="mobile-actions">
+    <div class="action-btn" id="btn-shoot">🔫</div>
+    <div class="action-btn sprint" id="btn-sprint">🏃</div>
+    <div class="action-btn" id="btn-jump">⬆️</div>
+</div>
+
+<script>
+// ============================================================
+// 3D Military Simulator - Standalone
+// ============================================================
+const GAME = {
+    player: { name:'', rank:'이등병', branch:'육군', hp:100, maxHp:100, stamina:100, maxStamina:100, hunger:100, exp:0, expNeeded:100, money:1000, level:1 },
+    keys: {},
+    velocity: null,
+    prevTime: 0,
+    isMobile: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent),
+    isPointerLocked: false,
+    joystick: { active:false, ox:0, oy:0, dx:0, dy:0 },
+    touchLook: { active:false, id:-1, lx:0, ly:0 },
+    isSprinting: false,
+    canJump: true,
+    scene: null,
+    camera: null,
+    renderer: null,
+    buildings: [],
+    gameTime: 0,
+    weather: 'clear',
+    weatherTimer: 0
+};
+
+const RANKS = ["이등병","일등병","상등병","병장","하사","중사","상사","원사","준위","소위","중위","대위","소령","중령","대령","준장","소장","중장","대장","원수"];
+const EXP_TABLE = [100,250,500,800,1200,1800,2500,3500,5000,7000,10000,14000,19000,25000,33000,42000,55000,70000,90000,999999];
+
+const LOCATIONS = {
+    "위병소":      {x:0,   z:200, color:0x8b4513, size:[10,5,5], desc:"출입 통제소"},
+    "연병장":      {x:0,   z:0,   color:0xc2b280, size:[100,0.3,100], desc:"제식훈련장"},
+    "본청":        {x:0,   z:-100,color:0x2f4f4f, size:[40,20,20], desc:"지휘부"},
+    "생활관":      {x:-60, z:0,   color:0x4b5320, size:[30,10,50], desc:"병사 숙소"},
+    "병영식당":    {x:60,  z:0,   color:0x556b2f, size:[30,8,40], desc:"식사 시설"},
+    "행정실":      {x:-40, z:-80, color:0x333333, size:[20,10,20], desc:"행정 업무"},
+    "사격장":      {x:100, z:-100,color:0x222222, size:[40,3,80], desc:"실탄 사격"},
+    "강당":        {x:60,  z:-80, color:0x8b0000, size:[30,15,30], desc:"교육/집회"},
+    "유격장":      {x:-100,z:50,  color:0x654321, size:[50,0.5,50], desc:"체력 훈련"},
+    "탄약고":      {x:120, z:50,  color:0x111111, size:[20,8,20], desc:"탄약 보관"},
+    "보급창고":    {x:-60, z:80,  color:0x666666, size:[30,10,30], desc:"보급품 관리"},
+    "PX":          {x:30,  z:80,  color:0x1a3a8a, size:[20,8,20], desc:"군 매점"},
+    "체력단련실":  {x:-30, z:80,  color:0xff8c00, size:[20,10,20], desc:"헬스장"},
+    "면회실":      {x:20,  z:180, color:0x008080, size:[15,8,15], desc:"면회 공간"},
+    "의무대":      {x:-120,z:-20, color:0xb91c1c, size:[20,8,20], desc:"의료 시설"},
+    "활주로":      {x:200, z:0,   color:0x333333, size:[50,0.2,300], desc:"항공기 이착륙"},
+    "원수실":      {x:0,   z:-150,color:0x11111a, size:[25,14,25], desc:"최고 지휘관실"},
+    "화생방실":    {x:-120,z:-100,color:0x3d352e, size:[20,8,20], desc:"화생방 훈련"}
+};
+
+// ---- Login / Lobby ----
+const loginScreen = document.getElementById('login-screen');
+const lobbyScreen = document.getElementById('lobby-screen');
+const nameInput = document.getElementById('input-name');
+const branchSelect = document.getElementById('branch-select');
+const startBtn = document.getElementById('btn-start');
+
+let loginStep = 0;
+startBtn.onclick = () => {
+    if (loginStep === 0) {
+        const n = nameInput.value.trim();
+        if (!n) return;
+        GAME.player.name = n;
+        nameInput.style.display = 'none';
+        branchSelect.style.display = 'grid';
+        startBtn.style.display = 'none';
+        loginStep = 1;
+    }
+};
+branchSelect.querySelectorAll('.branch-btn').forEach(btn => {
+    btn.onclick = () => {
+        GAME.player.branch = btn.dataset.branch;
+        loginScreen.style.display = 'none';
+        showLobby();
+    };
+});
+
+function showLobby() {
+    lobbyScreen.style.display = 'flex';
+    document.getElementById('lobby-rank').textContent = `[${GAME.player.rank}]`;
+    document.getElementById('lobby-name').textContent = GAME.player.name;
+    document.getElementById('lobby-branch').textContent = GAME.player.branch;
+    document.getElementById('lobby-money').textContent = GAME.player.money.toLocaleString();
+    document.getElementById('lobby-exp').textContent = GAME.player.exp;
+    document.getElementById('lobby-exp-max').textContent = GAME.player.expNeeded;
+}
+
+document.getElementById('btn-deploy').onclick = () => {
+    lobbyScreen.style.display = 'none';
+    initGame();
+};
+
+// ---- Toast ----
+function toast(msg, color) {
+    const box = document.getElementById('toast-box');
+    const t = document.createElement('div');
+    t.className = 'toast';
+    if (color) t.style.borderColor = color;
+    t.textContent = msg;
+    box.appendChild(t);
+    setTimeout(() => t.remove(), 3400);
+}
+
+// ---- Init 3D Game ----
+function initGame() {
+    const canvas = document.getElementById('game-canvas');
+
+    // Scene
+    GAME.scene = new THREE.Scene();
+    GAME.scene.background = new THREE.Color(0x87ceeb);
+    GAME.scene.fog = new THREE.Fog(0x87ceeb, 100, 600);
+
+    // Camera
+    GAME.camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    GAME.camera.position.set(0, 1.7, 210);
+    GAME.camera.rotation.order = 'YXZ';
+
+    // Renderer
+    GAME.renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+    GAME.renderer.setSize(window.innerWidth, window.innerHeight);
+    GAME.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    GAME.renderer.shadowMap.enabled = true;
+    GAME.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    // Lights
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    GAME.scene.add(ambient);
+    const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+    sun.position.set(100, 200, 100);
+    sun.castShadow = true;
+    sun.shadow.camera.left = -300; sun.shadow.camera.right = 300;
+    sun.shadow.camera.top = 300; sun.shadow.camera.bottom = -300;
+    sun.shadow.mapSize.width = 2048; sun.shadow.mapSize.height = 2048;
+    GAME.scene.add(sun);
+    GAME.sun = sun;
+    GAME.ambient = ambient;
+
+    // Sky sphere
+    const skyGeo = new THREE.SphereGeometry(500, 32, 32);
+    const skyMat = new THREE.MeshBasicMaterial({color:0x87ceeb, side:THREE.BackSide});
+    GAME.skyMesh = new THREE.Mesh(skyGeo, skyMat);
+    GAME.scene.add(GAME.skyMesh);
+
+    // Ground
+    const groundGeo = new THREE.PlaneGeometry(2000, 2000, 50, 50);
+    const groundMat = new THREE.MeshStandardMaterial({color:0x5a6b3c, roughness:0.9});
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI/2;
+    ground.receiveShadow = true;
+    GAME.scene.add(ground);
+
+    // Parade ground (연병장 - sandy flat area)
+    const paradeGeo = new THREE.PlaneGeometry(100, 100);
+    const paradeMat = new THREE.MeshStandardMaterial({color:0xc2b280, roughness:0.95});
+    const parade = new THREE.Mesh(paradeGeo, paradeMat);
+    parade.rotation.x = -Math.PI/2;
+    parade.position.set(0, 0.05, 0);
+    parade.receiveShadow = true;
+    GAME.scene.add(parade);
+
+    // Roads
+    createRoad(0, 0.06, 100, 6, 300);   // Main vertical road
+    createRoad(0, 0.06, 0, 400, 6);     // Main horizontal road
+    createRoad(-60, 0.06, 40, 6, 100);  // Side road to supply
+    createRoad(60, 0.06, -40, 6, 100);  // Side road to range
+
+    // Buildings
+    GAME.buildings = [];
+    Object.entries(LOCATIONS).forEach(([name, data]) => {
+        if (name === '연병장') return; // Already created as parade ground
+        const bldg = createBuilding(name, data);
+        GAME.buildings.push({name, data, mesh:bldg});
+    });
+
+    // Trees
+    for (let i = 0; i < 200; i++) {
+        const x = (Math.random()-0.5)*1600;
+        const z = (Math.random()-0.5)*1600;
+        if (Math.abs(x) < 250 && Math.abs(z) < 250) continue;
+        createTree(x, z);
+    }
+    // Trees near buildings (scatter)
+    for (let i = 0; i < 60; i++) {
+        const x = (Math.random()-0.5)*500;
+        const z = (Math.random()-0.5)*500;
+        let tooClose = false;
+        for (const [,d] of Object.entries(LOCATIONS)) {
+            if (Math.abs(x-d.x) < d.size[0]/2+5 && Math.abs(z-d.z) < d.size[2]/2+5) {tooClose=true;break;}
+        }
+        if (!tooClose) createTree(x, z);
+    }
+
+    // Mountain
+    createMountain(-300, -300);
+    createMountain(350, -200);
+
+    // Weapon in hand
+    const weaponGroup = new THREE.Group();
+    const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.04,0.04,0.5), new THREE.MeshStandardMaterial({color:0x222222,metalness:0.8,roughness:0.3}));
+    barrel.position.z = -0.25;
+    const stock = new THREE.Mesh(new THREE.BoxGeometry(0.06,0.1,0.2), new THREE.MeshStandardMaterial({color:0x5c3a1a,roughness:0.8}));
+    stock.position.z = 0.1;
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.04,0.08,0.04), new THREE.MeshStandardMaterial({color:0x333333}));
+    grip.position.set(0,-0.06,0);
+    weaponGroup.add(barrel, stock, grip);
+    weaponGroup.position.set(0.2,-0.15,-0.35);
+    weaponGroup.rotation.set(0,0,0);
+    GAME.camera.add(weaponGroup);
+    GAME.scene.add(GAME.camera);
+    GAME.weapon = weaponGroup;
+
+    // Velocity
+    GAME.velocity = new THREE.Vector3();
+    GAME.prevTime = performance.now();
+
+    // Show UI
+    document.getElementById('hud').style.display = 'block';
+    document.getElementById('crosshair').style.display = 'block';
+    document.getElementById('minimap').style.display = 'block';
+    document.getElementById('compass').style.display = 'block';
+    updateHUD();
+
+    if (GAME.isMobile) {
+        document.getElementById('joystick-zone').style.display = 'block';
+        document.getElementById('mobile-actions').style.display = 'flex';
+        document.getElementById('interact-prompt').style.display = 'none';
+        setupMobileControls();
+    } else {
+        setupPCControls();
+    }
+
+    window.addEventListener('resize', onResize);
+    onResize();
+
+    toast(`⚔️ ${GAME.player.name}, 작전 구역에 배치되었습니다!`);
+    toast(`💡 ${GAME.isMobile ? '조이스틱으로 이동, 화면 드래그로 시점 조절' : 'WASD 이동, 마우스 시점, Space 점프, Shift 달리기'}`);
+
+    // Start game loop
+    GAME.gameTime = 6; // Start at 6 AM
+    requestAnimationFrame(gameLoop);
+
+    // Hunger drain
+    setInterval(() => {
+        if (GAME.player.hunger > 0) {
+            GAME.player.hunger = Math.max(0, GAME.player.hunger - 0.5);
+            if (GAME.player.hunger <= 0) toast('⚠️ 배고픔! 식당에서 식사하세요!','#f59e0b');
+        } else {
+            GAME.player.hp = Math.max(0, GAME.player.hp - 1);
+        }
+        updateHUD();
+    }, 5000);
+
+    // EXP gain for being active
+    setInterval(() => {
+        gainExp(1);
+    }, 10000);
+}
+
+// ---- Helper: Create Road ----
+function createRoad(x, y, z, w, d) {
+    const geo = new THREE.PlaneGeometry(w, d);
+    const mat = new THREE.MeshStandardMaterial({color:0x444444, roughness:0.95});
+    const road = new THREE.Mesh(geo, mat);
+    road.rotation.x = -Math.PI/2;
+    road.position.set(x, y, z);
+    road.receiveShadow = true;
+    GAME.scene.add(road);
+
+    // Center line
+    const lineGeo = new THREE.PlaneGeometry(w > d ? w*0.9 : 0.3, w > d ? 0.3 : d*0.9);
+    const lineMat = new THREE.MeshStandardMaterial({color:0xcccc00, roughness:0.8});
+    const line = new THREE.Mesh(lineGeo, lineMat);
+    line.rotation.x = -Math.PI/2;
+    line.position.set(x, y+0.01, z);
+    GAME.scene.add(line);
+}
+
+// ---- Helper: Create Building ----
+function createBuilding(name, data) {
+    const group = new THREE.Group();
+    const [w, h, d] = data.size;
+
+    if (h < 1) {
+        // Flat surface (활주로 etc)
+        const geo = new THREE.PlaneGeometry(w, d);
+        const mat = new THREE.MeshStandardMaterial({color:data.color, roughness:0.9});
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.rotation.x = -Math.PI/2;
+        mesh.position.set(data.x, 0.08, data.z);
+        mesh.receiveShadow = true;
+        GAME.scene.add(mesh);
+        return mesh;
+    }
+
+    // Main body
+    const bodyGeo = new THREE.BoxGeometry(w, h, d);
+    const bodyMat = new THREE.MeshStandardMaterial({color:data.color, roughness:0.7});
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = h/2;
+    body.castShadow = true;
+    body.receiveShadow = true;
+    group.add(body);
+
+    // Roof
+    const roofGeo = new THREE.BoxGeometry(w+1, 0.5, d+1);
+    const roofMat = new THREE.MeshStandardMaterial({color:0x333333, roughness:0.8});
+    const roof = new THREE.Mesh(roofGeo, roofMat);
+    roof.position.y = h + 0.25;
+    roof.castShadow = true;
+    group.add(roof);
+
+    // Windows
+    const winMat = new THREE.MeshStandardMaterial({color:0xaaddff, roughness:0.1, transparent:true, opacity:0.6, emissive:0x334455, emissiveIntensity:0.2});
+    const rows = Math.max(1, Math.floor(h/4));
+    const cols = Math.max(1, Math.floor(w/5));
+    for (let r=0; r<rows; r++) {
+        for (let c=0; c<cols; c++) {
+            const winGeo = new THREE.PlaneGeometry(1.5, 2);
+            const win = new THREE.Mesh(winGeo, winMat);
+            const xPos = -w/2 + (c+0.5)*(w/cols);
+            const yPos = 2 + r*4;
+            if (yPos > h-1) continue;
+            // Front
+            const wf = win.clone();
+            wf.position.set(xPos, yPos, d/2+0.01);
+            group.add(wf);
+            // Back
+            const wb = win.clone();
+            wb.position.set(xPos, yPos, -d/2-0.01);
+            wb.rotation.y = Math.PI;
+            group.add(wb);
+        }
+    }
+
+    // Door
+    const doorGeo = new THREE.PlaneGeometry(2.5, 3.5);
+    const doorMat = new THREE.MeshStandardMaterial({color:0x5c3a1a, roughness:0.8});
+    const door = new THREE.Mesh(doorGeo, doorMat);
+    door.position.set(0, 1.75, d/2+0.02);
+    group.add(door);
+
+    // Sign
+    const signCanvas = document.createElement('canvas');
+    signCanvas.width = 256; signCanvas.height = 64;
+    const sctx = signCanvas.getContext('2d');
+    sctx.fillStyle = '#1a2a1a';
+    sctx.fillRect(0,0,256,64);
+    sctx.fillStyle = '#deb887';
+    sctx.font = 'bold 22px sans-serif';
+    sctx.textAlign = 'center';
+    sctx.textBaseline = 'middle';
+    sctx.fillText(name, 128, 32);
+    const signTex = new THREE.CanvasTexture(signCanvas);
+    const signGeo = new THREE.PlaneGeometry(w*0.6, 1.5);
+    const signMat = new THREE.MeshStandardMaterial({map:signTex, transparent:true});
+    const sign = new THREE.Mesh(signGeo, signMat);
+    sign.position.set(0, h+1.2, d/2+0.5);
+    group.add(sign);
+
+    // Light at entrance
+    const light = new THREE.PointLight(0xffddaa, 0.5, 15);
+    light.position.set(0, 3, d/2+2);
+    group.add(light);
+
+    group.position.set(data.x, 0, data.z);
+    GAME.scene.add(group);
+    return group;
+}
+
+// ---- Helper: Create Tree ----
+function createTree(x, z) {
+    const height = 3 + Math.random()*4;
+    const trunkGeo = new THREE.CylinderGeometry(0.15, 0.25, height, 6);
+    const trunkMat = new THREE.MeshStandardMaterial({color:0x5c3a1a, roughness:0.9});
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.set(x, height/2, z);
+    trunk.castShadow = true;
+    GAME.scene.add(trunk);
+
+    const leafSize = 1.5 + Math.random()*2;
+    const leafGeo = new THREE.SphereGeometry(leafSize, 6, 6);
+    const green = 0x228b22 + Math.floor(Math.random()*0x003300);
+    const leafMat = new THREE.MeshStandardMaterial({color:green, roughness:0.8});
+    const leaf = new THREE.Mesh(leafGeo, leafMat);
+    leaf.position.set(x, height+leafSize*0.5, z);
+    leaf.castShadow = true;
+    GAME.scene.add(leaf);
+}
+
+// ---- Helper: Create Mountain ----
+function createMountain(cx, cz) {
+    const geo = new THREE.ConeGeometry(80, 60, 8);
+    const mat = new THREE.MeshStandardMaterial({color:0x4d5d36, roughness:0.95, flatShading:true});
+    const mountain = new THREE.Mesh(geo, mat);
+    mountain.position.set(cx, 30, cz);
+    mountain.castShadow = true;
+    GAME.scene.add(mountain);
+
+    // Snow cap
+    const snowGeo = new THREE.ConeGeometry(25, 15, 8);
+    const snowMat = new THREE.MeshStandardMaterial({color:0xeeeeee, roughness:0.6});
+    const snow = new THREE.Mesh(snowGeo, snowMat);
+    snow.position.set(cx, 52, cz);
+    GAME.scene.add(snow);
+}
+
+// ---- PC Controls ----
+function setupPCControls() {
+    const canvas = document.getElementById('game-canvas');
+
+    canvas.addEventListener('click', () => {
+        if (!GAME.isPointerLocked) canvas.requestPointerLock();
+    });
+
+    document.addEventListener('pointerlockchange', () => {
+        GAME.isPointerLocked = !!document.pointerLockElement;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!GAME.isPointerLocked) return;
+        GAME.camera.rotation.y -= e.movementX * 0.002;
+        GAME.camera.rotation.x -= e.movementY * 0.002;
+        GAME.camera.rotation.x = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, GAME.camera.rotation.x));
+    });
+
+    document.addEventListener('keydown', e => {
+        GAME.keys[e.code] = true;
+        if (e.code === 'KeyE') handleInteraction();
+    });
+    document.addEventListener('keyup', e => { GAME.keys[e.code] = false; });
+
+    document.addEventListener('mousedown', (e) => {
+        if (e.button === 0 && GAME.isPointerLocked) shoot();
+    });
+}
+
+// ---- Mobile Controls ----
+function setupMobileControls() {
+    const base = document.getElementById('joystick-base');
+    const thumb = document.getElementById('joystick-thumb');
+    const zone = document.getElementById('joystick-zone');
+
+    // Joystick
+    base.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const t = e.touches[0];
+        const rect = base.getBoundingClientRect();
+        GAME.joystick.active = true;
+        GAME.joystick.ox = rect.left + rect.width/2;
+        GAME.joystick.oy = rect.top + rect.height/2;
+    }, {passive:false});
+
+    document.addEventListener('touchmove', (e) => {
+        for (const t of e.touches) {
+            if (GAME.joystick.active) {
+                const dx = t.clientX - GAME.joystick.ox;
+                const dy = t.clientY - GAME.joystick.oy;
+                const dist = Math.min(Math.sqrt(dx*dx+dy*dy), 55);
+                const angle = Math.atan2(dy, dx);
+                GAME.joystick.dx = Math.cos(angle) * dist / 55;
+                GAME.joystick.dy = Math.sin(angle) * dist / 55;
+                thumb.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px))`;
+            }
+            if (GAME.touchLook.active && t.identifier === GAME.touchLook.id) {
+                const dx = t.clientX - GAME.touchLook.lx;
+                const dy = t.clientY - GAME.touchLook.ly;
+                GAME.camera.rotation.y -= dx * 0.003;
+                GAME.camera.rotation.x -= dy * 0.003;
+                GAME.camera.rotation.x = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, GAME.camera.rotation.x));
+                GAME.touchLook.lx = t.clientX;
+                GAME.touchLook.ly = t.clientY;
+            }
+        }
+    }, {passive:false});
+
+    document.addEventListener('touchend', (e) => {
+        if (e.touches.length === 0) {
+            GAME.joystick.active = false;
+            GAME.joystick.dx = 0;
+            GAME.joystick.dy = 0;
+            thumb.style.transform = 'translate(-50%,-50%)';
+            GAME.touchLook.active = false;
+            GAME.touchLook.id = -1;
+        }
+    });
+
+    // Look touch (right half of screen)
+    document.getElementById('game-canvas').addEventListener('touchstart', (e) => {
+        for (const t of e.changedTouches) {
+            if (t.clientX > window.innerWidth * 0.35) {
+                GAME.touchLook.active = true;
+                GAME.touchLook.id = t.identifier;
+                GAME.touchLook.lx = t.clientX;
+                GAME.touchLook.ly = t.clientY;
+            }
+        }
+    }, {passive:true});
+
+    // Action buttons
+    document.getElementById('btn-jump').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (GAME.canJump) { GAME.velocity.y = 8; GAME.canJump = false; }
+    }, {passive:false});
+
+    document.getElementById('btn-sprint').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        GAME.isSprinting = true;
+    }, {passive:false});
+    document.getElementById('btn-sprint').addEventListener('touchend', () => {
+        GAME.isSprinting = false;
+    });
+
+    document.getElementById('btn-shoot').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        shoot();
+    }, {passive:false});
+}
+
+// ---- Shoot ----
+function shoot() {
+    // Weapon recoil animation
+    if (GAME.weapon) {
+        GAME.weapon.rotation.x = -0.15;
+        setTimeout(() => { if(GAME.weapon) GAME.weapon.rotation.x = 0; }, 100);
+    }
+    // Muzzle flash
+    const flash = new THREE.PointLight(0xffaa00, 3, 8);
+    flash.position.copy(GAME.camera.position);
+    const dir = new THREE.Vector3(0,0,-1).applyQuaternion(GAME.camera.quaternion);
+    flash.position.add(dir.multiplyScalar(1));
+    GAME.scene.add(flash);
+    setTimeout(() => GAME.scene.remove(flash), 50);
+    gainExp(2);
+}
+
+// ---- Interaction ----
+function handleInteraction() {
+    const pos = GAME.camera.position;
+    for (const b of GAME.buildings) {
+        const d = b.data;
+        const dx = Math.abs(pos.x - d.x);
+        const dz = Math.abs(pos.z - d.z);
+        if (dx < d.size[0]/2+5 && dz < d.size[2]/2+5) {
+            if (b.name === 'PX') {
+                toast('🛒 PX에서 물품을 구매했습니다! (+HP, -200원)', '#22c55e');
+                GAME.player.hp = Math.min(GAME.player.maxHp, GAME.player.hp + 30);
+                GAME.player.money = Math.max(0, GAME.player.money - 200);
+                gainExp(5);
+            } else if (b.name === '병영식당') {
+                toast('🍚 식사 완료! 배고픔이 회복됩니다.', '#f59e0b');
+                GAME.player.hunger = Math.min(100, GAME.player.hunger + 40);
+                gainExp(3);
+            } else if (b.name === '의무대') {
+                toast('🏥 치료 완료! HP가 회복됩니다.', '#22c55e');
+                GAME.player.hp = GAME.player.maxHp;
+                gainExp(5);
+            } else if (b.name === '체력단련실') {
+                toast('💪 체력 단련 완료! 스태미나 최대치 증가!', '#22c55e');
+                GAME.player.maxStamina = Math.min(200, GAME.player.maxStamina + 5);
+                GAME.player.stamina = GAME.player.maxStamina;
+                gainExp(10);
+            } else if (b.name === '사격장') {
+                toast('🎯 사격 훈련 완료! 경험치 획득!', '#deb887');
+                gainExp(15);
+            } else if (b.name === '유격장') {
+                toast('🏋️ 유격 훈련 완료! 경험치 대량 획득!', '#deb887');
+                gainExp(20);
+            } else {
+                toast(`📍 ${b.name}: ${d.desc}`);
+            }
+            updateHUD();
+            return;
+        }
+    }
+}
+
+// ---- EXP / Rank ----
+function gainExp(amount) {
+    GAME.player.exp += amount;
+    const ri = RANKS.indexOf(GAME.player.rank);
+    if (GAME.player.exp >= GAME.player.expNeeded && ri < RANKS.length-1) {
+        GAME.player.exp -= GAME.player.expNeeded;
+        GAME.player.rank = RANKS[ri+1];
+        GAME.player.expNeeded = EXP_TABLE[Math.min(ri+1, EXP_TABLE.length-1)];
+        GAME.player.money += 500;
+        toast(`🎉 축하합니다! ${GAME.player.rank}(으)로 진급했습니다!`, '#ffd700');
+    }
+    updateHUD();
+}
+
+// ---- Update HUD ----
+function updateHUD() {
+    const p = GAME.player;
+    document.getElementById('hud-name').textContent = p.name;
+    document.getElementById('hud-rank').textContent = p.rank;
+    document.getElementById('hud-branch').textContent = p.branch;
+    document.getElementById('hud-hp').textContent = Math.round(p.hp);
+    document.getElementById('hud-stamina').textContent = Math.round(p.stamina);
+    document.getElementById('hud-hunger').textContent = Math.round(p.hunger);
+    document.getElementById('hud-exp').textContent = `${p.exp} / ${p.expNeeded}`;
+    document.getElementById('hp-bar').style.width = (p.hp/p.maxHp*100)+'%';
+    document.getElementById('stamina-bar').style.width = (p.stamina/p.maxStamina*100)+'%';
+    document.getElementById('hunger-bar').style.width = p.hunger+'%';
+    document.getElementById('exp-bar').style.width = (p.exp/p.expNeeded*100)+'%';
+}
+
+// ---- Minimap ----
+function updateMinimap() {
+    const canvas = document.getElementById('minimap-canvas');
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0,0,w,h);
+
+    // Background
+    ctx.fillStyle = 'rgba(20,40,20,0.8)';
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, w/2, 0, Math.PI*2);
+    ctx.fill();
+
+    const scale = 0.15;
+    const px = GAME.camera.position.x;
+    const pz = GAME.camera.position.z;
+
+    // Buildings
+    Object.entries(LOCATIONS).forEach(([name, d]) => {
+        const sx = w/2 + (d.x - px) * scale;
+        const sy = h/2 + (d.z - pz) * scale;
+        if (sx < 0 || sx > w || sy < 0 || sy > h) return;
+        const bw = Math.max(2, d.size[0]*scale);
+        const bh = Math.max(2, d.size[2]*scale);
+        ctx.fillStyle = '#'+d.color.toString(16).padStart(6,'0');
+        ctx.fillRect(sx-bw/2, sy-bh/2, bw, bh);
+    });
+
+    // Player dot
+    ctx.fillStyle = '#00ff00';
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, 3, 0, Math.PI*2);
+    ctx.fill();
+
+    // Direction indicator
+    const dir = -GAME.camera.rotation.y;
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(w/2, h/2);
+    ctx.lineTo(w/2 + Math.sin(dir)*12, h/2 - Math.cos(dir)*12);
+    ctx.stroke();
+}
+
+// ---- Compass ----
+function updateCompass() {
+    const el = document.getElementById('compass');
+    const y = GAME.camera.rotation.y;
+    const deg = (((-y * 180/Math.PI) % 360) + 360) % 360;
+    const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+    const idx = Math.round(deg/45) % 8;
+    el.textContent = `${dirs[idx]}  ${Math.round(deg)}°`;
+}
+
+// ---- Location Label ----
+function updateLocationLabel() {
+    const label = document.getElementById('location-label');
+    const pos = GAME.camera.position;
+    let nearest = null;
+    let nearDist = Infinity;
+    for (const [name, d] of Object.entries(LOCATIONS)) {
+        const dx = Math.abs(pos.x - d.x);
+        const dz = Math.abs(pos.z - d.z);
+        const dist = Math.sqrt(dx*dx+dz*dz);
+        if (dx < d.size[0]/2+10 && dz < d.size[2]/2+10 && dist < nearDist) {
+            nearest = name;
+            nearDist = dist;
+        }
+    }
+    if (nearest) {
+        label.textContent = `📍 ${nearest}`;
+        label.style.display = 'block';
+    } else {
+        label.style.display = 'none';
+    }
+
+    // Interaction prompt (PC only)
+    if (!GAME.isMobile) {
+        const prompt = document.getElementById('interact-prompt');
+        let canInteract = false;
+        for (const [name, d] of Object.entries(LOCATIONS)) {
+            const dx = Math.abs(pos.x - d.x);
+            const dz = Math.abs(pos.z - d.z);
+            if (dx < d.size[0]/2+5 && dz < d.size[2]/2+5) {
+                canInteract = true;
+                prompt.textContent = `[E] ${name} 이용하기`;
+                break;
+            }
+        }
+        prompt.style.display = canInteract ? 'block' : 'none';
+    }
+}
+
+// ---- Day/Night Cycle ----
+function updateDayNight(dt) {
+    GAME.gameTime += dt * 0.02; // ~1 game hour per 50 real seconds
+    if (GAME.gameTime >= 24) GAME.gameTime -= 24;
+
+    const hour = GAME.gameTime;
+    let sunIntensity, ambIntensity, skyColor, fogColor;
+
+    if (hour >= 6 && hour < 18) {
+        // Day
+        const t = (hour - 6) / 12;
+        sunIntensity = 0.4 + 0.6 * Math.sin(t * Math.PI);
+        ambIntensity = 0.3 + 0.3 * Math.sin(t * Math.PI);
+        skyColor = new THREE.Color(0x87ceeb);
+        if (hour < 7 || hour > 17) {
+            skyColor.lerp(new THREE.Color(0xff8844), 0.5);
+        }
+    } else {
+        // Night
+        sunIntensity = 0.05;
+        ambIntensity = 0.1;
+        skyColor = new THREE.Color(0x0a0a2a);
+    }
+
+    GAME.sun.intensity = sunIntensity;
+    GAME.ambient.intensity = ambIntensity;
+    GAME.scene.background.copy(skyColor);
+    GAME.skyMesh.material.color.copy(skyColor);
+    if (GAME.scene.fog) GAME.scene.fog.color.copy(skyColor);
+
+    // Night overlay
+    const nightOverlay = document.getElementById('night-overlay');
+    if (hour >= 19 || hour < 5) {
+        nightOverlay.style.background = 'rgba(0,0,30,0.4)';
+    } else if (hour >= 18 || hour < 6) {
+        nightOverlay.style.background = 'rgba(30,10,0,0.15)';
+    } else {
+        nightOverlay.style.background = 'transparent';
+    }
+
+    // Weather HUD
+    const wh = document.getElementById('weather-hud');
+    const timeStr = `${Math.floor(hour).toString().padStart(2,'0')}:${Math.floor((hour%1)*60).toString().padStart(2,'0')}`;
+    wh.textContent = `⏰ ${timeStr}  |  ${hour>=6&&hour<18?'☀️ 주간':'🌙 야간'}`;
+    wh.style.display = 'block';
+}
+
+// ---- Collision Detection ----
+function checkCollision(x, z) {
+    for (const [name, d] of Object.entries(LOCATIONS)) {
+        if (d.size[1] < 1) continue;
+        const hw = d.size[0]/2 + 0.5;
+        const hd = d.size[2]/2 + 0.5;
+        if (x > d.x - hw && x < d.x + hw && z > d.z - hd && z < d.z + hd) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// ---- Resize ----
+function onResize() {
+    GAME.camera.aspect = window.innerWidth / window.innerHeight;
+    GAME.camera.updateProjectionMatrix();
+    GAME.renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// ---- Game Loop ----
+function gameLoop(time) {
+    requestAnimationFrame(gameLoop);
+
+    const dt = Math.min((time - GAME.prevTime) / 1000, 0.1);
+    GAME.prevTime = time;
+
+    // Movement
+    const speed = GAME.isSprinting ? 18 : 8;
+    const moveDir = new THREE.Vector3();
+
+    if (GAME.isMobile) {
+        if (GAME.joystick.active) {
+            moveDir.x = GAME.joystick.dx;
+            moveDir.z = GAME.joystick.dy;
+        }
+    } else {
+        if (GAME.keys['KeyW']) moveDir.z = -1;
+        if (GAME.keys['KeyS']) moveDir.z = 1;
+        if (GAME.keys['KeyA']) moveDir.x = -1;
+        if (GAME.keys['KeyD']) moveDir.x = 1;
+        GAME.isSprinting = !!GAME.keys['ShiftLeft'];
+        if (GAME.keys['Space'] && GAME.canJump) {
+            GAME.velocity.y = 8;
+            GAME.canJump = false;
+        }
+    }
+
+    // Sprint stamina
+    if (GAME.isSprinting && moveDir.length() > 0.1) {
+        GAME.player.stamina = Math.max(0, GAME.player.stamina - dt * 15);
+        if (GAME.player.stamina <= 0) GAME.isSprinting = false;
+    } else {
+        GAME.player.stamina = Math.min(GAME.player.maxStamina, GAME.player.stamina + dt * 8);
+    }
+
+    // Apply movement in camera direction
+    if (moveDir.length() > 0.01) {
+        moveDir.normalize();
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(
+            new THREE.Quaternion().setFromEuler(new THREE.Euler(0, GAME.camera.rotation.y, 0))
+        );
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(
+            new THREE.Quaternion().setFromEuler(new THREE.Euler(0, GAME.camera.rotation.y, 0))
+        );
+
+        const movement = new THREE.Vector3();
+        movement.add(right.multiplyScalar(moveDir.x * speed * dt));
+        movement.add(forward.multiplyScalar(-moveDir.z * speed * dt));
+
+        const newX = GAME.camera.position.x + movement.x;
+        const newZ = GAME.camera.position.z + movement.z;
+
+        if (!checkCollision(newX, GAME.camera.position.z)) GAME.camera.position.x = newX;
+        if (!checkCollision(GAME.camera.position.x, newZ)) GAME.camera.position.z = newZ;
+    }
+
+    // Gravity
+    GAME.velocity.y -= 20 * dt;
+    GAME.camera.position.y += GAME.velocity.y * dt;
+    if (GAME.camera.position.y <= 1.7) {
+        GAME.camera.position.y = 1.7;
+        GAME.velocity.y = 0;
+        GAME.canJump = true;
+    }
+
+    // Weapon bob
+    if (GAME.weapon && moveDir.length() > 0.1) {
+        const bobSpeed = GAME.isSprinting ? 12 : 7;
+        GAME.weapon.position.y = -0.15 + Math.sin(time*0.001*bobSpeed)*0.02;
+        GAME.weapon.position.x = 0.2 + Math.cos(time*0.001*bobSpeed*0.5)*0.01;
+    }
+
+    // World bounds
+    GAME.camera.position.x = Math.max(-900, Math.min(900, GAME.camera.position.x));
+    GAME.camera.position.z = Math.max(-900, Math.min(900, GAME.camera.position.z));
+
+    // Day/Night
+    updateDayNight(dt);
+
+    // Update UI
+    updateMinimap();
+    updateCompass();
+    updateLocationLabel();
+    if (Math.floor(time/500) !== Math.floor((time-16)/500)) updateHUD();
+
+    // Render
+    GAME.renderer.render(GAME.scene, GAME.camera);
+}
+</script>
+</body>
+</html>

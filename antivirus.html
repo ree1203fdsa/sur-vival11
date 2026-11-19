@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+body { font-family: 'Segoe UI', sans-serif; background: #0b0f19; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin:0; }
+.shield { font-size: 7rem; margin-bottom: 30px; animation: pulse 2s infinite; position: relative; }
+.shield::after { content: '🛡️'; position: absolute; left: 0; top: 0; filter: blur(15px); opacity: 0.5; }
+@keyframes pulse { 0% { transform: scale(1); filter: drop-shadow(0 0 10px #3b82f6); } 50% { transform: scale(1.05); filter: drop-shadow(0 0 30px #60a5fa); } 100% { transform: scale(1); filter: drop-shadow(0 0 10px #3b82f6); } }
+h1 { margin: 0 0 10px 0; color: #f8fafc; font-size: 2rem; }
+.status-text { color: #4ade80; font-weight: bold; font-size: 1.1rem; margin-bottom: 30px; }
+.btn { background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; border: none; padding: 15px 40px; border-radius: 30px; font-weight: 900; font-size: 1.1rem; cursor: pointer; transition: 0.2s; box-shadow: 0 10px 20px rgba(59,130,246,0.2); }
+.btn:hover { transform: translateY(-3px); box-shadow: 0 15px 25px rgba(59,130,246,0.3); }
+#scan-result { display: none; margin-top: 20px; color: #94a3b8; font-size: 0.9rem; background: #1e293b; padding: 15px; border-radius: 10px; width: 80%; max-width: 400px; text-align: left; }
+</style>
+</head>
+<body>
+<div class="shield" id="main-icon">🛡️</div>
+<h1 id="title">주람 디펜더</h1>
+<div class="status-text" id="status">실시간 바이러스 감시 및 웜 방어 활성화됨</div>
+<button class="btn" id="btn" onclick="startScan()">시스템 딥 스캔</button>
+
+<div id="scan-result">
+    <div>▶ 부트 섹터 검사 중... [OK]</div>
+    <div>▶ 앱 데이터 변조 확인... [OK]</div>
+    <div>▶ 네트워크 포트 방화벽 방어... [OK]</div>
+    <div style="color: #4ade80; font-weight: bold; margin-top: 10px; border-top: 1px solid #334155; padding-top: 10px;">위협 탐지 제로(0). 시스템이 안전합니다.</div>
+</div>
+
+<script>
+    function startScan() {
+        document.getElementById('main-icon').textContent = '🔍';
+        document.getElementById('main-icon').style.animationDuration = '0.5s';
+        document.getElementById('title').textContent = '스마트 스캔 중...';
+        document.getElementById('status').textContent = '시스템 내 모든 파일을 검사하고 있습니다...';
+        document.getElementById('status').style.color = '#fbbf24';
+        document.getElementById('btn').style.display = 'none';
+        
+        setTimeout(() => {
+            document.getElementById('main-icon').textContent = '🛡️';
+            document.getElementById('main-icon').style.animationDuration = '2s';
+            document.getElementById('title').textContent = '검사 완료';
+            document.getElementById('status').textContent = '마지막 검사: 방금 전';
+            document.getElementById('status').style.color = '#94a3b8';
+            document.getElementById('scan-result').style.display = 'block';
+        }, 2000);
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 터미널</title>
+    <style>
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 20px;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+        #output {
+            flex: 1;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        #input-area {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        #prompt { color: #0f0; font-weight: bold; }
+        #cmd-input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: #0f0;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="output">주람 OS v1.0.5 [터미널 모드]
+(c) 2024 JuRam Systems. 명령어를 확인하려면 'help'를 입력하세요.
+
+</div>
+    <div id="input-area">
+        <span id="prompt">root@juram:~$</span>
+        <input type="text" id="cmd-input" autofocus>
+    </div>
+
+    <script>
+        const output = document.getElementById('output');
+        const input = document.getElementById('cmd-input');
+
+        function print(text, color = '#0f0') {
+            const span = document.createElement('div');
+            span.style.color = color;
+            span.innerHTML = text;
+            output.appendChild(span);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const cmd = input.value.trim();
+                print(`root@juram:~$ ${cmd}`, '#aaa');
+                handleCmd(cmd);
+                input.value = '';
+            }
+        });
+
+        function handleCmd(raw) {
+            const parts = raw.split(' ');
+            const cmd = parts[0].toLowerCase();
+            const args = parts.slice(1);
+
+            switch(cmd) {
+                case 'help':
+                    print("사용 가능 명령어:\n- ls: 앱 목록 보기\n- open [app_id]: 앱 실행\n- wallpaper [url]: 배경화면 변경\n- clear: 화면 소거\n- exit: 터미널 종료\n- whoami: 현재 사용자 정보\n- js [code]: 자바스크립트 실행");
+                    break;
+                case 'ls':
+                    if (window.parent.app && window.parent.app.windowConfigs) {
+                        const apps = Object.keys(window.parent.app.windowConfigs).join(', ');
+                        print("설치된 앱 목록: " + apps);
+                    }
+                    break;
+                case 'open':
+                    if (args[0] && window.parent.app.openWindow) {
+                        window.parent.app.openWindow(args[0]);
+                        print(`${args[0]} 실행 요청됨...`, '#3b82f6');
+                    } else {
+                        print("오류: 앱 ID를 입력하세요. (예: open win-playstore)");
+                    }
+                    break;
+                case 'js':
+                    try {
+                        const code = args.join(' ');
+                        const result = window.parent.eval(code);
+                        print(`>> ${result}`, '#68f7b5');
+                    } catch(e) {
+                        print(`JS 오류: ${e.message}`, '#ef4444');
+                    }
+                    break;
+                case 'clear':
+                    output.innerHTML = '';
+                    break;
+                case 'whoami':
+                    const user = window.parent.STATE.currentUser;
+                    print(`사용자: ${user ? user.username : 'GUEST'}\n권한: ${user ? user.role : 'N/A'}`);
+                    break;
+                case 'wallpaper':
+                    if (args[0] && window.parent.app.setWallpaper) {
+                        window.parent.app.setWallpaper(args[0]);
+                        print("배경화면 변경 명령 전달됨.", '#10b981');
+                    }
+                    break;
+                case 'exit':
+                    window.parent.app.closeWindow('win-terminal');
+                    break;
+                default:
+                    if (cmd) print(`명령어를 찾을 수 없습니다: ${cmd}`, '#ef4444');
+            }
+        }
+    </script>
+</body>
+</html>

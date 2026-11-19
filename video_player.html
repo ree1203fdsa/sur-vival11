@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 비디오 플레이어</title>
+    <style>
+        :root { --p: #ef4444; --bg: #000; --ui: rgba(255,255,255,0.1); }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: white; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .video-container { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; background: radial-gradient(circle, #1a1a1a 0%, #000 100%); }
+        .video-placeholder { text-align: center; color: #444; }
+        .controls { background: rgba(15,15,15,0.95); backdrop-filter: blur(10px); padding: 15px 30px; display: flex; flex-direction: column; gap: 10px; }
+        .progress-bar { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; position: relative; cursor: pointer; }
+        .progress-fill { width: 40%; height: 100%; background: var(--p); box-shadow: 0 0 10px var(--p); border-radius: 2px; }
+        .ctrl-row { display: flex; justify-content: space-between; align-items: center; }
+        .btns { display: flex; align-items: center; gap: 20px; }
+        .btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; transition: 0.2s; }
+        .btn:hover { color: var(--p); transform: scale(1.1); }
+        .vol { display: flex; align-items: center; gap: 10px; }
+        input[type=range] { accent-color: var(--p); cursor: pointer; }
+        .time { font-family: monospace; font-size: 0.9rem; color: #999; }
+        .playlist { width: 250px; background: #0a0a0a; border-left: 1px solid #1a1a1a; padding: 20px; display: none; }
+        .playlist.active { display: block; }
+        .play-item { padding: 10px; border-radius: 8px; margin-bottom: 5px; cursor: pointer; font-size: 0.85rem; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .play-item:hover { background: var(--ui); color: white; }
+        .play-item.active { background: rgba(239, 68, 68, 0.1); color: var(--p); border-left: 3px solid var(--p); }
+    </style>
+</head>
+<body>
+    <div style="display: flex; flex: 1;">
+        <div class="video-container" id="player">
+            <div class="video-placeholder">
+                <div style="font-size: 5rem; margin-bottom: 20px;">🎬</div>
+                <p>재생할 비디오 파일을 선택하거나 드래그하세요.</p>
+                <button onclick="document.getElementById('file-input').click()" style="padding: 10px 20px; border-radius: 20px; border: 1px solid #444; background: none; color: white; cursor: pointer;">파일 열기</button>
+                <input type="file" id="file-input" style="display: none;" accept="video/*">
+            </div>
+            <!-- Video elements will be injected here on load -->
+        </div>
+        <div class="playlist" id="playlist">
+            <h3 style="font-size: 1rem; margin-bottom: 15px;">재생 대기열</h3>
+            <div class="play-item active">JuRam_Intro_4K.mp4</div>
+            <div class="play-item">Nature_Relax_Short.mov</div>
+            <div class="play-item">Architecture_Design_v2.mp4</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
+        </div>
+        <div class="ctrl-row">
+            <div class="btns">
+                <button class="btn">⏮</button>
+                <button class="btn" style="font-size: 2rem;">▶</button>
+                <button class="btn">⏭</button>
+                <div class="time">01:42 / 04:15</div>
+            </div>
+            <div class="btns">
+                <div class="vol">
+                    <span>🔊</span>
+                    <input type="range" value="80">
+                </div>
+                <button class="btn" onclick="document.getElementById('playlist').classList.toggle('active')" style="font-size: 1.1rem; color: #666;">☰</button>
+                <button class="btn" style="font-size: 1.1rem;">⛶</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

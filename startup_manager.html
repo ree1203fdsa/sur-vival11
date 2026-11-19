@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>부팅 및 시작 프로그램 관리</title>
+    <style>
+        :root { --p: #f43f5e; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 30px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px; }
+        .stat-card { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); text-align: center; }
+        .stat-card b { display: block; font-size: 1.5rem; color: var(--p); margin-bottom: 5px; }
+        .stat-card span { font-size: 0.8rem; color: #94a3b8; }
+        .list { display: flex; flex-direction: column; gap: 10px; }
+        .item { background: var(--card); padding: 15px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.03); }
+        .app-info { display: flex; align-items: center; gap: 15px; }
+        .icon { font-size: 1.5rem; }
+        .app-name { font-weight: 700; }
+        .impact { font-size: 0.75rem; color: #f43f5e; font-weight: 800; background: rgba(244, 63, 94, 0.1); padding: 2px 8px; border-radius: 4px; }
+        .impact.low { color: #10b981; background: rgba(16, 185, 129, 0.1); }
+        /* Toggle Switch */
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #22c55e; }
+        input:checked + .slider:before { transform: translateX(20px); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 부팅 관리자</h1>
+        <div style="font-size: 0.9rem; color: #94a3b8;">마지막 부팅 시간: 4.2초</div>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card"><b>8개</b><span>시작 프로그램</span></div>
+        <div class="stat-card"><b>12%</b><span>CPU 점유율</span></div>
+        <div class="stat-card"><b>빠름</b><span>부팅 속도 등급</span></div>
+    </div>
+
+    <h2 style="font-size: 1.1rem; margin-bottom: 15px;">시작 프로그램 목록</h2>
+    <div class="list">
+        <div class="item">
+            <div class="app-info">
+                <span class="icon">🤖</span>
+                <div>
+                    <div class="app-name">JuRam AI Assistant</div>
+                    <span class="impact">높음 (Impact: High)</span>
+                </div>
+            </div>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+        <div class="item">
+            <div class="app-info">
+                <span class="icon">✉️</span>
+                <div>
+                    <div class="app-name">RamMail Cloud Sync</div>
+                    <span class="impact">중간</span>
+                </div>
+            </div>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+        <div class="item">
+            <div class="app-info">
+                <span class="icon">🛡️</span>
+                <div>
+                    <div class="app-name">JuGuard Security</div>
+                    <span class="impact low">낮음</span>
+                </div>
+            </div>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+        <div class="item">
+            <div class="app-info">
+                <span class="icon">📻</span>
+                <div>
+                    <div class="app-name">JuRam Radio Helper</div>
+                    <span class="impact low">낮음</span>
+                </div>
+            </div>
+            <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+        </div>
+    </div>
+
+    <div style="margin-top: 30px; padding: 20px; background: rgba(244, 63, 94, 0.05); border-radius: 12px; border: 1px solid rgba(244, 63, 94, 0.1); font-size: 0.85rem; color: #94a3b8;">
+        💡 팁: 시작 프로그램이 적을수록 부팅 속도가 빨라집니다. 불필요한 서비스는 꺼두는 것이 좋습니다.
+    </div>
+</body>
+</html>

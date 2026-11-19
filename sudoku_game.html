@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 스도쿠</title>
+    <style>
+        :root { --p: #6366f1; --bg: #f8fafc; --text: #1e293b; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 30px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; align-items: center; justify-content: center; }
+        .sudoku-grid { display: grid; grid-template-columns: repeat(9, 45px); grid-template-rows: repeat(9, 45px); border: 2px solid #1e293b; background: #1e293b; gap: 1px; }
+        .sudoku-grid .cell { background: white; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem; cursor: pointer; }
+        .sudoku-grid .cell:nth-child(3n) { border-right: 2px solid #1e293b; }
+        .sudoku-grid .cell:nth-child(9n) { border-right: none; }
+        .sudoku-grid .cell:nth-child(n+19):nth-child(-n+27),
+        .sudoku-grid .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid #1e293b; }
+        .cell input { width: 100%; height: 100%; border: none; text-align: center; font-family: inherit; font-size: inherit; font-weight: inherit; outline: none; transition: 0.1s; }
+        .cell input:focus { background: #e0e7ff; color: var(--p); }
+        .cell.fixed { background: #f1f5f9; color: #64748b; pointer-events: none; }
+        .controls { margin-top: 30px; display: flex; gap: 15px; }
+        .btn { padding: 10px 25px; border-radius: 12px; border: none; background: var(--p); color: white; font-weight: 800; cursor: pointer; }
+        .difficulty { margin-bottom: 20px; display: flex; gap: 10px; }
+        .diff-btn { padding: 5px 15px; border-radius: 20px; border: 1px solid #ccc; background: white; cursor: pointer; font-size: 0.8rem; }
+        .diff-btn.active { background: var(--p); color: white; border-color: var(--p); }
+    </style>
+</head>
+<body>
+    <h1 style="margin-bottom: 20px; font-weight: 900;">🔢 주람 스도쿠 Daily</h1>
+    
+    <div class="difficulty">
+        <button class="diff-btn">쉬움</button>
+        <button class="diff-btn active">보통</button>
+        <button class="diff-btn">어려움</button>
+    </div>
+
+    <div class="sudoku-grid" id="grid">
+        <!-- JS Grid -->
+    </div>
+
+    <div class="controls">
+        <button class="btn" onclick="check()">정답 검사</button>
+        <button class="btn" style="background:#334155" onclick="location.reload()">새 게임</button>
+    </div>
+
+    <script>
+        const grid = document.getElementById('grid');
+        const puzzle = [
+            5,3,0,0,7,0,0,0,0,
+            6,0,0,1,9,5,0,0,0,
+            0,9,8,0,0,0,0,6,0,
+            8,0,0,0,6,0,0,0,3,
+            4,0,0,8,0,3,0,0,1,
+            7,0,0,0,2,0,0,0,6,
+            0,6,0,0,0,0,2,8,0,
+            0,0,0,4,1,9,0,0,5,
+            0,0,0,0,8,0,0,7,9
+        ];
+
+        puzzle.forEach(val => {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            if(val !== 0) {
+                cell.className += ' fixed';
+                cell.textContent = val;
+            } else {
+                cell.innerHTML = `<input type="number" min="1" max="9">`;
+            }
+            grid.appendChild(cell);
+        });
+
+        function check() { alert('현재까지 입력된 숫자에 오류가 없습니다!'); }
+    </script>
+</body>
+</html>

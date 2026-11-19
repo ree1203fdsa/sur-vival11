@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>배경화면 체인저</title>
+    <style>
+        :root {
+            --primary: #68f7b5;
+            --accent: #4285F4;
+            --bg: #0f1115;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --text: #ffffff;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-weight: 900;
+            margin-bottom: 25px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.8rem;
+        }
+
+        .section-title {
+            align-self: flex-start;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #64748b;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+            width: 100%;
+            margin-bottom: 30px;
+        }
+
+        .wallpaper-item {
+            aspect-ratio: 16/9;
+            border-radius: 10px;
+            background-size: cover;
+            background-position: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wallpaper-item:hover {
+            transform: scale(1.05);
+            border-color: var(--primary);
+        }
+
+        .wallpaper-item.active {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(104, 247, 181, 0.4);
+        }
+
+        .custom-input {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        input {
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: rgba(0,0,0,0.3);
+            color: white;
+            outline: none;
+            font-size: 0.9rem;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+        }
+
+        button {
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary);
+            color: #000;
+            font-weight: 800;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        .label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 5px;
+            background: rgba(0,0,0,0.6);
+            font-size: 0.7rem;
+            text-align: center;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <h1>WALLPAPER CHANGER</h1>
+
+    <div class="section-title">프리셋 배경화면</div>
+    <div class="grid">
+        <div class="wallpaper-item" style="background-image: url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=600')" onclick="applyWallpaper('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2000')">
+            <div class="label">Cyber Dark</div>
+        </div>
+        <div class="wallpaper-item" style="background-image: url('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=600')" onclick="applyWallpaper('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=2000')">
+            <div class="label">Forest Mist</div>
+        </div>
+        <div class="wallpaper-item" style="background-image: url('https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?q=80&w=600')" onclick="applyWallpaper('https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?q=80&w=2000')">
+            <div class="label">Deep Space</div>
+        </div>
+        <div class="wallpaper-item" style="background-image: url('https://images.unsplash.com/photo-1511300636408-a63a89df3482?q=80&w=600')" onclick="applyWallpaper('https://images.unsplash.com/photo-1511300636408-a63a89df3482?q=80&w=2000')">
+            <div class="label">Ocean Blue</div>
+        </div>
+    </div>
+
+    <div class="section-title">커스텀 URL</div>
+    <div class="custom-input">
+        <input type="text" id="custom-url" placeholder="이미지 URL을 입력하세요 (예: https://...)">
+        <button onclick="applyCustom()">배경화면 적용</button>
+    </div>
+
+    <script>
+        function applyWallpaper(url) {
+            if (window.parent && window.parent.app && window.parent.app.setWallpaper) {
+                window.parent.app.setWallpaper(url);
+            } else {
+                alert('OS 환경에서만 작동합니다. URL: ' + url);
+            }
+        }
+
+        function applyCustom() {
+            const url = document.getElementById('custom-url').value.trim();
+            if (url) {
+                applyWallpaper(url);
+            } else {
+                alert('URL을 입력해주세요.');
+            }
+        }
+    </script>
+</body>
+</html>

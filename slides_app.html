@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주람 슬라이드</title>
+    <style>
+        :root { --p: #ea4335; --bg: #f8fafc; --sidebar: #ffffff; --text: #1e293b; }
+        body { font-family: 'Pretendard', sans-serif; background: #e2e8f0; color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .toolbar { background: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #cbd5e1; }
+        .main-layout { flex: 1; display: flex; overflow: hidden; }
+        .slide-list { width: 200px; background: white; border-right: 1px solid #cbd5e1; padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+        .slide-thumb { width: 160px; aspect-ratio: 16/9; background: white; border: 2px solid #cbd5e1; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; cursor: pointer; transition: 0.2s; }
+        .slide-thumb:hover { border-color: var(--p); }
+        .slide-thumb.active { border-color: var(--p); box-shadow: 0 0 10px rgba(234, 67, 53, 0.2); }
+        .canvas-area { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px; position: relative; }
+        .slide-main { width: 100%; max-width: 900px; aspect-ratio: 16/9; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 4px; padding: 60px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border: 1px solid #cbd5e1; }
+        .slide-title { font-size: 3rem; font-weight: 900; margin-bottom: 20px; color: #000; outline: none; }
+        .slide-sub { font-size: 1.5rem; color: #64748b; outline: none; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; background: var(--p); color: white; font-weight: 700; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size: 1.5rem;">📊</span>
+            <h1 style="font-size: 1.1rem; margin: 0; font-weight: 800;">JuRam Slides</h1>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn" style="background: #334155;">슬라이드 쇼</button>
+            <button class="btn">공유하기</button>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="slide-list">
+            <div class="slide-thumb active"><div>Slide 1</div></div>
+            <div class="slide-thumb"><div>Slide 2</div></div>
+            <div class="slide-thumb"><div>Slide 3</div></div>
+            <button class="btn" style="background:#f1f5f9; color:#64748b; font-size:0.8rem">+ 새 슬라이드</button>
+        </div>
+        <div class="canvas-area">
+            <div class="slide-main">
+                <div class="slide-title" contenteditable="true">제목을 입력하세요</div>
+                <div class="slide-sub" contenteditable="true">부제목을 입력하려면 클릭하세요</div>
+            </div>
+            
+            <div style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); background:white; padding:10px 20px; border-radius:30px; display:flex; gap:20px; box-shadow:0 5px 15px rgba(0,0,0,0.1); border:1px solid #eee;">
+                <span>T</span> <span style="color:#aaa">|</span> 🖼️ <span style="color:#aaa">|</span> 📐 <span style="color:#aaa">|</span> 🎨
+            </div>
+        </div>
+    </div>
+</body>
+</html>
